@@ -34,6 +34,7 @@ export function Badge({ children, variant = "default" }) {
     default: "bg-bg-elevated text-text-secondary",
     gold: "bg-accent-gold/10 text-accent-gold border border-accent-gold/30",
     blue: "bg-accent-blue/10 text-accent-blue border border-accent-blue/30",
+    warning: "bg-warning/10 text-warning border border-warning/30",
     success: "bg-success/10 text-success border border-success/30",
     danger: "bg-danger/10 text-danger border border-danger/30",
   };
@@ -76,5 +77,35 @@ export function Stars({ rating, max = 5 }) {
         <span key={i} className={i < Math.floor(rating) ? "text-accent-gold" : "text-border"}>★</span>
       ))}
     </div>
+  );
+}
+
+export function Modal({ isOpen, onClose, title, children }) {
+  if (!isOpen) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 z-40"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
+        <Card className="max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-xl text-text-primary">{title}</h2>
+            <button
+              onClick={onClose}
+              className="text-text-secondary hover:text-text-primary text-xl"
+            >
+              ✕
+            </button>
+          </div>
+          {children}
+        </Card>
+      </div>
+    </>
   );
 }

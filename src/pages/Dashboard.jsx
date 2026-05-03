@@ -1,5 +1,7 @@
+import { useContext } from "react";
 import { Card, Badge, Stars, Button, PageHeader } from "../components/ui";
-import { currentUser, projects, notifications } from "../data/dummy";
+import { AuthContext } from "../context/AuthContext";
+import { projects, getVisibleNotifications } from "../data/dummy";
 
 function StatCard({ label, value }) {
   return (
@@ -10,21 +12,40 @@ function StatCard({ label, value }) {
   );
 }
 
+function getDisplayName(name) {
+  if (!name) return "there";
+
+  const parts = name.split(" ").filter(Boolean);
+  if (parts[0] === "Dr." && parts[1]) {
+    return parts[1].replace(/\.$/, "");
+  }
+
+  return parts[0].replace(/\.$/, "");
+}
+
 export default function Dashboard() {
-  const myProjects = projects.filter((p) => p.owner === currentUser.name);
+  const { user } = useContext(AuthContext);
+  const myProjects = projects.filter((p) => p.owner === user?.name);
+  const visibleNotifications = getVisibleNotifications(user);
+  const roleLabel = {
+    student: user?.major,
+    instructor: "Instructor",
+    employer: "Employer",
+    admin: "Administrator",
+  };
 
   return (
     <div>
       <PageHeader
-        title={`Hello, ${currentUser.name.split(" ")[0]}.`}
-        subtitle={currentUser.major}
+        title={`Hello, ${getDisplayName(user?.name)}.`}
+        subtitle={roleLabel[user?.role] || "Administrator"}
       />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <StatCard label="Total Projects" value={myProjects.length} />
         <StatCard label="Public Projects" value={myProjects.filter((p) => p.visibility === "public").length} />
-        <StatCard label="Unread Notifications" value={notifications.filter((n) => !n.read).length} />
+        <StatCard label="Unread Notifications" value={visibleNotifications.filter((n) => !n.read).length} />
       </div>
 
       {/* Recent projects */}
@@ -62,7 +83,7 @@ export default function Dashboard() {
         <h2 className="font-display text-lg text-text-primary mb-4">Recent Notifications</h2>
         <Card>
           <div className="flex flex-col divide-y divide-border">
-            {notifications.map((n) => (
+            {visibleNotifications.length > 0 ? visibleNotifications.map((n) => (
               <div key={n.id} className={`py-3 flex items-start gap-3 ${!n.read ? "opacity-100" : "opacity-50"}`}>
                 {!n.read && <span className="w-2 h-2 rounded-full bg-accent-blue mt-1.5 shrink-0" />}
                 {n.read && <span className="w-2 h-2 rounded-full bg-transparent mt-1.5 shrink-0" />}
@@ -71,7 +92,9 @@ export default function Dashboard() {
                   <p className="text-xs font-mono text-text-secondary mt-0.5">{n.time}</p>
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="py-4 text-sm text-text-secondary font-sans">No notifications for your role yet.</p>
+            )}
           </div>
         </Card>
       </div>

@@ -1,53 +1,750 @@
-import { Card, Badge, Stars, Button, PageHeader } from "../../components/ui";
-import { currentUser, projects } from "../../data/dummy";
+import { useState, useContext } from "react";
+import { Card, Badge, Stars, Button, PageHeader, Input, Modal } from "../../components/ui";
+import { AuthContext } from "../../context/AuthContext";
+import { courses, instructorDirectory, projects } from "../../data/dummy";
 
-export default function Profile() {
-  const myProjects = projects.filter((p) => p.owner === currentUser.name && p.visibility === "public");
+function StudentProfile({ user, updateUser, myProjects }) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    major: user?.major || "",
+    linkedIn: user?.linkedIn || "",
+    skills: user?.skills || [],
+  });
+  const [newSkill, setNewSkill] = useState("");
+
+  const handleOpenEdit = () => {
+    setFormData({
+      major: user?.major || "",
+      linkedIn: user?.linkedIn || "",
+      skills: user?.skills || [],
+    });
+    setNewSkill("");
+    setIsEditModalOpen(true);
+  };
+
+  const handleAddSkill = () => {
+    const trimmedSkill = newSkill.trim();
+    if (trimmedSkill && !formData.skills.includes(trimmedSkill)) {
+      setFormData((previous) => ({
+        ...previous,
+        skills: [...previous.skills, trimmedSkill],
+      }));
+      setNewSkill("");
+    }
+  };
+
+  const handleRemoveSkill = (skillToRemove) => {
+    setFormData((previous) => ({
+      ...previous,
+      skills: previous.skills.filter((skill) => skill !== skillToRemove),
+    }));
+  };
+
+  const handleSaveProfile = () => {
+    updateUser({
+      major: formData.major,
+      linkedIn: formData.linkedIn,
+      skills: formData.skills,
+    });
+    setIsEditModalOpen(false);
+  };
 
   return (
     <div>
-      {/* Profile header */}
       <div className="bg-bg-surface border border-border rounded-lg p-8 mb-6 flex items-start gap-6">
         <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center shrink-0">
           <span className="font-display text-2xl text-accent-gold">
-            {currentUser.name.split(" ").map((n) => n[0]).join("")}
+            {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
           </span>
         </div>
         <div className="flex-1">
-          <h1 className="font-display text-3xl text-text-primary mb-1">{currentUser.name}</h1>
-          <p className="text-text-secondary font-sans text-sm mb-3">{currentUser.email}</p>
-          <p className="text-accent-gold font-mono text-xs mb-4">{currentUser.major}</p>
+          <h1 className="font-display text-3xl text-text-primary mb-1">{user?.name}</h1>
+          <p className="text-text-secondary font-sans text-sm mb-3">{user?.email}</p>
+          <p className="text-accent-gold font-mono text-xs mb-4">{user?.major || "No major set"}</p>
           <div className="flex gap-2 flex-wrap">
-            {currentUser.skills.map((s) => (
-              <Badge key={s} variant="blue">{s}</Badge>
-            ))}
+            {user?.skills?.length ? (
+              user.skills.map((skill) => (
+                <Badge key={skill} variant="blue">{skill}</Badge>
+              ))
+            ) : (
+              <p className="text-text-secondary text-xs">No skills added yet</p>
+            )}
           </div>
         </div>
-        <Button variant="secondary" size="sm">Edit Profile</Button>
+        <Button variant="secondary" size="sm" onClick={handleOpenEdit}>Edit Profile</Button>
       </div>
 
-      {/* Public projects */}
+      {user?.linkedIn && (
+        <div className="mb-6 p-4 bg-bg-surface border border-border rounded-lg flex items-center gap-3">
+          <span className="text-xl">🔗</span>
+          <div className="flex-1">
+            <p className="text-sm font-sans text-text-secondary mb-1">LinkedIn Profile</p>
+            <a href={user.linkedIn} target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline text-sm break-all">
+              {user.linkedIn}
+            </a>
+          </div>
+        </div>
+      )}
+
       <PageHeader
         title="Portfolio"
-        subtitle={`${myProjects.length} public projects`}
+        subtitle={`${myProjects.length} public project${myProjects.length !== 1 ? "s" : ""}`}
         action={<Button variant="ghost" size="sm">Manage visibility</Button>}
       />
 
-      <div className="grid grid-cols-2 gap-4">
-        {myProjects.map((p) => (
-          <Card key={p.id} hover>
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="blue">{p.courseCode}</Badge>
-              <Stars rating={p.rating} />
+      {myProjects.length > 0 ? (
+        <div className="grid grid-cols-2 gap-4">
+          {myProjects.map((project) => (
+            <Card key={project.id} hover>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="blue">{project.courseCode}</Badge>
+                <Stars rating={project.rating} />
+              </div>
+              <h3 className="font-display text-base text-text-primary mb-2">{project.title}</h3>
+              <p className="text-text-secondary text-sm font-sans mb-3 line-clamp-2">{project.description}</p>
+              <div className="flex gap-2 flex-wrap">
+                {project.languages.map((language) => <Badge key={language}>{language}</Badge>)}
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <p className="text-text-secondary text-sm">No public projects yet. Create your first project!</p>
+        </Card>
+      )}
+
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Portfolio">
+        <div className="flex flex-col gap-4">
+          <Input
+            label="Major"
+            type="text"
+            placeholder="e.g., Media Engineering & Technology"
+            value={formData.major}
+            onChange={(e) => setFormData({ ...formData, major: e.target.value })}
+          />
+          <Input
+            label="LinkedIn Profile URL"
+            type="url"
+            placeholder="https://linkedin.com/in/yourprofile"
+            value={formData.linkedIn}
+            onChange={(e) => setFormData({ ...formData, linkedIn: e.target.value })}
+          />
+          <div>
+            <label className="text-sm text-text-secondary font-sans mb-1.5 block">Skills</label>
+            <div className="flex gap-2 mb-3">
+              <Input
+                type="text"
+                placeholder="Add a skill (e.g., React)"
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddSkill()}
+                className="flex-1"
+              />
+              <Button variant="primary" size="md" type="button" onClick={handleAddSkill}>Add</Button>
             </div>
-            <h3 className="font-display text-base text-text-primary mb-2">{p.title}</h3>
-            <p className="text-text-secondary text-sm font-sans mb-3 line-clamp-2">{p.description}</p>
-            <div className="flex gap-2 flex-wrap">
-              {p.languages.map((l) => <Badge key={l}>{l}</Badge>)}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {formData.skills.map((skill) => (
+                <div key={skill} className="flex items-center gap-2 bg-accent-blue/10 border border-accent-blue/30 text-accent-blue px-3 py-1.5 rounded-full text-sm font-mono">
+                  <span>{skill}</span>
+                  <button type="button" onClick={() => handleRemoveSkill(skill)} className="hover:text-accent-blue/70 transition-colors font-bold">×</button>
+                </div>
+              ))}
             </div>
+          </div>
+          <div className="flex gap-3 pt-4 border-t border-border">
+            <Button variant="primary" className="flex-1" onClick={handleSaveProfile}>Save Changes</Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function InstructorProfile({ user, updateUser, myCourses }) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    bio: user?.bio || "",
+    researchInterests: user?.researchInterests || [],
+    education: user?.education || [],
+    coursesTaught: user?.coursesTaught || [],
+    linkedin: user?.linkedin || "",
+    officeHours: user?.officeHours || "",
+  });
+  const [newResearchInterest, setNewResearchInterest] = useState("");
+  const [newEducationItem, setNewEducationItem] = useState("");
+
+  const handleOpenEdit = () => {
+    setFormData({
+      bio: user?.bio || "",
+      researchInterests: user?.researchInterests || [],
+      education: user?.education || [],
+      coursesTaught: user?.coursesTaught || [],
+      linkedin: user?.linkedin || "",
+      officeHours: user?.officeHours || "",
+    });
+    setNewResearchInterest("");
+    setNewEducationItem("");
+    setIsEditModalOpen(true);
+  };
+
+  const toggleCourse = (courseId) => {
+    const isLinked = formData.coursesTaught.includes(courseId);
+    const nextCourses = isLinked
+      ? formData.coursesTaught.filter((item) => item !== courseId)
+      : [...formData.coursesTaught, courseId];
+
+    setFormData((previous) => ({
+      ...previous,
+      coursesTaught: nextCourses,
+    }));
+  };
+
+  const addListItem = (field, value, setter) => {
+    const trimmedValue = value.trim();
+    if (!trimmedValue || formData[field].includes(trimmedValue)) return;
+
+    setFormData((previous) => ({
+      ...previous,
+      [field]: [...previous[field], trimmedValue],
+    }));
+    setter("");
+  };
+
+  const removeListItem = (field, value) => {
+    setFormData((previous) => ({
+      ...previous,
+      [field]: previous[field].filter((item) => item !== value),
+    }));
+  };
+
+  const handleSaveProfile = () => {
+    updateUser({
+      bio: formData.bio,
+      researchInterests: formData.researchInterests,
+      education: formData.education,
+      coursesTaught: formData.coursesTaught.includes(4)
+        ? formData.coursesTaught
+        : [...formData.coursesTaught, 4],
+      linkedin: formData.linkedin,
+      officeHours: formData.officeHours,
+    });
+    setIsEditModalOpen(false);
+  };
+
+  return (
+    <div>
+      <div className="bg-bg-surface border border-border rounded-lg p-8 mb-6 flex items-start gap-6">
+        <div className="w-20 h-20 rounded-full bg-accent-blue/20 border-2 border-accent-blue flex items-center justify-center shrink-0">
+          <span className="font-display text-2xl text-accent-blue">
+            {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
+          </span>
+        </div>
+        <div className="flex-1">
+          <h1 className="font-display text-3xl text-text-primary mb-1">{user?.name}</h1>
+          <p className="text-text-secondary font-sans text-sm mb-3">{user?.email}</p>
+          <p className="text-accent-blue font-mono text-xs mb-4">{user?.officeHours || "No office hours set"}</p>
+          <p className="text-text-secondary text-sm mb-4 max-w-2xl">{user?.bio}</p>
+          <div className="flex gap-2 flex-wrap">
+            {user?.researchInterests?.map((interest) => (
+              <Badge key={interest} variant="blue">{interest}</Badge>
+            ))}
+          </div>
+        </div>
+        <Button variant="secondary" size="sm" onClick={handleOpenEdit}>Edit Profile</Button>
+      </div>
+
+      {user?.linkedin && (
+        <div className="mb-6 p-4 bg-bg-surface border border-border rounded-lg flex items-center gap-3">
+          <span className="text-xl">🔗</span>
+          <div className="flex-1">
+            <p className="text-sm font-sans text-text-secondary mb-1">LinkedIn Profile</p>
+            <a href={user.linkedin} target="_blank" rel="noopener noreferrer" className="text-accent-blue hover:underline text-sm break-all">
+              {user.linkedin}
+            </a>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <Card>
+          <h2 className="font-display text-lg text-text-primary mb-4">Education</h2>
+          <div className="flex flex-col gap-2">
+            {user?.education?.map((item) => (
+              <div key={item} className="text-sm text-text-secondary border border-border rounded-lg px-3 py-2 bg-bg-elevated">{item}</div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="font-display text-lg text-text-primary mb-4">Courses Taught</h2>
+          <div className="flex flex-wrap gap-2">
+            {myCourses.map((course) => (
+              <Badge key={course.id} variant="gold">{course.name}</Badge>
+            ))}
+          </div>
+          <p className="text-text-secondary text-xs mt-3">Bachelor Project is automatically linked for supervisor/instructor context.</p>
+        </Card>
+      </div>
+
+      <PageHeader
+        title="Instructor Portfolio"
+        subtitle={`${myCourses.length} linked course${myCourses.length !== 1 ? "s" : ""}`}
+      />
+
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {myCourses.map((course) => (
+          <Card key={course.id} hover>
+            <Badge variant="blue" className="mb-3">{course.code}</Badge>
+            <h3 className="font-display text-base text-text-primary mb-2">{course.name}</h3>
+            <p className="text-text-secondary text-sm">Linked to this instructor profile.</p>
           </Card>
         ))}
       </div>
+
+      <Card>
+        <h2 className="font-display text-lg text-text-primary mb-4">Research Interests</h2>
+        <div className="flex flex-wrap gap-2">
+          {user?.researchInterests?.map((item) => (
+            <Badge key={item} variant="blue">{item}</Badge>
+          ))}
+        </div>
+      </Card>
+
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Instructor Profile">
+        <div className="flex flex-col gap-4">
+          <div>
+            <label className="text-sm text-text-secondary font-sans mb-1.5 block">Bio</label>
+            <textarea
+              className="w-full min-h-28 bg-bg-elevated border border-border rounded-lg px-4 py-3 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors"
+              placeholder="Short professional bio"
+              value={formData.bio}
+              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+            />
+          </div>
+
+          <Input
+            label="LinkedIn Profile URL"
+            type="url"
+            placeholder="https://linkedin.com/in/yourprofile"
+            value={formData.linkedin}
+            onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+          />
+
+          <Input
+            label="Office Hours"
+            type="text"
+            placeholder="Mon 12:00-14:00"
+            value={formData.officeHours}
+            onChange={(e) => setFormData({ ...formData, officeHours: e.target.value })}
+          />
+
+          <div>
+            <label className="text-sm text-text-secondary font-sans mb-1.5 block">Research Interests</label>
+            <div className="flex gap-2 mb-3">
+              <Input
+                type="text"
+                placeholder="Add a research interest"
+                value={newResearchInterest}
+                onChange={(e) => setNewResearchInterest(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addListItem("researchInterests", newResearchInterest, setNewResearchInterest)}
+                className="flex-1"
+              />
+              <Button variant="primary" size="md" type="button" onClick={() => addListItem("researchInterests", newResearchInterest, setNewResearchInterest)}>Add</Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {formData.researchInterests.map((item) => (
+                <div key={item} className="flex items-center gap-2 bg-accent-blue/10 border border-accent-blue/30 text-accent-blue px-3 py-1.5 rounded-full text-sm font-mono">
+                  <span>{item}</span>
+                  <button type="button" onClick={() => removeListItem("researchInterests", item)} className="hover:text-accent-blue/70 font-bold">×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-text-secondary font-sans mb-1.5 block">Education</label>
+            <div className="flex gap-2 mb-3">
+              <Input
+                type="text"
+                placeholder="Add an education entry"
+                value={newEducationItem}
+                onChange={(e) => setNewEducationItem(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addListItem("education", newEducationItem, setNewEducationItem)}
+                className="flex-1"
+              />
+              <Button variant="primary" size="md" type="button" onClick={() => addListItem("education", newEducationItem, setNewEducationItem)}>Add</Button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {formData.education.map((item) => (
+                <div key={item} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm text-text-primary">
+                  <span>{item}</span>
+                  <button type="button" onClick={() => removeListItem("education", item)} className="text-danger hover:opacity-70 font-bold">Remove</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-text-secondary font-sans mb-1.5 block">Courses Taught</label>
+            <div className="flex flex-wrap gap-2">
+              {courses.map((course) => {
+                const linked = formData.coursesTaught.includes(course.id) || course.code === "BP";
+                return (
+                  <button
+                    key={course.id}
+                    type="button"
+                    onClick={() => toggleCourse(course.id)}
+                    className={`px-3 py-2 rounded-full text-sm font-mono border transition-colors ${linked ? "bg-accent-gold/10 text-accent-gold border-accent-gold/40" : "bg-bg-elevated text-text-secondary border-border hover:border-accent-blue/40 hover:text-text-primary"}`}
+                  >
+                    {course.name}
+                    {course.code === "BP" ? " (auto-linked)" : ""}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-border">
+            <Button variant="primary" className="flex-1" onClick={handleSaveProfile}>Save Changes</Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
+}
+
+function InstructorDirectoryPreview() {
+  return (
+    <Card>
+      <h2 className="font-display text-lg text-text-primary mb-4">Instructor Directory Preview</h2>
+      <div className="grid grid-cols-2 gap-4">
+        {instructorDirectory.map((instructor) => (
+          <div key={instructor.id} className="p-4 rounded-lg border border-border bg-bg-elevated">
+            <p className="text-text-primary font-medium mb-1">{instructor.name}</p>
+            <p className="text-text-secondary text-xs mb-2">{instructor.bio}</p>
+            <div className="flex flex-wrap gap-2">
+              {instructor.coursesTaught.map((courseId) => {
+                const course = courses.find((item) => item.id === courseId);
+                return course ? <Badge key={course.id} variant="blue">{course.code}</Badge> : null;
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function EmployerProfile({ user, updateUser }) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    companyName: user?.companyName || "",
+    companyBio: user?.companyBio || "",
+    address: user?.address || "",
+    location: user?.location || "Cairo, Egypt",
+    companyEmail: user?.companyEmail || "",
+    companyPhone: user?.companyPhone || "",
+    verificationStatus: user?.verificationStatus || "pending",
+    uploadedDocs: user?.uploadedDocs || [],
+    logo: user?.logo || null,
+  });
+  const [pendingLocation, setPendingLocation] = useState(user?.location || "Cairo, Egypt");
+
+  const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(formData.location || pendingLocation)}&output=embed`;
+
+  const handleOpenEdit = () => {
+    setFormData({
+      companyName: user?.companyName || "",
+      companyBio: user?.companyBio || "",
+      address: user?.address || "",
+      location: user?.location || "Cairo, Egypt",
+      companyEmail: user?.companyEmail || "",
+      companyPhone: user?.companyPhone || "",
+      verificationStatus: user?.verificationStatus || "pending",
+      uploadedDocs: user?.uploadedDocs || [],
+      logo: user?.logo || null,
+    });
+    setPendingLocation(user?.location || "Cairo, Egypt");
+    setIsEditModalOpen(true);
+  };
+
+  const handleDocUpload = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+
+    const nextDocs = [
+      ...formData.uploadedDocs,
+      ...files.map((file, index) => ({
+        id: Date.now() + index,
+        name: file.name,
+        uploadedAt: new Date().toISOString().slice(0, 10),
+      })),
+    ];
+
+    setFormData((previous) => ({
+      ...previous,
+      uploadedDocs: nextDocs,
+    }));
+    event.target.value = "";
+  };
+
+  const handleLogoUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setFormData((previous) => ({
+      ...previous,
+      logo: file.name,
+    }));
+    event.target.value = "";
+  };
+
+  const handleSaveProfile = () => {
+    updateUser({
+      companyName: formData.companyName,
+      companyBio: formData.companyBio,
+      address: formData.address,
+      location: formData.location,
+      companyEmail: formData.companyEmail,
+      companyPhone: formData.companyPhone,
+      verificationStatus: formData.verificationStatus,
+      uploadedDocs: formData.uploadedDocs,
+      logo: formData.logo,
+    });
+    setIsEditModalOpen(false);
+  };
+
+  const handlePickLocation = () => {
+    setFormData((previous) => ({
+      ...previous,
+      location: pendingLocation,
+    }));
+  };
+
+  const removeDoc = (docId) => {
+    setFormData((previous) => ({
+      ...previous,
+      uploadedDocs: previous.uploadedDocs.filter((doc) => doc.id !== docId),
+    }));
+  };
+
+  return (
+    <div>
+      <div className="bg-bg-surface border border-border rounded-lg p-8 mb-6 flex items-start gap-6">
+        <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center shrink-0 overflow-hidden">
+          {user?.logo ? (
+            <span className="text-xs text-accent-gold font-mono px-2 text-center">{user.logo}</span>
+          ) : (
+            <span className="font-display text-2xl text-accent-gold">
+              {user?.companyName?.split(" ").map((name) => name[0]).join("") || "E"}
+            </span>
+          )}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-1 flex-wrap">
+            <h1 className="font-display text-3xl text-text-primary">{user?.companyName}</h1>
+            <Badge variant={user?.verificationStatus === "approved" ? "success" : user?.verificationStatus === "rejected" ? "danger" : "warning"}>
+              {user?.verificationStatus || "pending"}
+            </Badge>
+          </div>
+          <p className="text-text-secondary font-sans text-sm mb-3">{user?.companyEmail}</p>
+          <p className="text-accent-gold font-mono text-xs mb-4">{user?.address}</p>
+          <p className="text-text-secondary text-sm max-w-2xl">{user?.companyBio}</p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={handleOpenEdit}>Edit Profile</Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <Card>
+          <h2 className="font-display text-lg text-text-primary mb-4">Company Information</h2>
+          <div className="flex flex-col gap-3 text-sm">
+            <div>
+              <p className="text-text-secondary text-xs uppercase tracking-widest mb-1">Email</p>
+              <p className="text-text-primary">{user?.companyEmail}</p>
+            </div>
+            <div>
+              <p className="text-text-secondary text-xs uppercase tracking-widest mb-1">Phone</p>
+              <p className="text-text-primary">{user?.companyPhone}</p>
+            </div>
+            <div>
+              <p className="text-text-secondary text-xs uppercase tracking-widest mb-1">Address</p>
+              <p className="text-text-primary">{user?.address}</p>
+            </div>
+            <div>
+              <p className="text-text-secondary text-xs uppercase tracking-widest mb-1">Selected Location</p>
+              <p className="text-text-primary">{user?.location}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="font-display text-lg text-text-primary mb-4">Verification Documents</h2>
+          <div className="flex flex-col gap-2">
+            {user?.uploadedDocs?.length ? user.uploadedDocs.map((doc) => (
+              <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm">
+                <div>
+                  <p className="text-text-primary">{doc.name}</p>
+                  <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
+                </div>
+                <Badge variant="gold">PDF</Badge>
+              </div>
+            )) : (
+              <p className="text-text-secondary text-sm">No verification documents uploaded.</p>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <Card className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-display text-lg text-text-primary">Google Maps Location</h2>
+            <p className="text-text-secondary text-sm">Pick a company location and preview it on the map.</p>
+          </div>
+          <Badge variant="blue">Demo map picker</Badge>
+        </div>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {[
+            "Tahrir Square, Cairo, Egypt",
+            "New Cairo, Cairo, Egypt",
+            "6th of October City, Giza, Egypt",
+          ].map((location) => (
+            <Button
+              key={location}
+              type="button"
+              variant={pendingLocation === location ? "gold" : "secondary"}
+              onClick={() => setPendingLocation(location)}
+              className="justify-center"
+            >
+              {location.split(",")[0]}
+            </Button>
+          ))}
+        </div>
+        <div className="h-72 rounded-lg overflow-hidden border border-border bg-bg-elevated">
+          <iframe
+            title="Company location map"
+            src={mapSrc}
+            className="w-full h-full"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+        <div className="flex gap-3 mt-4">
+          <Input
+            label="Location preview"
+            value={pendingLocation}
+            onChange={(e) => setPendingLocation(e.target.value)}
+          />
+          <div className="flex items-end">
+            <Button type="button" variant="primary" onClick={handlePickLocation}>Use this location</Button>
+          </div>
+        </div>
+      </Card>
+
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Employer Profile">
+        <div className="flex flex-col gap-4">
+          <Input
+            label="Company Name"
+            value={formData.companyName}
+            onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+          />
+          <div>
+            <label className="text-sm text-text-secondary font-sans mb-1.5 block">Company Bio</label>
+            <textarea
+              className="w-full min-h-24 bg-bg-elevated border border-border rounded-lg px-4 py-3 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors"
+              value={formData.companyBio}
+              onChange={(e) => setFormData({ ...formData, companyBio: e.target.value })}
+            />
+          </div>
+          <Input
+            label="Address"
+            value={formData.address}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          />
+          <Input
+            label="Company Email"
+            type="email"
+            value={formData.companyEmail}
+            onChange={(e) => setFormData({ ...formData, companyEmail: e.target.value })}
+          />
+          <Input
+            label="Company Phone"
+            value={formData.companyPhone}
+            onChange={(e) => setFormData({ ...formData, companyPhone: e.target.value })}
+          />
+          <Input
+            label="Verification Status"
+            value={formData.verificationStatus}
+            onChange={(e) => setFormData({ ...formData, verificationStatus: e.target.value })}
+          />
+
+          <div>
+            <label className="text-sm text-text-secondary font-sans mb-1.5 block">Company Logo</label>
+            <Input type="file" accept="image/*" onChange={handleLogoUpload} />
+            {formData.logo && <p className="text-xs text-text-secondary mt-2">Selected logo: {formData.logo}</p>}
+          </div>
+
+          <div>
+            <label className="text-sm text-text-secondary font-sans mb-1.5 block">Upload Verification PDFs</label>
+            <Input type="file" accept="application/pdf" multiple onChange={handleDocUpload} />
+            <div className="flex flex-col gap-2 mt-3">
+              {formData.uploadedDocs.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm">
+                  <div>
+                    <p className="text-text-primary">{doc.name}</p>
+                    <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
+                  </div>
+                  <button type="button" className="text-danger text-xs font-semibold" onClick={() => removeDoc(doc.id)}>Remove</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-border">
+            <Button variant="primary" className="flex-1" onClick={handleSaveProfile}>Save Changes</Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+export default function Profile() {
+  const { user, updateUser } = useContext(AuthContext);
+  const role = user?.role;
+
+  const myProjects = projects.filter((project) => project.owner === user?.name && project.visibility === "public");
+  const myCourses = courses.filter((course) => user?.coursesTaught?.includes(course.id));
+
+  if (role === "employer") {
+    return <EmployerProfile user={user} updateUser={updateUser} />;
+  }
+
+  if (role === "instructor") {
+    return (
+      <div>
+        <InstructorProfile user={user} updateUser={updateUser} myCourses={myCourses} />
+        <div className="mt-6">
+          <InstructorDirectoryPreview />
+        </div>
+      </div>
+    );
+  }
+
+  if (role !== "student") {
+    return (
+      <div>
+        <PageHeader title="Portfolio" subtitle="Profile view not configured for this role yet" />
+        <Card>
+          <p className="text-text-secondary">This profile area is currently focused on student and instructor flows.</p>
+        </Card>
+      </div>
+    );
+  }
+
+  return <StudentProfile user={user} updateUser={updateUser} myProjects={myProjects} />;
 }
