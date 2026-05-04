@@ -6,7 +6,7 @@ import { getUnreadNotificationCount } from "../../data/dummy";
 const allNavItems = [
   { label: "Dashboard",   icon: "⊞", path: "/", roles: ["student", "instructor", "employer", "admin"] },
   { label: "Projects",    icon: "◈", path: "/projects", roles: ["student", "instructor"] },
-  { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer"] },
+  { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
   { label: "Portfolio",   icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
   { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor"] },
   { label: "Messages",    icon: "◇", path: "/messages", roles: ["student", "instructor", "employer", "admin"] },

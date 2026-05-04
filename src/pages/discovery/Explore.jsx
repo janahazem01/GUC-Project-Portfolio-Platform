@@ -1,59 +1,338 @@
-import { useState } from "react";
+// import { useState } from "react";
+// import { Card, Badge, Stars, Button, Input, PageHeader } from "../../components/ui";
+// import { projects, courses } from "../../data/dummy";
+
+// export default function Explore() {
+//   const [search, setSearch] = useState("");
+//   const [filterCourse, setFilterCourse] = useState("");
+
+//   const filtered = projects.filter((p) => {
+//     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase());
+//     const matchCourse = filterCourse ? p.courseCode === filterCourse : true;
+//     return matchSearch && matchCourse;
+//   });
+
+//   return (
+//     <div>
+//       <PageHeader title="Explore Projects" subtitle="Discover what GUC students have built" />
+
+//       <div className="flex gap-4 mb-8">
+//         <Input
+//           placeholder="Search by project title..."
+//           value={search}
+//           onChange={(e) => setSearch(e.target.value)}
+//           className="flex-1"
+//         />
+//         <select
+//           value={filterCourse}
+//           onChange={(e) => setFilterCourse(e.target.value)}
+//           className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+//         >
+//           <option value="">All Courses</option>
+//           {courses.map((c) => (
+//             <option key={c.id} value={c.code}>{c.name}</option>
+//           ))}
+//         </select>
+//       </div>
+
+//       <div className="grid grid-cols-3 gap-4">
+//         {filtered.map((p) => (
+//           <Card key={p.id} hover>
+//             <div className="flex items-start justify-between mb-2">
+//               <Badge variant="blue">{p.courseCode}</Badge>
+//               <Stars rating={p.rating} />
+//             </div>
+//             <h3 className="font-display text-base text-text-primary mb-2">{p.title}</h3>
+//             <p className="text-text-secondary text-sm font-sans mb-3 line-clamp-2">{p.description}</p>
+//             <div className="flex items-center gap-2 flex-wrap mb-4">
+//               {p.languages.map((l) => <Badge key={l}>{l}</Badge>)}
+//             </div>
+//             <div className="flex items-center justify-between">
+//               <span className="text-xs font-sans text-text-secondary">{p.owner}</span>
+//               <Button variant="ghost" size="sm">View →</Button>
+//             </div>
+//           </Card>
+//         ))}
+//         {filtered.length === 0 && (
+//           <div className="col-span-3 text-center py-16 text-text-secondary font-sans">
+//             No projects found.
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+// 
+
+
+
+
+
+
+// import { useState, useContext } from "react";
+// import { Card, Badge, Stars, Button, Input, PageHeader } from "../../components/ui";
+// import { projects, courses } from "../../data/dummy";
+// import { AuthContext } from "../../context/AuthContext";
+
+// export default function Explore() {
+//   const [search, setSearch] = useState("");
+//   const [filterCourse, setFilterCourse] = useState("");
+
+//   // ✅ NEW (added only)
+//   const [filterInstructor, setFilterInstructor] = useState("");
+//   const [filterDate, setFilterDate] = useState("");
+
+//   const { user } = useContext(AuthContext);
+
+//   const filtered = projects.filter((p) => {
+//     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase());
+//     const matchCourse = filterCourse ? p.courseCode === filterCourse : true;
+
+//     // ✅ NEW filters (do NOT change existing ones)
+//     const matchInstructor = filterInstructor
+//       ? p.owner.toLowerCase().includes(filterInstructor.toLowerCase())
+//       : true;
+
+//     const matchDate = filterDate
+//       ? p.createdAt && new Date(p.createdAt) >= new Date(filterDate)
+//       : true;
+
+//     return matchSearch && matchCourse && matchInstructor && matchDate;
+//   });
+
+//   return (
+//     <div>
+//       <PageHeader title="Explore Projects" subtitle="Discover what GUC students have built" />
+
+//       {/* 🔥 FILTER BAR */}
+//       <div className="flex gap-4 mb-8 flex-wrap">
+//         <Input
+//           placeholder="Search by project title..."
+//           value={search}
+//           onChange={(e) => setSearch(e.target.value)}
+//           className="flex-1"
+//         />
+
+//         {/* Course */}
+//         <select
+//           value={filterCourse}
+//           onChange={(e) => setFilterCourse(e.target.value)}
+//           className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans"
+//         >
+//           <option value="">All Courses</option>
+//           {courses.map((c) => (
+//             <option key={c.id} value={c.code}>{c.name}</option>
+//           ))}
+//         </select>
+
+//         {/* ✅ NEW: Instructor */}
+//         <select
+//           value={filterInstructor}
+//           onChange={(e) => setFilterInstructor(e.target.value)}
+//           className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans"
+//         >
+//           <option value="">All Instructors</option>
+//           {[...new Set(projects.map(p => p.owner))].map((owner) => (
+//             <option key={owner} value={owner}>{owner}</option>
+//           ))}
+//         </select>
+
+//         {/* ✅ NEW: Date */}
+//         <Input
+//           type="date"
+//           value={filterDate}
+//           onChange={(e) => setFilterDate(e.target.value)}
+//           className="bg-bg-elevated border border-border"
+//         />
+//       </div>
+
+//       {/* PROJECTS */}
+//       <div className="grid grid-cols-3 gap-4">
+//         {filtered.map((p) => (
+//           <Card key={p.id} hover>
+//             <div className="flex items-start justify-between mb-2">
+//               <Badge variant="blue">{p.courseCode}</Badge>
+//               <Stars rating={p.rating} />
+//             </div>
+
+//             <h3 className="font-display text-base text-text-primary mb-2">{p.title}</h3>
+
+//             <p className="text-text-secondary text-sm font-sans mb-3 line-clamp-2">
+//               {p.description}
+//             </p>
+
+//             <div className="flex items-center gap-2 flex-wrap mb-4">
+//               {p.languages.map((l) => <Badge key={l}>{l}</Badge>)}
+//             </div>
+
+//             <div className="flex items-center justify-between">
+//               <span className="text-xs font-sans text-text-secondary">{p.owner}</span>
+
+//               <div className="flex gap-2">
+//                 <Button variant="ghost" size="sm">View →</Button>
+
+//                 {user?.role === "admin" && (
+//                   <>
+//                     <Button variant="ghost" size="sm">Edit</Button>
+//                     <Button variant="ghost" size="sm">Delete</Button>
+//                   </>
+//                 )}
+//               </div>
+//             </div>
+//           </Card>
+//         ))}
+
+//         {filtered.length === 0 && (
+//           <div className="col-span-3 text-center py-16 text-text-secondary font-sans">
+//             No projects found.
+//           </div>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+import { useState, useContext } from "react";
 import { Card, Badge, Stars, Button, Input, PageHeader } from "../../components/ui";
 import { projects, courses } from "../../data/dummy";
+import { AuthContext } from "../../context/AuthContext";
 
 export default function Explore() {
   const [search, setSearch] = useState("");
   const [filterCourse, setFilterCourse] = useState("");
 
+  // ✅ Existing filters
+  const [filterInstructor, setFilterInstructor] = useState("");
+  const [filterDate, setFilterDate] = useState("");
+
+  // ✅ NEW: single sorting option
+  const [sortBy, setSortBy] = useState("");
+
+  const { user } = useContext(AuthContext);
+
+  // 🔹 FILTERING (unchanged)
   const filtered = projects.filter((p) => {
     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase());
     const matchCourse = filterCourse ? p.courseCode === filterCourse : true;
-    return matchSearch && matchCourse;
+
+    const matchInstructor = filterInstructor
+      ? p.owner.toLowerCase().includes(filterInstructor.toLowerCase())
+      : true;
+
+    const matchDate = filterDate
+      ? p.createdAt && new Date(p.createdAt) >= new Date(filterDate)
+      : true;
+
+    return matchSearch && matchCourse && matchInstructor && matchDate;
+  });
+
+  // 🔹 SORTING (only one active at a time)
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "date") {
+      return new Date(b.createdAt) - new Date(a.createdAt); // newest first
+    }
+
+    if (sortBy === "rating") {
+      return b.rating - a.rating; // highest first
+    }
+
+    return 0; // no sorting
   });
 
   return (
     <div>
       <PageHeader title="Explore Projects" subtitle="Discover what GUC students have built" />
 
-      <div className="flex gap-4 mb-8">
+      {/* 🔥 FILTER BAR */}
+      <div className="flex gap-4 mb-8 flex-wrap">
         <Input
           placeholder="Search by project title..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1"
         />
+
+        {/* Course */}
         <select
           value={filterCourse}
           onChange={(e) => setFilterCourse(e.target.value)}
-          className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+          className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans"
         >
           <option value="">All Courses</option>
           {courses.map((c) => (
             <option key={c.id} value={c.code}>{c.name}</option>
           ))}
         </select>
+
+        {/* Instructor */}
+        <select
+          value={filterInstructor}
+          onChange={(e) => setFilterInstructor(e.target.value)}
+          className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans"
+        >
+          <option value="">All Instructors</option>
+          {[...new Set(projects.map(p => p.owner))].map((owner) => (
+            <option key={owner} value={owner}>{owner}</option>
+          ))}
+        </select>
+
+        {/* Date */}
+        <Input
+          type="date"
+          value={filterDate}
+          onChange={(e) => setFilterDate(e.target.value)}
+          className="bg-bg-elevated border border-border"
+        />
+
+        {/* ✅ SORT (ONLY ONE OPTION) */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans"
+        >
+          <option value="">Sort By</option>
+          <option value="date">Newest</option>
+          <option value="rating">Highest Rating</option>
+        </select>
       </div>
 
+      {/* PROJECTS */}
       <div className="grid grid-cols-3 gap-4">
-        {filtered.map((p) => (
+        {sorted.map((p) => (
           <Card key={p.id} hover>
             <div className="flex items-start justify-between mb-2">
               <Badge variant="blue">{p.courseCode}</Badge>
               <Stars rating={p.rating} />
             </div>
+
             <h3 className="font-display text-base text-text-primary mb-2">{p.title}</h3>
-            <p className="text-text-secondary text-sm font-sans mb-3 line-clamp-2">{p.description}</p>
+
+            <p className="text-text-secondary text-sm font-sans mb-3 line-clamp-2">
+              {p.description}
+            </p>
+
             <div className="flex items-center gap-2 flex-wrap mb-4">
               {p.languages.map((l) => <Badge key={l}>{l}</Badge>)}
             </div>
+
             <div className="flex items-center justify-between">
               <span className="text-xs font-sans text-text-secondary">{p.owner}</span>
-              <Button variant="ghost" size="sm">View →</Button>
+
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm">View →</Button>
+
+                {user?.role?.toLowerCase() === "admin" && (
+                  <>
+                    <Button variant="ghost" size="sm">Edit</Button>
+                    <Button variant="ghost" size="sm">Delete</Button>
+                  </>
+                )}
+              </div>
             </div>
           </Card>
         ))}
-        {filtered.length === 0 && (
+
+        {sorted.length === 0 && (
           <div className="col-span-3 text-center py-16 text-text-secondary font-sans">
             No projects found.
           </div>
