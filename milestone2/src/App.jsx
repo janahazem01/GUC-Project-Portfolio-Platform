@@ -258,6 +258,15 @@ function AppRoutes() {
         } 
       />
 
+      <Route
+        path="/internships/:internshipId"
+        element={
+          <ProtectedRoute>
+            <AppLayout><Internships /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route 
         path="/notifications" 
         element={
