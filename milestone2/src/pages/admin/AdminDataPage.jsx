@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, Modal, PageHeader } from "../../components/ui";
 import { courses, dummyUsers, employerApplications, projects } from "../../data/dummy";
@@ -71,20 +71,102 @@ export default function AdminDataPage() {
 
   const employerUsers = dummyUsers.filter((user) => user.role === "employer");
   const availableRoles = roleOptions.map((option) => option.value);
-  const visibleRoles = selectedRoles.length > 0 ? selectedRoles : availableRoles;
-  const isFiltered = selectedRoles.length > 0;
+  const visibleRoles = selectedRole ? [selectedRole] : availableRoles;
+  const isFiltered = Boolean(selectedRole);
   const filteredUsers = useMemo(
     () => dummyUsers.filter((user) => visibleRoles.includes(user.role)),
     [visibleRoles]
   );
   const groupedUsers = useMemo(
     () =>
-      selectedRoles
-        .map((role) => ({ role, users: dummyUsers.filter((user) => user.role === role) }))
-        .filter((group) => group.users.length > 0),
-    [selectedRoles]
+      selectedRole
+        ? [{ role: selectedRole, users: dummyUsers.filter((user) => user.role === selectedRole) }]
+        : [],
+    [selectedRole]
   );
 
+  const resetCourseForm = () => {
+    setCourseForm({ name: "", code: "" });
+    setCourseErrors({});
+    setEditingCourse(null);
+    setCourseAction("create");
+  };
+
+  const openCourseModal = (action, course = null) => {
+    if (action === "edit" && course) {
+      setCourseAction("edit");
+      setEditingCourse(course);
+      setCourseForm({ name: course.name, code: course.code });
+    } else {
+      resetCourseForm();
+      setCourseAction("create");
+    }
+    setCourseModalOpen(true);
+  };
+
+  const validateCourseForm = () => {
+    const errors = {};
+    if (!courseForm.name.trim()) errors.name = "Course name is required.";
+    if (!courseForm.code.trim()) errors.code = "Course code is required.";
+    setCourseErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleCourseSave = (event) => {
+    event.preventDefault();
+    if (!validateCourseForm()) return;
+    setCourseConfirmOpen(true);
+  };
+
+  const applyCourseSave = () => {
+    if (courseAction === "create") {
+      const id = courseList.length ? Math.max(...courseList.map((course) => course.id)) + 1 : 1;
+      const newCourse = { id, name: courseForm.name.trim(), code: courseForm.code.trim() };
+      courses.push(newCourse);
+      setCourseList([...courseList, newCourse]);
+      setCourseSuccessMessage("Course created successfully.");
+    } else if (editingCourse) {
+      const updatedCourse = { ...editingCourse, name: courseForm.name.trim(), code: courseForm.code.trim() };
+      const nextList = courseList.map((course) => (course.id === editingCourse.id ? updatedCourse : course));
+      const index = courses.findIndex((course) => course.id === editingCourse.id);
+      if (index !== -1) courses[index] = updatedCourse;
+      setCourseList(nextList);
+      setCourseSuccessMessage("Course updated successfully.");
+    }
+
+    setCourseConfirmOpen(false);
+    setCourseModalOpen(false);
+    setCourseSuccessOpen(true);
+  };
+
+  const handleCourseDelete = (course) => {
+    setEditingCourse(course);
+    setCourseDeleteOpen(true);
+  };
+
+  const confirmCourseDelete = () => {
+    if (!editingCourse) return;
+    setCourseList(courseList.filter((course) => course.id !== editingCourse.id));
+    const index = courses.findIndex((course) => course.id === editingCourse.id);
+    if (index !== -1) courses.splice(index, 1);
+    setCourseDeleteOpen(false);
+    setCourseSuccessMessage("Course deleted successfully.");
+    setCourseSuccessOpen(true);
+  };
+
+  const closeCourseModals = () => {
+    setCourseModalOpen(false);
+    setCourseConfirmOpen(false);
+    setCourseDeleteOpen(false);
+    setCourseErrors({});
+  };
+
+  const courseHeaderAction = (
+    <div className="flex flex-wrap items-center justify-end gap-3">
+      <Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>
+      <Button onClick={() => openCourseModal("create")}>+ Create Course</Button>
+    </div>
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-4">
@@ -216,11 +298,14 @@ export default function AdminDataPage() {
           <Modal
             isOpen={filtersAddedOpen}
             onClose={() => setFiltersAddedOpen(false)}
-            title="Filters changed successfully"
+            title="Filters were added successfully"
           >
-            <p className="text-text-secondary text-sm mb-6">Your filter selection changed successfully.</p>
-            <div className="flex justify-end">
-              <Button onClick={() => setFiltersAddedOpen(false)}>OK</Button>
+            <p className="text-text-secondary text-sm mb-6">Your filter selection has been applied.</p>
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={() => setFiltersAddedOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => setFiltersAddedOpen(false)}>Okay</Button>
             </div>
           </Modal>
         </>
