@@ -46,22 +46,22 @@ export function Badge({ children, variant = "default" }) {
   );
 }
 
-export function Input({ label, className = "", ...props }) {
+export function Input({ label, error, className = "", ...props }) {
   return (
     <div className="flex flex-col gap-1.5">
       {label && <label className="text-sm text-text-secondary font-sans">{label}</label>}
       <input
-        className={`bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans
-          placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors ${className}`}
+        className={`bg-bg-elevated border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors ${error ? "border-danger text-danger" : "border-border"} ${className}`}
         {...props}
       />
+      {error && <p className="text-danger text-sm">{error}</p>}
     </div>
   );
 }
 
 export function PageHeader({ title, subtitle, action }) {
   return (
-    <div className="flex items-start justify-between mb-8">
+    <div className="flex items-center justify-between mb-8 gap-6">
       <div>
         <h1 className="font-display text-2xl text-text-primary mb-1">{title}</h1>
         {subtitle && <p className="text-text-secondary text-sm font-sans">{subtitle}</p>}
@@ -81,20 +81,20 @@ export function Stars({ rating, max = 5 }) {
   );
 }
 
-export function Modal({ isOpen, onClose, title, children }) {
+export function Modal({ isOpen, onClose, title, children, backdropClassName = "", contentClassName = "" }) {
   if (!isOpen) return null;
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-40"
+        className={`fixed inset-0 bg-black/50 z-40 ${backdropClassName}`}
         onClick={onClose}
       />
       
       {/* Modal */}
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
-        <Card className="max-h-[90vh] overflow-y-auto">
+        <Card className={`max-h-[90vh] overflow-y-auto ${contentClassName}`}>
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-display text-xl text-text-primary">{title}</h2>
             <button

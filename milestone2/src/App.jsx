@@ -128,6 +128,7 @@ import Explore      from "./pages/discovery/Explore";
 import Profile      from "./pages/profile/Profile";
 import Admin        from "./pages/admin/Admin";
 import AdminDataPage from "./pages/admin/AdminDataPage";
+import AdminAccountManagement from "./pages/admin/AdminAccountManagement";
 import Internships  from "./pages/internships/Internships";
 import Notifications from "./pages/Notifications";
 import Messages     from "./pages/Messages";
@@ -225,7 +226,7 @@ function AppRoutes() {
         path="/admin" 
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
-            <Navigate to="/" replace />
+            <AppLayout><Admin /></AppLayout>
           </ProtectedRoute>
         } 
       />
@@ -235,6 +236,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <AppLayout><AdminDataPage /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/account-management"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AppLayout><AdminAccountManagement /></AppLayout>
           </ProtectedRoute>
         }
       />

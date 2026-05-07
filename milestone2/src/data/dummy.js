@@ -17,6 +17,7 @@ export const dummyUsers = [
     bio: "Passionate about web development and AI",
     linkedIn: "https://linkedin.com/in/ahmed",
     avatar: null,
+    status: "active",
   },
   // Admin
   {
@@ -27,6 +28,7 @@ export const dummyUsers = [
     role: "admin",
     bio: "Platform administrator",
     avatar: null,
+    status: "active",
   },
   // Instructor
   {
@@ -42,6 +44,7 @@ export const dummyUsers = [
     officeHours: "Mon 12:00-14:00",
     linkedin: "https://linkedin.com/in/dr-sara",
     avatar: null,
+    status: "active",
   },
   // Employer
   {
@@ -62,6 +65,7 @@ export const dummyUsers = [
       { id: 1, name: "tax_certificate.pdf", uploadedAt: "2026-03-15" }
     ],
     avatar: null,
+    status: "active",
   },
 ];
 
