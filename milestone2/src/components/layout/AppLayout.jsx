@@ -10,7 +10,6 @@ const allNavItems = [
   { label: "Portfolio",   icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
   { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor"] },
   { label: "Messages",    icon: "◇", path: "/messages", roles: ["student", "instructor", "employer", "admin"] },
-  { label: "Admin",       icon: "◆", path: "/admin", roles: ["admin"] },
 ];
 
 // Helper to get nav items for a specific role
@@ -18,10 +17,19 @@ const getNavItemsForRole = (role) => {
   return allNavItems.filter((item) => item.roles.includes(role));
 };
 
+function SidebarTooltip({ collapsed, label }) {
+  if (!collapsed) return null;
+
+  return (
+    <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-bg-surface px-3 py-1.5 text-xs font-sans text-text-primary opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+      {label}
+    </span>
+  );
+}
+
 function UserMenu({ collapsed }) {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -36,22 +44,19 @@ function UserMenu({ collapsed }) {
   };
 
   return (
-    <div className="border-t border-border p-3 flex flex-col gap-2">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-bg-elevated transition-colors text-text-primary text-sm w-full"
-      >
-        <span className="text-base">{roleEmoji[user?.role] || "👤"}</span>
+    <div className={`border-t border-border flex flex-col gap-2 ${collapsed ? "p-2" : "p-3"}`}>
+      <div className={`group relative flex items-center rounded-lg text-text-primary text-sm w-full ${collapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-2"}`}>
+        <span className="w-7 shrink-0 text-center text-base">{roleEmoji[user?.role] || "👤"}</span>
         {!collapsed && (
           <div className="flex-1 text-left truncate">
             <div className="text-sm font-medium truncate">{user?.name}</div>
             <div className="text-xs text-text-secondary capitalize">{user?.role}</div>
           </div>
         )}
-        {!collapsed && <span className={`text-xs transition-transform ${isOpen ? "rotate-180" : ""}`}>▼</span>}
-      </button>
+        <SidebarTooltip collapsed={collapsed} label={user?.name || "Profile"} />
+      </div>
       
-      {isOpen && !collapsed && (
+      {!collapsed && (
         <button
           onClick={handleLogout}
           className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors w-full text-left font-sans"
@@ -70,6 +75,7 @@ export function AppLayout({ children }) {
   const navItems = getNavItemsForRole(user?.role);
   const unreadNotificationCount = getUnreadNotificationCount(user);
   const location = useLocation();
+  const activeNavPath = location.state?.activeNav || (location.pathname.startsWith("/admin") ? "/" : location.pathname);
 
   return (
     <div className="flex min-h-screen bg-bg-base">
@@ -88,20 +94,21 @@ export function AppLayout({ children }) {
         {/* Nav */}
         <nav className="flex-1 py-4 flex flex-col gap-1 px-2">
           {navItems.map((item) => {
-            const active = location.pathname === item.path ||
-              (item.path !== "/" && location.pathname.startsWith(item.path));
+            const active = activeNavPath === item.path ||
+              (item.path !== "/" && activeNavPath.startsWith(item.path));
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-sans transition-colors
+                className={`group relative flex items-center rounded-lg text-sm font-sans transition-colors ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}
                   ${active
                     ? "bg-accent-gold/10 text-accent-gold border-l-2 border-accent-gold"
                     : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
                   }`}
               >
-                <span className="text-base shrink-0">{item.icon}</span>
+                <span className="w-7 shrink-0 text-center text-base">{item.icon}</span>
                 {!collapsed && <span className="truncate">{item.label}</span>}
+                <SidebarTooltip collapsed={collapsed} label={item.label} />
               </Link>
             );
           })}
@@ -111,9 +118,9 @@ export function AppLayout({ children }) {
         <div className="border-t border-border p-2 flex flex-col gap-1">
           <Link
             to="/notifications"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+            className={`group relative flex items-center rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}`}
           >
-            <span className="relative shrink-0">
+            <span className="relative w-7 shrink-0 text-center">
               <span>🔔</span>
               {unreadNotificationCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-danger rounded-full text-[9px] text-white flex items-center justify-center font-mono">
@@ -122,13 +129,15 @@ export function AppLayout({ children }) {
               )}
             </span>
             {!collapsed && <span>Notifications</span>}
+            <SidebarTooltip collapsed={collapsed} label="Notifications" />
           </Link>
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors text-sm w-full"
+            className={`group relative flex items-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors text-sm w-full ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}`}
           >
-            <span className="shrink-0">{collapsed ? "→" : "←"}</span>
+            <span className="w-7 shrink-0 text-center">{collapsed ? "→" : "←"}</span>
             {!collapsed && <span>Collapse</span>}
+            <SidebarTooltip collapsed={collapsed} label={collapsed ? "Expand" : "Collapse"} />
           </button>
         </div>
 

@@ -122,9 +122,12 @@ import RegisterEmployer from "./pages/auth/RegisterEmployer";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import Dashboard    from "./pages/Dashboard";
 import Projects     from "./pages/projects/Projects";
+import ProjectDetails from "./pages/projects/ProjectDetails";
+import ProjectPreview from "./pages/projects/ProjectPreview";
 import Explore      from "./pages/discovery/Explore";
 import Profile      from "./pages/profile/Profile";
 import Admin        from "./pages/admin/Admin";
+import AdminDataPage from "./pages/admin/AdminDataPage";
 import Internships  from "./pages/internships/Internships";
 import Notifications from "./pages/Notifications";
 import Messages     from "./pages/Messages";
@@ -151,6 +154,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
+function RoleDashboard() {
+  const { user } = useContext(AuthContext);
+  return user?.role === "admin" ? <Admin /> : <Dashboard />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -163,7 +171,7 @@ function AppRoutes() {
         path="/" 
         element={
           <ProtectedRoute>
-            <AppLayout><Dashboard /></AppLayout>
+            <AppLayout><RoleDashboard /></AppLayout>
           </ProtectedRoute>
         } 
       />
@@ -175,6 +183,24 @@ function AppRoutes() {
             <AppLayout><Projects /></AppLayout>
           </ProtectedRoute>
         } 
+      />
+
+      <Route
+        path="/projects/:projectId"
+        element={
+          <ProtectedRoute>
+            <AppLayout><ProjectDetails /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/projects/:projectId/preview"
+        element={
+          <ProtectedRoute>
+            <AppLayout><ProjectPreview /></AppLayout>
+          </ProtectedRoute>
+        }
       />
 
       <Route 
@@ -199,9 +225,18 @@ function AppRoutes() {
         path="/admin" 
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
-            <AppLayout><Admin /></AppLayout>
+            <Navigate to="/" replace />
           </ProtectedRoute>
         } 
+      />
+
+      <Route
+        path="/admin/:section"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AppLayout><AdminDataPage /></AppLayout>
+          </ProtectedRoute>
+        }
       />
 
       <Route 

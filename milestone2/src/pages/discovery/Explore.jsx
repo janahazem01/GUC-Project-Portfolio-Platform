@@ -193,6 +193,7 @@
 // }
 
 import { useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, Badge, Stars, Button, Input, PageHeader } from "../../components/ui";
 import { projects, courses } from "../../data/dummy";
 import { AuthContext } from "../../context/AuthContext";
@@ -209,6 +210,8 @@ export default function Explore() {
   const [sortBy, setSortBy] = useState("");
 
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const viewProject = (projectId) => navigate(`/projects/${projectId}`, { state: { activeNav: "/explore" } });
 
   // 🔹 FILTERING (unchanged)
   const filtered = projects.filter((p) => {
@@ -299,7 +302,20 @@ export default function Explore() {
       {/* PROJECTS */}
       <div className="grid grid-cols-3 gap-4">
         {sorted.map((p) => (
-          <Card key={p.id} hover>
+          <Card
+            key={p.id}
+            hover
+            className="cursor-pointer"
+            onClick={() => viewProject(p.id)}
+            role="link"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                viewProject(p.id);
+              }
+            }}
+          >
             <div className="flex items-start justify-between mb-2">
               <Badge variant="blue">{p.courseCode}</Badge>
               <Stars rating={p.rating} />
@@ -316,15 +332,21 @@ export default function Explore() {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-xs font-sans text-text-secondary">{p.owner}</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-sans text-text-secondary">{p.owner}</span>
+                <span className="font-mono text-xs text-text-secondary">Created {p.createdAt}</span>
+              </div>
 
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm">View →</Button>
+                <Button variant="ghost" size="sm" onClick={(event) => {
+                  event.stopPropagation();
+                  viewProject(p.id);
+                }}>View →</Button>
 
                 {user?.role?.toLowerCase() === "admin" && (
                   <>
-                    <Button variant="ghost" size="sm">Edit</Button>
-                    <Button variant="ghost" size="sm">Delete</Button>
+                    <Button variant="ghost" size="sm" onClick={(event) => event.stopPropagation()}>Edit</Button>
+                    <Button variant="ghost" size="sm" onClick={(event) => event.stopPropagation()}>Delete</Button>
                   </>
                 )}
               </div>

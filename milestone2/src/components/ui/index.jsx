@@ -1,11 +1,12 @@
 // Shared primitive UI components
 
-export function Card({ children, className = "", hover = false }) {
+export function Card({ children, className = "", hover = false, ...props }) {
   return (
     <div
       className={`bg-bg-surface border border-border rounded-lg p-6 ${
         hover ? "transition-transform duration-200 hover:-translate-y-0.5 hover:border-accent-blue/30" : ""
       } ${className}`}
+      {...props}
     >
       {children}
     </div>
