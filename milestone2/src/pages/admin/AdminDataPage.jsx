@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, Modal, PageHeader } from "../../components/ui";
 import { courses, dummyUsers, employerApplications, projects } from "../../data/dummy";
@@ -58,17 +58,10 @@ export default function AdminDataPage() {
   const availableRoles = roleOptions.map((option) => option.value);
   const visibleRoles = selectedRoles.length > 0 ? selectedRoles : availableRoles;
   const isFiltered = selectedRoles.length > 0;
-  const filteredUsers = useMemo(
-    () => dummyUsers.filter((user) => visibleRoles.includes(user.role)),
-    [visibleRoles]
-  );
-  const groupedUsers = useMemo(
-    () =>
-      selectedRoles
-        .map((role) => ({ role, users: dummyUsers.filter((user) => user.role === role) }))
-        .filter((group) => group.users.length > 0),
-    [selectedRoles]
-  );
+  const filteredUsers = dummyUsers.filter((user) => visibleRoles.includes(user.role));
+  const groupedUsers = selectedRoles
+    .map((role) => ({ role, users: dummyUsers.filter((user) => user.role === role) }))
+    .filter((group) => group.users.length > 0);
 
 
   return (
@@ -190,14 +183,11 @@ export default function AdminDataPage() {
           <Modal
             isOpen={filtersAddedOpen}
             onClose={() => setFiltersAddedOpen(false)}
-            title="Filters were added successfully"
+            title="Filters changed successfully"
           >
-            <p className="text-text-secondary text-sm mb-6">Your filter selection has been applied.</p>
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setFiltersAddedOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => setFiltersAddedOpen(false)}>Okay</Button>
+            <p className="text-text-secondary text-sm mb-6">Your filter selection changed successfully.</p>
+            <div className="flex justify-end">
+              <Button onClick={() => setFiltersAddedOpen(false)}>OK</Button>
             </div>
           </Modal>
         </>
