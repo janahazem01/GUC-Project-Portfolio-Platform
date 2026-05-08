@@ -7,12 +7,30 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  const validate = () => {
+    const errors = {};
+    if (!email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = "Please enter a valid email address";
+    }
+    if (!password) {
+      errors.password = "Password is required";
+    }
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleLogin = (e) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
+
+    if (!validate()) return;
 
     const result = login(email, password);
     if (result.success) {
@@ -61,14 +79,14 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+          <form onSubmit={handleLogin} className="flex flex-col gap-4" noValidate>
             <Input
               label="Email"
               type="email"
               placeholder="you@student.guc.edu.eg"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
+              error={fieldErrors.email}
             />
             <Input
               label="Password"
@@ -76,7 +94,7 @@ export default function Login() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
+              error={fieldErrors.password}
             />
             <a href="/forgot-password" className="text-accent-blue text-xs font-sans hover:underline self-end -mt-2">
               Forgot password?
