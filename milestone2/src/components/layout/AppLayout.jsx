@@ -8,7 +8,11 @@ const allNavItems = [
   { label: "Projects",    icon: "◈", path: "/projects", roles: ["student", "instructor"] },
   { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
   { label: "Portfolio",   icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
+<<<<<<< HEAD
   { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor"] },
+=======
+  { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor", "employer"] },
+>>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   { label: "Messages",    icon: "◇", path: "/messages", roles: ["student", "instructor", "employer", "admin"] },
 ];
 
