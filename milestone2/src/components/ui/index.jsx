@@ -46,37 +46,22 @@ export function Badge({ children, variant = "default" }) {
   );
 }
 
-<<<<<<< HEAD
 export function Input({ label, error, className = "", ...props }) {
-=======
-export function Input({ label, className = "", ...props }) {
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   return (
     <div className="flex flex-col gap-1.5">
       {label && <label className="text-sm text-text-secondary font-sans">{label}</label>}
       <input
-<<<<<<< HEAD
         className={`bg-bg-elevated border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors ${error ? "border-danger text-danger" : "border-border"} ${className}`}
         {...props}
       />
       {error && <p className="text-danger text-sm">{error}</p>}
-=======
-        className={`bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans
-          placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors ${className}`}
-        {...props}
-      />
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
     </div>
   );
 }
 
 export function PageHeader({ title, subtitle, action }) {
   return (
-<<<<<<< HEAD
     <div className="flex items-center justify-between mb-8 gap-6">
-=======
-    <div className="flex items-start justify-between mb-8">
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
       <div>
         <h1 className="font-display text-2xl text-text-primary mb-1">{title}</h1>
         {subtitle && <p className="text-text-secondary text-sm font-sans">{subtitle}</p>}
@@ -96,32 +81,20 @@ export function Stars({ rating, max = 5 }) {
   );
 }
 
-<<<<<<< HEAD
 export function Modal({ isOpen, onClose, title, children, backdropClassName = "", contentClassName = "" }) {
-=======
-export function Modal({ isOpen, onClose, title, children }) {
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   if (!isOpen) return null;
 
   return (
     <>
       {/* Backdrop */}
       <div
-<<<<<<< HEAD
         className={`fixed inset-0 bg-black/50 z-40 ${backdropClassName}`}
-=======
-        className="fixed inset-0 bg-black/50 z-40"
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
         onClick={onClose}
       />
       
       {/* Modal */}
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
-<<<<<<< HEAD
         <Card className={`max-h-[90vh] overflow-y-auto ${contentClassName}`}>
-=======
-        <Card className="max-h-[90vh] overflow-y-auto">
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-display text-xl text-text-primary">{title}</h2>
             <button
