@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, Badge, Stars, Button, PageHeader, Modal, Input } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
-import { courses, instructorDirectory } from "../../data/dummy";
+import { courses, dummyUsers, instructorDirectory } from "../../data/dummy";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const REQUIRED = "This field cannot be left empty";
@@ -34,11 +34,44 @@ const blankThesisDraftForm = () => ({
   fileName: "",
 });
 
+const blankTaskForm = () => ({
+  title: "",
+  description: "",
+  assignee: "",
+  status: "pending",
+  deadline: "",
+});
+
 const invitationStatusVariant = {
   accepted: "success",
   rejected: "danger",
   "no reply": "warning",
 };
+
+const taskStatusVariant = {
+  pending: "warning",
+  "postponed": "default",
+  completed: "success",
+};
+
+function canAccessProject(project, user) {
+  if (!user?.name) return false;
+  if (project.owner === user.name) return true;
+  if (user.role === "instructor" && project.supervisor === user.name) return true;
+  if ((project.team || []).includes(user.name)) return true;
+
+  if (user.role === "instructor") {
+    return (project.instructorInvitations || []).some((invite) =>
+      invite.status === "accepted" &&
+      (invite.email === user.email || invite.instructorName === user.name)
+    );
+  }
+
+  return (project.collaboratorInvitations || []).some((invite) =>
+    invite.status === "accepted" &&
+    (invite.email === user.email || invite.collaboratorName === user.name)
+  );
+}
 
 function getCourseIdByCode(courseCode) {
   return courses.find((course) => course.code === courseCode)?.id;
@@ -176,11 +209,14 @@ export default function Projects() {
   const [thesisModal,   setThesisModal]   = useState(null);
   const [thesisForm,    setThesisForm]    = useState(blankThesisDraftForm());
   const [thesisError,   setThesisError]   = useState("");
+  const [taskForm,      setTaskForm]      = useState(blankTaskForm());
+  const [taskError,     setTaskError]     = useState("");
   const [selectedInstructor, setSelectedInstructor] = useState({});
+  const [selectedCollaborator, setSelectedCollaborator] = useState({});
   const [optionsProjectId, setOptionsProjectId] = useState(null);
 
-  // Req 21 — view list of MY projects
-  const myProjects = projectList.filter((p) => p.owner === user?.name);
+  // Req 21 - view projects I own, joined, or supervise
+  const myProjects = projectList.filter((project) => canAccessProject(project, user));
   const optionsProject = projectList.find((project) => project.id === optionsProjectId);
 
   const viewProject = (id) => navigate(`/projects/${id}`);
@@ -247,6 +283,7 @@ export default function Projects() {
       features:    [],
       outcomes:    [],
       resources:   [{ label: "Project Repository", url: form.github.trim() }],
+      tasks:       [],
     });
     closeModal();
     setSuccessMsg("Project created successfully.");
@@ -298,6 +335,7 @@ export default function Projects() {
     fileName: thesisForm.fileName.trim(),
     uploadedAt: new Date().toISOString().slice(0, 10),
     isFinal: false,
+    visibility: "private",
   });
 
   const handleThesisUpload = () => {
@@ -339,6 +377,7 @@ export default function Projects() {
         resources: [],
         thesisDrafts: [nextDraft],
         finalDraftId: null,
+        tasks: [],
       });
     }
 
@@ -350,13 +389,14 @@ export default function Projects() {
     e.stopPropagation();
     updateProject(project.id, {
       finalDraftId: draftId,
-      visibility: "private",
+      visibility: "public",
       thesisDrafts: (project.thesisDrafts || []).map((draft) => ({
         ...draft,
         isFinal: draft.id === draftId,
+        visibility: draft.id === draftId ? "public" : "private",
       })),
     });
-    setSuccessMsg("Final thesis draft selected. The Bachelor Project is now private.");
+    setSuccessMsg("Final thesis draft selected. Other drafts are now private.");
   };
 
   const cancelFinalDraft = (e, project) => {
@@ -366,9 +406,112 @@ export default function Projects() {
       thesisDrafts: (project.thesisDrafts || []).map((draft) => ({
         ...draft,
         isFinal: false,
+        visibility: "private",
       })),
     });
     setSuccessMsg("Final thesis draft selection cancelled.");
+  };
+
+  const getEligibleCollaborators = (project) => {
+    if (project.courseCode === "BP") return [];
+    const invitedIds = (project.collaboratorInvitations || []).map((invite) => invite.studentId);
+    const currentTeam = new Set([...(project.team || []), project.owner]);
+    return dummyUsers.filter((candidate) =>
+      candidate.role === "student" &&
+      candidate.email !== user?.email &&
+      !currentTeam.has(candidate.name) &&
+      !invitedIds.includes(candidate.id)
+    );
+  };
+
+  const getProjectCollaborators = (project) =>
+    project.courseCode === "BP" ? [] : (project.team || []).filter((member) => member !== project.owner);
+
+  const handleTaskField = (field, value) => {
+    setTaskForm((previous) => ({ ...previous, [field]: value }));
+    if (taskError) setTaskError("");
+  };
+
+  const createTask = (e, project) => {
+    e.stopPropagation();
+    if (project.owner !== user?.name) return;
+    if (!taskForm.title.trim() || !taskForm.description.trim() || !taskForm.deadline) {
+      setTaskError("Add a title, short description, and deadline.");
+      return;
+    }
+    if (project.courseCode !== "BP" && !taskForm.assignee) {
+      setTaskError("Assign the task to a collaborator.");
+      return;
+    }
+
+    updateProject(project.id, {
+      tasks: [
+        ...(project.tasks || []),
+        {
+          id: Date.now(),
+          title: taskForm.title.trim(),
+          description: taskForm.description.trim(),
+          assignee: project.courseCode === "BP" ? project.owner : taskForm.assignee,
+          status: taskForm.status,
+          deadline: taskForm.deadline,
+          createdAt: new Date().toISOString().slice(0, 10),
+        },
+      ],
+    });
+    setTaskForm(blankTaskForm());
+    setTaskError("");
+    setSuccessMsg("Task created.");
+  };
+
+  const updateTaskStatus = (project, taskId, status) => {
+    updateProject(project.id, {
+      tasks: (project.tasks || []).map((task) =>
+        task.id === taskId ? { ...task, status } : task
+      ),
+    });
+  };
+
+  const updateTaskField = (project, taskId, field, value) => {
+    if (project.owner !== user?.name) return;
+    updateProject(project.id, {
+      tasks: (project.tasks || []).map((task) =>
+        task.id === taskId ? { ...task, [field]: value } : task
+      ),
+    });
+  };
+
+  const deleteTask = (e, project, taskId) => {
+    e.stopPropagation();
+    if (project.owner !== user?.name) return;
+    updateProject(project.id, {
+      tasks: (project.tasks || []).filter((task) => task.id !== taskId),
+    });
+  };
+
+  const moveTask = (e, project, taskId, direction) => {
+    e.stopPropagation();
+    if (project.owner !== user?.name) return;
+    const tasks = [...(project.tasks || [])];
+    const index = tasks.findIndex((task) => task.id === taskId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= tasks.length) return;
+    [tasks[index], tasks[nextIndex]] = [tasks[nextIndex], tasks[index]];
+    updateProject(project.id, { tasks });
+  };
+
+  const removeCollaborator = (e, project, collaboratorName) => {
+    e.stopPropagation();
+    if (project.owner !== user?.name || project.courseCode === "BP") return;
+    updateProject(project.id, {
+      team: (project.team || []).filter((member) => member !== collaboratorName),
+      collaboratorInvitations: (project.collaboratorInvitations || []).filter(
+        (invite) => invite.collaboratorName !== collaboratorName
+      ),
+      tasks: (project.tasks || []).map((task) =>
+        task.assignee === collaboratorName ? { ...task, assignee: "" } : task
+      ),
+    });
+    setSuccessMsg(`${collaboratorName} removed from the project.`);
   };
 
   const getEligibleInstructors = (project) => {
@@ -377,6 +520,29 @@ export default function Projects() {
     return instructorDirectory.filter((instructor) =>
       instructor.coursesTaught.includes(courseId) && !invitedIds.includes(instructor.id)
     );
+  };
+
+  const inviteCollaborator = (e, project) => {
+    e.stopPropagation();
+    const studentId = Number(selectedCollaborator[project.id]);
+    const collaborator = dummyUsers.find((item) => item.id === studentId && item.role === "student");
+    if (!collaborator) return;
+
+    updateProject(project.id, {
+      collaboratorInvitations: [
+        ...(project.collaboratorInvitations || []),
+        {
+          id: Date.now(),
+          studentId: collaborator.id,
+          collaboratorName: collaborator.name,
+          email: collaborator.email,
+          status: "no reply",
+          sentAt: new Date().toISOString().slice(0, 10),
+        },
+      ],
+    });
+    setSelectedCollaborator((previous) => ({ ...previous, [project.id]: "" }));
+    setSuccessMsg(`Invitation sent to ${collaborator.name}.`);
   };
 
   const inviteInstructor = (e, project) => {
@@ -400,6 +566,15 @@ export default function Projects() {
     });
     setSelectedInstructor((previous) => ({ ...previous, [project.id]: "" }));
     setSuccessMsg(`Invitation sent to ${instructor.name}.`);
+  };
+
+  const cancelInvitation = (e, project, invitationId, type) => {
+    e.stopPropagation();
+    const key = type === "collaborator" ? "collaboratorInvitations" : "instructorInvitations";
+    updateProject(project.id, {
+      [key]: (project[key] || []).filter((invite) => invite.id !== invitationId),
+    });
+    setSuccessMsg("Invitation cancelled.");
   };
 
   const toggleProjectPortfolio = (project) => {
@@ -454,6 +629,9 @@ export default function Projects() {
                     <Badge variant={project.visibility === "public" ? "success" : "default"}>
                       {project.visibility === "public" ? "🌐 public" : "🔒 private"}
                     </Badge>
+                    {project.owner !== user?.name && (
+                      <Badge variant="gold">{user?.role === "instructor" ? "Instructor" : "Collaborator"}</Badge>
+                    )}
                   </div>
 
                   <p className="text-text-secondary text-sm font-sans mb-2">{project.course}</p>
@@ -471,38 +649,31 @@ export default function Projects() {
                   </div>
 
                   {project.courseCode === "BP" && (
-                    <div className="mt-4 border-t border-border pt-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <p className="font-display text-sm text-text-primary">Thesis Drafts</p>
-                        <Badge variant="gold">Bachelor Project</Badge>
-                      </div>
+                    <div className="mt-4 max-w-xl rounded-md border border-border bg-bg-elevated/60 px-3 py-3">
                       {project.thesisDrafts?.length ? (
-                        <div className="flex flex-col gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {project.thesisDrafts.map((draft) => (
-                            <div key={draft.id} className="flex items-center justify-between gap-3">
+                            <div key={draft.id} className="rounded-md border border-border bg-bg-surface px-3 py-2">
                               <div className="min-w-0">
-                                <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
+                                <div className="flex items-center gap-2">
+                                  {draft.isFinal && <Badge variant="success">Final</Badge>}
+                                  <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
+                                </div>
                                 <p className="text-text-secondary text-xs font-mono truncate">
-                                  {draft.fileName} - uploaded {draft.uploadedAt}
+                                  {draft.fileName}
                                 </p>
                               </div>
-                              {draft.isFinal ? (
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <Badge variant="success">Final Draft</Badge>
-                                  <Button size="sm" variant="danger" onClick={(e) => cancelFinalDraft(e, project)}>
-                                    Cancel
-                                  </Button>
-                                </div>
-                              ) : (
-                                <Button size="sm" variant="secondary" onClick={(e) => markFinalDraft(e, project, draft.id)}>
-                                  Select Final
-                                </Button>
-                              )}
+                              <div className="mt-2 flex items-center gap-2">
+                                <Badge variant={draft.visibility === "public" ? "blue" : "default"}>
+                                  {draft.visibility === "public" ? "public" : "private"}
+                                </Badge>
+                                <span className="text-text-secondary text-[11px] font-mono">{draft.uploadedAt}</span>
+                              </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-text-secondary text-sm font-sans">No thesis drafts uploaded yet.</p>
+                        <p className="text-text-secondary text-xs font-sans">No thesis drafts uploaded yet.</p>
                       )}
                     </div>
                   )}
@@ -547,15 +718,6 @@ export default function Projects() {
                   {user?.role === "student" && project.owner === user?.name && (
                     <div className="flex gap-2">
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        className="px-4 text-lg leading-none"
-                        onClick={(e) => { e.stopPropagation(); setOptionsProjectId(project.id); }}
-                        aria-label="Project options"
-                      >
-                        ...
-                      </Button>
-                      <Button
                         variant="secondary"
                         size="sm"
                         onClick={(e) => openEdit(e, project)}
@@ -575,6 +737,15 @@ export default function Projects() {
                         onClick={(e) => { e.stopPropagation(); viewProject(project.id); }}
                       >
                         View
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-10 px-0 text-xl leading-none"
+                        onClick={(e) => { e.stopPropagation(); setOptionsProjectId(project.id); }}
+                        aria-label="Project options"
+                      >
+                        ⋮
                       </Button>
                     </div>
                   )}
@@ -619,7 +790,11 @@ export default function Projects() {
       <Modal isOpen={Boolean(optionsProject)} onClose={() => setOptionsProjectId(null)} title="Project Options">
         {optionsProject && (() => {
           const invitations = optionsProject.instructorInvitations || [];
+          const collaboratorInvitations = optionsProject.collaboratorInvitations || [];
+          const eligibleCollaborators = getEligibleCollaborators(optionsProject);
           const eligibleInstructors = getEligibleInstructors(optionsProject);
+          const projectCollaborators = getProjectCollaborators(optionsProject);
+          const tasks = optionsProject.tasks || [];
 
           return (
             <div className="flex flex-col gap-5">
@@ -641,6 +816,245 @@ export default function Projects() {
                   {optionsProject.visibility === "public" ? "Hide from portfolio" : "Show on portfolio"}
                 </Button>
               </div>
+
+              <div className="border-t border-border pt-4">
+                <h3 className="font-display text-base text-text-primary mb-3">Tasks</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  <Input
+                    label="Task Name"
+                    value={taskForm.title}
+                    onChange={(e) => handleTaskField("title", e.target.value)}
+                    placeholder="e.g. Finish API"
+                  />
+                  <Input
+                    label="Deadline"
+                    type="date"
+                    value={taskForm.deadline}
+                    onChange={(e) => handleTaskField("deadline", e.target.value)}
+                  />
+                  <Input
+                    label="Short Description"
+                    value={taskForm.description}
+                    onChange={(e) => handleTaskField("description", e.target.value)}
+                    placeholder="One-line task description"
+                    className="sm:col-span-2"
+                  />
+                  {optionsProject.courseCode !== "BP" && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm text-text-secondary font-sans">Assigned Collaborator</label>
+                      <select
+                        value={taskForm.assignee}
+                        onChange={(e) => handleTaskField("assignee", e.target.value)}
+                        className="bg-bg-elevated border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                      >
+                        <option value="">Select collaborator</option>
+                        {projectCollaborators.map((collaborator) => (
+                          <option key={collaborator} value={collaborator}>{collaborator}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm text-text-secondary font-sans">Status</label>
+                    <select
+                      value={taskForm.status}
+                      onChange={(e) => handleTaskField("status", e.target.value)}
+                      className="bg-bg-elevated border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                    >
+                      <option value="pending">pending</option>
+                      <option value="postponed">postponed</option>
+                      <option value="completed">completed</option>
+                    </select>
+                  </div>
+                </div>
+                {taskError && <p className="text-danger text-xs font-sans mb-3">{taskError}</p>}
+                <Button size="sm" variant="secondary" onClick={(e) => createTask(e, optionsProject)}>
+                  Create Task
+                </Button>
+
+                {tasks.length > 0 ? (
+                  <div className="mt-4 flex flex-col gap-3">
+                    {tasks.map((task, index) => (
+                      <div key={task.id} className="rounded-md border border-border bg-bg-elevated px-3 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <Input
+                              label="Name"
+                              value={task.title}
+                              onChange={(e) => updateTaskField(optionsProject, task.id, "title", e.target.value)}
+                            />
+                            <Input
+                              label="Deadline"
+                              type="date"
+                              value={task.deadline}
+                              onChange={(e) => updateTaskField(optionsProject, task.id, "deadline", e.target.value)}
+                            />
+                            <Input
+                              label="Description"
+                              value={task.description}
+                              onChange={(e) => updateTaskField(optionsProject, task.id, "description", e.target.value)}
+                              className="sm:col-span-2"
+                            />
+                            {optionsProject.courseCode !== "BP" && (
+                              <div className="flex flex-col gap-1.5">
+                                <label className="text-sm text-text-secondary font-sans">Assignee</label>
+                                <select
+                                  value={task.assignee}
+                                  onChange={(e) => updateTaskField(optionsProject, task.id, "assignee", e.target.value)}
+                                  className="bg-bg-surface border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                                >
+                                  <option value="">Unassigned</option>
+                                  {projectCollaborators.map((collaborator) => (
+                                    <option key={collaborator} value={collaborator}>{collaborator}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-sm text-text-secondary font-sans">Status</label>
+                              <select
+                                value={task.status}
+                                onChange={(e) => updateTaskStatus(optionsProject, task.id, e.target.value)}
+                                className="bg-bg-surface border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                              >
+                                <option value="pending">pending</option>
+                                <option value="postponed">postponed</option>
+                                <option value="completed">completed</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <Badge variant={taskStatusVariant[task.status] || "default"}>{task.status}</Badge>
+                            <Button size="sm" variant="ghost" disabled={index === 0} onClick={(e) => moveTask(e, optionsProject, task.id, -1)}>
+                              Up
+                            </Button>
+                            <Button size="sm" variant="ghost" disabled={index === tasks.length - 1} onClick={(e) => moveTask(e, optionsProject, task.id, 1)}>
+                              Down
+                            </Button>
+                            <Button size="sm" variant="danger" onClick={(e) => deleteTask(e, optionsProject, task.id)}>
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-text-secondary text-sm font-sans">No tasks created yet.</p>
+                )}
+              </div>
+
+              {optionsProject.courseCode === "BP" && (
+                <div className="border-t border-border pt-4">
+                  <h3 className="font-display text-base text-text-primary mb-3">Thesis Final Draft</h3>
+                  {optionsProject.thesisDrafts?.length ? (
+                    <div className="flex flex-col gap-3">
+                      {optionsProject.thesisDrafts.map((draft) => (
+                        <div key={draft.id} className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
+                            <p className="text-text-secondary text-xs font-mono truncate">
+                              {draft.fileName} - {draft.visibility === "public" ? "public" : "private"}
+                            </p>
+                          </div>
+                          {draft.isFinal ? (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Badge variant="success">Final Draft</Badge>
+                              <Button size="sm" variant="danger" onClick={(e) => cancelFinalDraft(e, optionsProject)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button size="sm" variant="secondary" onClick={(e) => markFinalDraft(e, optionsProject, draft.id)}>
+                              Make final draft
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-text-secondary text-sm font-sans">No thesis drafts uploaded yet.</p>
+                  )}
+                </div>
+              )}
+
+              {optionsProject.courseCode !== "BP" && (
+              <div className="border-t border-border pt-4">
+                <h3 className="font-display text-base text-text-primary mb-3">Collaborator Invitations</h3>
+
+                {projectCollaborators.length > 0 && (
+                  <div className="flex flex-col gap-2 mb-4">
+                    {projectCollaborators.map((collaborator) => (
+                      <div key={collaborator} className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-elevated px-3 py-2">
+                        <p className="text-text-primary text-sm font-sans truncate">{collaborator}</p>
+                        <Button size="sm" variant="danger" onClick={(e) => removeCollaborator(e, optionsProject, collaborator)}>
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {eligibleCollaborators.length > 0 ? (
+                  <div className="flex gap-3 mb-4">
+                    <select
+                      value={selectedCollaborator[optionsProject.id] || ""}
+                      onChange={(e) => setSelectedCollaborator((previous) => ({
+                        ...previous,
+                        [optionsProject.id]: e.target.value,
+                      }))}
+                      className="flex-1 bg-bg-elevated border border-border rounded-lg px-3 py-2 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                    >
+                      <option value="">Select collaborator</option>
+                      {eligibleCollaborators.map((collaborator) => (
+                        <option key={collaborator.id} value={collaborator.id}>
+                          {collaborator.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => inviteCollaborator(e, optionsProject)}
+                      disabled={!selectedCollaborator[optionsProject.id]}
+                    >
+                      Invite
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-text-secondary text-sm font-sans mb-4">
+                    All available collaborators have been invited or added.
+                  </p>
+                )}
+
+                {collaboratorInvitations.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {collaboratorInvitations.map((invite) => (
+                      <div key={invite.id} className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-text-primary text-sm font-sans truncate">{invite.collaboratorName}</p>
+                          <p className="text-text-secondary text-xs font-mono truncate">
+                            {invite.email} - invited {invite.sentAt}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant={invitationStatusVariant[invite.status] || "default"}>
+                            {invite.status}
+                          </Badge>
+                          {invite.status === "no reply" && (
+                            <Button size="sm" variant="danger" onClick={(e) => cancelInvitation(e, optionsProject, invite.id, "collaborator")}>
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-text-secondary text-sm font-sans">No collaborator invitations sent yet.</p>
+                )}
+              </div>
+              )}
 
               <div className="border-t border-border pt-4">
                 <h3 className="font-display text-base text-text-primary mb-3">Instructor Invitations</h3>
@@ -687,9 +1101,16 @@ export default function Projects() {
                             {invite.email} - invited {invite.sentAt}
                           </p>
                         </div>
-                        <Badge variant={invitationStatusVariant[invite.status] || "default"}>
-                          {invite.status}
-                        </Badge>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant={invitationStatusVariant[invite.status] || "default"}>
+                            {invite.status}
+                          </Badge>
+                          {invite.status === "no reply" && (
+                            <Button size="sm" variant="danger" onClick={(e) => cancelInvitation(e, optionsProject, invite.id, "instructor")}>
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

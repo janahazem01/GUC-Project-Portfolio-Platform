@@ -1,7 +1,7 @@
-import { useState, useContext } from "react";
+import { useEffect, useState, useContext } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-import { getUnreadNotificationCount } from "../../data/dummy";
+import { getVisibleNotifications } from "../../data/dummy";
 import { useProjects } from "../../context/ProjectsContext";
 
 const allNavItems = [
@@ -10,6 +10,7 @@ const allNavItems = [
   { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
   { label: "Portfolio",   icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
   { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor"] },
+  { label: "Requests",    icon: "R", path: "/requests", roles: ["student", "instructor"] },
   { label: "Messages",    icon: "◇", path: "/messages", roles: ["student", "instructor", "employer", "admin"] },
 ];
 
@@ -72,16 +73,47 @@ function UserMenu({ collapsed }) {
 
 export function AppLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [notificationTick, setNotificationTick] = useState(0);
   const { user } = useContext(AuthContext);
   const { projectList } = useProjects();
   const navItems = getNavItemsForRole(user?.role);
-  const unreadProjectInvitationCount = projectList.reduce((count, project) => (
-    count + (project.instructorInvitations || []).filter((invite) =>
-      invite.status === "no reply" &&
-      (invite.email === user?.email || invite.instructorName === user?.name)
-    ).length
-  ), 0);
-  const unreadNotificationCount = getUnreadNotificationCount(user) + unreadProjectInvitationCount;
+  const notificationStateKey = `guc_notification_read_state_${user?.email || "guest"}`;
+  const readState = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(notificationStateKey) || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const getEffectiveRead = (id, defaultRead) => readState[id] ?? defaultRead;
+
+  useEffect(() => {
+    const refreshNotificationState = () => setNotificationTick((value) => value + 1);
+    window.addEventListener("storage", refreshNotificationState);
+    window.addEventListener("guc-notifications-updated", refreshNotificationState);
+    return () => {
+      window.removeEventListener("storage", refreshNotificationState);
+      window.removeEventListener("guc-notifications-updated", refreshNotificationState);
+    };
+  }, []);
+
+  const unreadProjectInvitationCount = projectList.reduce((count, project) => {
+    const instructorCount = (project.instructorInvitations || []).filter((invite) =>
+      (invite.email === user?.email || invite.instructorName === user?.name) &&
+      !getEffectiveRead(`project-invite-instructor-${project.id}-${invite.id}`, invite.status !== "no reply")
+    ).length;
+    const collaboratorCount = (project.collaboratorInvitations || []).filter((invite) =>
+      (invite.email === user?.email || invite.collaboratorName === user?.name) &&
+      !getEffectiveRead(`project-invite-collaborator-${project.id}-${invite.id}`, invite.status !== "no reply")
+    ).length;
+
+    return count + instructorCount + collaboratorCount;
+  }, 0);
+  const unreadBaseNotificationCount = getVisibleNotifications(user).filter((notification) =>
+    !getEffectiveRead(notification.id, notification.read)
+  ).length;
+  void notificationTick;
+  const unreadNotificationCount = unreadBaseNotificationCount + unreadProjectInvitationCount;
   const location = useLocation();
   const activeNavPath = location.state?.activeNav || (location.pathname.startsWith("/admin") ? "/" : location.pathname);
 
@@ -161,3 +193,4 @@ export function AppLayout({ children }) {
     </div>
   );
 }
+

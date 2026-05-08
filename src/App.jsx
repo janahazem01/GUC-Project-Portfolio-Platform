@@ -131,6 +131,7 @@ import Admin        from "./pages/admin/Admin";
 import AdminDataPage from "./pages/admin/AdminDataPage";
 import Internships  from "./pages/internships/Internships";
 import Notifications from "./pages/Notifications";
+import Requests from "./pages/Requests";
 import Messages     from "./pages/Messages";
 
 // ✅ Protected route wrapper (UPDATED LOGIC ONLY)
@@ -256,6 +257,15 @@ function AppRoutes() {
             <AppLayout><Notifications /></AppLayout>
           </ProtectedRoute>
         } 
+      />
+
+      <Route
+        path="/requests"
+        element={
+          <ProtectedRoute allowedRoles={["student", "instructor"]}>
+            <AppLayout><Requests /></AppLayout>
+          </ProtectedRoute>
+        }
       />
 
       <Route 
