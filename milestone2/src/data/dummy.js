@@ -17,10 +17,7 @@ export const dummyUsers = [
     bio: "Passionate about web development and AI",
     linkedIn: "https://linkedin.com/in/ahmed",
     avatar: null,
-<<<<<<< HEAD
     status: "active",
-=======
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   },
   // Admin
   {
