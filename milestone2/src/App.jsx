@@ -128,10 +128,7 @@ import Explore      from "./pages/discovery/Explore";
 import Profile      from "./pages/profile/Profile";
 import Admin        from "./pages/admin/Admin";
 import AdminDataPage from "./pages/admin/AdminDataPage";
-<<<<<<< HEAD
 import AdminAccountManagement from "./pages/admin/AdminAccountManagement";
-=======
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
 import Internships  from "./pages/internships/Internships";
 import Notifications from "./pages/Notifications";
 import Messages     from "./pages/Messages";
@@ -229,11 +226,8 @@ function AppRoutes() {
         path="/admin" 
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
-<<<<<<< HEAD
             <AppLayout><Admin /></AppLayout>
-=======
             <Navigate to="/" replace />
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
           </ProtectedRoute>
         } 
       />
@@ -247,7 +241,6 @@ function AppRoutes() {
         }
       />
 
-<<<<<<< HEAD
       <Route
         path="/admin/account-management"
         element={
@@ -257,8 +250,6 @@ function AppRoutes() {
         }
       />
 
-=======
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
       <Route 
         path="/internships" 
         element={
@@ -268,8 +259,6 @@ function AppRoutes() {
         } 
       />
 
-<<<<<<< HEAD
-=======
       <Route
         path="/internships/:internshipId"
         element={
@@ -279,7 +268,6 @@ function AppRoutes() {
         }
       />
 
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
       <Route 
         path="/notifications" 
         element={

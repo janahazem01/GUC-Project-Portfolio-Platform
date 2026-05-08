@@ -1,12 +1,6 @@
-<<<<<<< HEAD
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Badge, PageHeader, Modal, Input, Button } from "../../components/ui";
-=======
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, Badge, PageHeader } from "../../components/ui";
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
 import { courses, dummyUsers, employerApplications, projects } from "../../data/dummy";
 
 const userRoleGroups = [
@@ -24,7 +18,6 @@ const roleLabels = {
 };
 
 const shortcuts = [
-<<<<<<< HEAD
   {
     title: "Users",
     subtitle: "Names, emails, roles",
@@ -102,19 +95,10 @@ const shortcuts = [
     ),
     path: "/admin/account-management",
   },
-=======
-  { title: "Users", subtitle: "Names, emails, roles", icon: "▦", path: "/admin/users" },
-  { title: "Courses", subtitle: "Course catalog", icon: "▤", path: "/admin/courses" },
-  { title: "Projects", subtitle: "Submitted projects", icon: "◇", path: "/admin/projects" },
-  { title: "Employers", subtitle: "Company accounts", icon: "▣", path: "/admin/employers" },
-  { title: "Approvals", subtitle: "Pending employer docs", icon: "✓", path: "/admin/approvals" },
-  { title: "Flagged", subtitle: "Reported projects", icon: "!", path: "/admin/flagged" },
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
 ];
 
 export default function Admin() {
   const navigate = useNavigate();
-<<<<<<< HEAD
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -168,8 +152,6 @@ export default function Admin() {
     setShowSuccess(true);
   };
 
-=======
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   const stats = useMemo(() => ([
     { label: "Total Users", value: String(dummyUsers.length) },
     { label: "Total Projects", value: String(projects.length) },
@@ -198,18 +180,12 @@ export default function Admin() {
         <div className="grid grid-cols-3">
           {shortcuts.map((shortcut, index) => (
             <button
-<<<<<<< HEAD
               key={shortcut.title}
               type="button"
               onClick={() => {
                 if (shortcut.action === "createAdmin") return openCreateAdminModal();
                 navigate(shortcut.path);
               }}
-=======
-              key={shortcut.path}
-              type="button"
-              onClick={() => navigate(shortcut.path)}
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
               className={`min-h-36 px-6 py-6 text-center transition-colors hover:bg-bg-elevated focus:outline-none focus:bg-bg-elevated ${
                 index % 3 !== 2 ? "border-r border-border" : ""
               } ${index < 3 ? "border-b border-border" : ""}`}
@@ -224,7 +200,6 @@ export default function Admin() {
         </div>
       </Card>
 
-<<<<<<< HEAD
       <Modal
         isOpen={isCreateOpen}
         onClose={closeCreateAdminModal}
@@ -280,8 +255,6 @@ export default function Admin() {
           </Button>
         </div>
       </Modal>
-=======
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
     </div>
   );
 }

@@ -31,10 +31,7 @@ export const dummyUsers = [
     role: "admin",
     bio: "Platform administrator",
     avatar: null,
-<<<<<<< HEAD
     status: "active",
-=======
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   },
   // Instructor
   {
@@ -50,10 +47,7 @@ export const dummyUsers = [
     officeHours: "Mon 12:00-14:00",
     linkedin: "https://linkedin.com/in/dr-sara",
     avatar: null,
-<<<<<<< HEAD
     status: "active",
-=======
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   },
   // Employer
   {
@@ -70,18 +64,11 @@ export const dummyUsers = [
     companyPhone: "+20 2 1234 5678",
     logo: null,
     verificationStatus: "approved", // pending | approved | rejected
-<<<<<<< HEAD
-=======
-    favoritePortfolioIds: [101, 103],
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
     uploadedDocs: [
       { id: 1, name: "tax_certificate.pdf", uploadedAt: "2026-03-15" }
     ],
     avatar: null,
-<<<<<<< HEAD
     status: "active",
-=======
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   },
 ];
 
@@ -306,12 +293,6 @@ export const internships = [
     id: 1,
     title: "Frontend Engineer Intern",
     company: "Instabug",
-<<<<<<< HEAD
-    duration: "3 months",
-    skills: ["React", "TypeScript"],
-    deadline: "2026-05-01",
-    status: "hiring",
-=======
     details: "Work with the product team on customer-facing dashboards, reusable React components, and mobile observability workflows.",
     duration: "3 months",
     skills: ["React", "TypeScript", "UI Testing"],
@@ -337,18 +318,11 @@ export const internships = [
         coverLetter: "I am very interested in this role as it aligns with my front-end development goals.",
       },
     ],
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   },
   {
     id: 2,
     title: "ML Research Intern",
     company: "Valeo Egypt",
-<<<<<<< HEAD
-    duration: "6 months",
-    skills: ["Python", "PyTorch"],
-    deadline: "2026-04-15",
-    status: "hiring",
-=======
     details: "Support automotive AI experiments by preparing datasets, training models, and documenting model performance.",
     duration: "6 months",
     skills: ["Python", "PyTorch", "Data Analysis"],
@@ -479,6 +453,5 @@ export const internships = [
         coverLetter: "I am interested in learning more about backend API design and integration.",
       },
     ],
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   },
 ];
