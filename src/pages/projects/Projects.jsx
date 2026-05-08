@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, Badge, Stars, Button, PageHeader, Modal, Input } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
-import { courses } from "../../data/dummy";
+import { courses, instructorDirectory } from "../../data/dummy";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 const REQUIRED = "This field cannot be left empty";
@@ -25,6 +25,23 @@ function validate(form) {
   if (!form.github.trim())    errs.github    = REQUIRED;
   if (!form.languages.trim()) errs.languages = REQUIRED;
   return errs;
+}
+
+const bachelorProjectCourse = courses.find((course) => course.code === "BP");
+
+const blankThesisDraftForm = () => ({
+  title: "",
+  fileName: "",
+});
+
+const invitationStatusVariant = {
+  accepted: "success",
+  rejected: "danger",
+  "no reply": "warning",
+};
+
+function getCourseIdByCode(courseCode) {
+  return courses.find((course) => course.code === courseCode)?.id;
 }
 
 // ─── ProjectForm lives OUTSIDE the page component so it never remounts ───────
@@ -156,9 +173,15 @@ export default function Projects() {
   const [errors,        setErrors]        = useState({});
   const [successMsg,    setSuccessMsg]    = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [thesisModal,   setThesisModal]   = useState(null);
+  const [thesisForm,    setThesisForm]    = useState(blankThesisDraftForm());
+  const [thesisError,   setThesisError]   = useState("");
+  const [selectedInstructor, setSelectedInstructor] = useState({});
+  const [optionsProjectId, setOptionsProjectId] = useState(null);
 
   // Req 21 — view list of MY projects
   const myProjects = projectList.filter((p) => p.owner === user?.name);
+  const optionsProject = projectList.find((project) => project.id === optionsProjectId);
 
   const viewProject = (id) => navigate(`/projects/${id}`);
 
@@ -255,6 +278,139 @@ export default function Projects() {
     setSuccessMsg("Project deleted.");
   };
 
+  const openThesisUpload = () => {
+    setThesisForm(blankThesisDraftForm());
+    setThesisError("");
+    setThesisModal({ mode: "upload" });
+  };
+
+  const closeThesisModal = () => {
+    setThesisModal(null);
+    setThesisError("");
+  };
+
+  const getBachelorProject = () =>
+    projectList.find((project) => project.owner === user?.name && project.courseCode === "BP");
+
+  const buildThesisDraft = () => ({
+    id: Date.now(),
+    title: thesisForm.title.trim(),
+    fileName: thesisForm.fileName.trim(),
+    uploadedAt: new Date().toISOString().slice(0, 10),
+    isFinal: false,
+  });
+
+  const handleThesisUpload = () => {
+    if (!thesisForm.title.trim() || !thesisForm.fileName.trim()) {
+      setThesisError("Add a draft title and choose a file name.");
+      return;
+    }
+
+    const nextDraft = buildThesisDraft();
+    const bachelorProject = getBachelorProject();
+
+    if (bachelorProject) {
+      updateProject(bachelorProject.id, {
+        thesisDrafts: [...(bachelorProject.thesisDrafts || []), nextDraft],
+      });
+    } else {
+      addProject({
+        id: Date.now() + 1,
+        title: "Bachelor Project Thesis",
+        course: bachelorProjectCourse?.name || "Bachelor Project",
+        courseCode: bachelorProjectCourse?.code || "BP",
+        owner: user?.name,
+        supervisor: "",
+        status: "Drafting",
+        github: "#",
+        demo: null,
+        report: null,
+        demoVideo: null,
+        languages: [],
+        team: [user?.name],
+        rating: 0,
+        visibility: "public",
+        createdAt: new Date().toISOString().slice(0, 10),
+        description: "Bachelor Project thesis draft workspace.",
+        problem: "",
+        solution: "",
+        features: [],
+        outcomes: [],
+        resources: [],
+        thesisDrafts: [nextDraft],
+        finalDraftId: null,
+      });
+    }
+
+    closeThesisModal();
+    setSuccessMsg("Thesis draft uploaded under Bachelor Project.");
+  };
+
+  const markFinalDraft = (e, project, draftId) => {
+    e.stopPropagation();
+    updateProject(project.id, {
+      finalDraftId: draftId,
+      visibility: "private",
+      thesisDrafts: (project.thesisDrafts || []).map((draft) => ({
+        ...draft,
+        isFinal: draft.id === draftId,
+      })),
+    });
+    setSuccessMsg("Final thesis draft selected. The Bachelor Project is now private.");
+  };
+
+  const cancelFinalDraft = (e, project) => {
+    e.stopPropagation();
+    updateProject(project.id, {
+      finalDraftId: null,
+      thesisDrafts: (project.thesisDrafts || []).map((draft) => ({
+        ...draft,
+        isFinal: false,
+      })),
+    });
+    setSuccessMsg("Final thesis draft selection cancelled.");
+  };
+
+  const getEligibleInstructors = (project) => {
+    const courseId = getCourseIdByCode(project.courseCode);
+    const invitedIds = (project.instructorInvitations || []).map((invite) => invite.instructorId);
+    return instructorDirectory.filter((instructor) =>
+      instructor.coursesTaught.includes(courseId) && !invitedIds.includes(instructor.id)
+    );
+  };
+
+  const inviteInstructor = (e, project) => {
+    e.stopPropagation();
+    const instructorId = Number(selectedInstructor[project.id]);
+    const instructor = instructorDirectory.find((item) => item.id === instructorId);
+    if (!instructor) return;
+
+    updateProject(project.id, {
+      instructorInvitations: [
+        ...(project.instructorInvitations || []),
+        {
+          id: Date.now(),
+          instructorId: instructor.id,
+          instructorName: instructor.name,
+          email: instructor.email,
+          status: "no reply",
+          sentAt: new Date().toISOString().slice(0, 10),
+        },
+      ],
+    });
+    setSelectedInstructor((previous) => ({ ...previous, [project.id]: "" }));
+    setSuccessMsg(`Invitation sent to ${instructor.name}.`);
+  };
+
+  const toggleProjectPortfolio = (project) => {
+    toggleVisibility(project.id);
+    setSuccessMsg(
+      project.visibility === "public"
+        ? "Project hidden from your portfolio."
+        : "Project shown on your portfolio."
+    );
+  };
+
   // ── render ─────────────────────────────────────────────────────────
   return (
     <div>
@@ -263,7 +419,10 @@ export default function Projects() {
         subtitle="Manage and track your submitted projects"
         action={
           user?.role === "student" && (
-            <Button variant="gold" onClick={openCreate}>+ New Project</Button>
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={openThesisUpload}>Upload Thesis Draft</Button>
+              <Button variant="gold" onClick={openCreate}>+ New Project</Button>
+            </div>
           )
         }
       />
@@ -295,14 +454,6 @@ export default function Projects() {
                     <Badge variant={project.visibility === "public" ? "success" : "default"}>
                       {project.visibility === "public" ? "🌐 public" : "🔒 private"}
                     </Badge>
-                    {user?.role === "student" && project.owner === user?.name && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleVisibility(project.id); }}
-                        className="text-xs font-mono text-text-secondary hover:text-accent-blue underline transition-colors"
-                      >
-                        {project.visibility === "public" ? "Hide from portfolio" : "Show on portfolio"}
-                      </button>
-                    )}
                   </div>
 
                   <p className="text-text-secondary text-sm font-sans mb-2">{project.course}</p>
@@ -318,6 +469,43 @@ export default function Projects() {
                       <Badge key={lang}>{lang}</Badge>
                     ))}
                   </div>
+
+                  {project.courseCode === "BP" && (
+                    <div className="mt-4 border-t border-border pt-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <p className="font-display text-sm text-text-primary">Thesis Drafts</p>
+                        <Badge variant="gold">Bachelor Project</Badge>
+                      </div>
+                      {project.thesisDrafts?.length ? (
+                        <div className="flex flex-col gap-3">
+                          {project.thesisDrafts.map((draft) => (
+                            <div key={draft.id} className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
+                                <p className="text-text-secondary text-xs font-mono truncate">
+                                  {draft.fileName} - uploaded {draft.uploadedAt}
+                                </p>
+                              </div>
+                              {draft.isFinal ? (
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Badge variant="success">Final Draft</Badge>
+                                  <Button size="sm" variant="danger" onClick={(e) => cancelFinalDraft(e, project)}>
+                                    Cancel
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button size="sm" variant="secondary" onClick={(e) => markFinalDraft(e, project, draft.id)}>
+                                  Select Final
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-text-secondary text-sm font-sans">No thesis drafts uploaded yet.</p>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-4 mt-3 flex-wrap">
                     {project.github && (
@@ -358,6 +546,15 @@ export default function Projects() {
                   </p>
                   {user?.role === "student" && project.owner === user?.name && (
                     <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="px-4 text-lg leading-none"
+                        onClick={(e) => { e.stopPropagation(); setOptionsProjectId(project.id); }}
+                        aria-label="Project options"
+                      >
+                        ...
+                      </Button>
                       <Button
                         variant="secondary"
                         size="sm"
@@ -416,6 +613,131 @@ export default function Projects() {
           onCancel={closeModal}
           submitLabel="Save Changes"
         />
+      </Modal>
+
+      {/* Req 23 — thesis draft upload */}
+      <Modal isOpen={Boolean(optionsProject)} onClose={() => setOptionsProjectId(null)} title="Project Options">
+        {optionsProject && (() => {
+          const invitations = optionsProject.instructorInvitations || [];
+          const eligibleInstructors = getEligibleInstructors(optionsProject);
+
+          return (
+            <div className="flex flex-col gap-5">
+              <div>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-text-primary font-sans text-sm">{optionsProject.title}</p>
+                    <p className="text-text-secondary font-mono text-xs">{optionsProject.course}</p>
+                  </div>
+                  <Badge variant={optionsProject.visibility === "public" ? "success" : "default"}>
+                    {optionsProject.visibility}
+                  </Badge>
+                </div>
+                <Button
+                  variant={optionsProject.visibility === "public" ? "danger" : "secondary"}
+                  onClick={() => toggleProjectPortfolio(optionsProject)}
+                  className="w-full"
+                >
+                  {optionsProject.visibility === "public" ? "Hide from portfolio" : "Show on portfolio"}
+                </Button>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <h3 className="font-display text-base text-text-primary mb-3">Instructor Invitations</h3>
+
+                {eligibleInstructors.length > 0 ? (
+                  <div className="flex gap-3 mb-4">
+                    <select
+                      value={selectedInstructor[optionsProject.id] || ""}
+                      onChange={(e) => setSelectedInstructor((previous) => ({
+                        ...previous,
+                        [optionsProject.id]: e.target.value,
+                      }))}
+                      className="flex-1 bg-bg-elevated border border-border rounded-lg px-3 py-2 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                    >
+                      <option value="">Select course instructor</option>
+                      {eligibleInstructors.map((instructor) => (
+                        <option key={instructor.id} value={instructor.id}>
+                          {instructor.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={(e) => inviteInstructor(e, optionsProject)}
+                      disabled={!selectedInstructor[optionsProject.id]}
+                    >
+                      Invite
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-text-secondary text-sm font-sans mb-4">
+                    All matching course instructors have been invited.
+                  </p>
+                )}
+
+                {invitations.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {invitations.map((invite) => (
+                      <div key={invite.id} className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-text-primary text-sm font-sans truncate">{invite.instructorName}</p>
+                          <p className="text-text-secondary text-xs font-mono truncate">
+                            {invite.email} - invited {invite.sentAt}
+                          </p>
+                        </div>
+                        <Badge variant={invitationStatusVariant[invite.status] || "default"}>
+                          {invite.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-text-secondary text-sm font-sans">No instructor invitations sent yet.</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
+
+      <Modal isOpen={thesisModal?.mode === "upload"} onClose={closeThesisModal} title="Upload Thesis Draft">
+        <div className="flex flex-col gap-4">
+          <div className="rounded-lg border border-accent-gold/30 bg-accent-gold/10 px-4 py-3">
+            <p className="text-accent-gold text-sm font-sans">
+              This draft will be stored under the Bachelor Project course.
+            </p>
+          </div>
+
+          <Input
+            label="Draft Title"
+            value={thesisForm.title}
+            onChange={(e) => setThesisForm((prev) => ({ ...prev, title: e.target.value }))}
+            placeholder="e.g. Thesis Draft 1"
+          />
+
+          <Input
+            label="Thesis File"
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              setThesisForm((prev) => ({ ...prev, fileName: file?.name || "" }));
+            }}
+          />
+
+          {thesisForm.fileName && (
+            <p className="text-text-secondary text-xs font-mono">Selected: {thesisForm.fileName}</p>
+          )}
+
+          {thesisError && <p className="text-danger text-xs font-sans">{thesisError}</p>}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={closeThesisModal}>Cancel</Button>
+            <Button variant="gold" onClick={handleThesisUpload}>Upload Draft</Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Delete confirm modal */}

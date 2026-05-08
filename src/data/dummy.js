@@ -43,6 +43,34 @@ export const dummyUsers = [
     linkedin: "https://linkedin.com/in/dr-sara",
     avatar: null,
   },
+  {
+    id: 5,
+    name: "Dr. Omar Tarek",
+    email: "dr.omar@guc.edu.eg",
+    password: "password",
+    role: "instructor",
+    bio: "Lecturer in Software Engineering and Cloud Systems",
+    researchInterests: ["Cloud Computing", "DevOps", "Software Testing"],
+    education: ["PhD in Software Engineering - GUC"],
+    coursesTaught: [1, 4],
+    officeHours: "Wed 10:00-12:00",
+    linkedin: "https://linkedin.com/in/dr-omar",
+    avatar: null,
+  },
+  {
+    id: 6,
+    name: "Dr. Karim Hassan",
+    email: "dr.karim@guc.edu.eg",
+    password: "password",
+    role: "instructor",
+    bio: "Assistant Professor in Machine Intelligence",
+    researchInterests: ["Natural Language Processing", "Deep Learning"],
+    education: ["PhD in Artificial Intelligence - TU Munich"],
+    coursesTaught: [2, 4],
+    officeHours: "Thu 13:00-15:00",
+    linkedin: "https://linkedin.com/in/dr-karim",
+    avatar: null,
+  },
   // Employer
   {
     id: 4,
@@ -93,6 +121,24 @@ export const instructorDirectory = [
     researchInterests: ["UX Research", "Usability Testing", "Interaction Design"],
     education: ["PhD in HCI - University of Warwick"],
     coursesTaught: [2, 3],
+  },
+  {
+    id: 3,
+    name: "Dr. Omar Tarek",
+    email: "dr.omar@guc.edu.eg",
+    bio: "Lecturer in Software Engineering and Cloud Systems",
+    researchInterests: ["Cloud Computing", "DevOps", "Software Testing"],
+    education: ["PhD in Software Engineering - GUC"],
+    coursesTaught: [1, 4],
+  },
+  {
+    id: 4,
+    name: "Dr. Karim Hassan",
+    email: "dr.karim@guc.edu.eg",
+    bio: "Assistant Professor in Machine Intelligence",
+    researchInterests: ["Natural Language Processing", "Deep Learning"],
+    education: ["PhD in Artificial Intelligence - TU Munich"],
+    coursesTaught: [2, 4],
   },
 ];
 
@@ -177,6 +223,16 @@ export const projects = [
       { label: "Live Project", url: "https://smart-campus-navigator.example.com" },
       { label: "Final Report", url: "#" },
     ],
+    instructorInvitations: [
+      {
+        id: 1,
+        instructorId: 1,
+        instructorName: "Dr. Sara Abdelhamid",
+        email: "dr.sara@guc.edu.eg",
+        status: "accepted",
+        sentAt: "2026-03-11",
+      },
+    ],
   },
   {
     id: 2,
@@ -214,6 +270,16 @@ export const projects = [
       { label: "Project Repository", url: "https://github.com/Software-Engineering-Spring-2026/SE_Team27" },
       { label: "Live Project", url: "https://arabic-sentiment.example.com" },
       { label: "Final Report", url: "#" },
+    ],
+    instructorInvitations: [
+      {
+        id: 2,
+        instructorId: 2,
+        instructorName: "Dr. Aya Salama",
+        email: "dr.aya@guc.edu.eg",
+        status: "rejected",
+        sentAt: "2025-12-03",
+      },
     ],
   },
   {

@@ -2,6 +2,7 @@ import { useState, useContext } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { getUnreadNotificationCount } from "../../data/dummy";
+import { useProjects } from "../../context/ProjectsContext";
 
 const allNavItems = [
   { label: "Dashboard",   icon: "⊞", path: "/", roles: ["student", "instructor", "employer", "admin"] },
@@ -72,8 +73,15 @@ function UserMenu({ collapsed }) {
 export function AppLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useContext(AuthContext);
+  const { projectList } = useProjects();
   const navItems = getNavItemsForRole(user?.role);
-  const unreadNotificationCount = getUnreadNotificationCount(user);
+  const unreadProjectInvitationCount = projectList.reduce((count, project) => (
+    count + (project.instructorInvitations || []).filter((invite) =>
+      invite.status === "no reply" &&
+      (invite.email === user?.email || invite.instructorName === user?.name)
+    ).length
+  ), 0);
+  const unreadNotificationCount = getUnreadNotificationCount(user) + unreadProjectInvitationCount;
   const location = useLocation();
   const activeNavPath = location.state?.activeNav || (location.pathname.startsWith("/admin") ? "/" : location.pathname);
 
