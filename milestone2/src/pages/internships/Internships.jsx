@@ -2,7 +2,8 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, Badge, Button, Input, Modal, PageHeader } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
-import { internships } from "../../data/dummy";
+import { internships, portfolios } from "../../data/dummy";
+import { useFavorites } from "../../hooks/useFavorites";
 
 const internshipsStorageKey = "gucEmployerInternships";
 const selectClass = "w-full bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue transition-colors";
@@ -727,10 +728,12 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
   const [selectedListInternshipId, setSelectedListInternshipId] = useState(null);
   const [applicationSort, setApplicationSort] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const favoritePortfolioIds = useMemo(
-    () => user?.favoritePortfolioIds || [],
-    [user?.favoritePortfolioIds]
-  );
+  const {
+    favoritePortfolioIds,
+    isFavoritePortfolio,
+    savePortfolio,
+    removePortfolio,
+  } = useFavorites();
   const viewingDetails = Boolean(internshipId);
 
   const myInternships = useMemo(
@@ -948,6 +951,26 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
     );
   };
 
+  const handleFavoritePortfolioToggle = (application) => {
+    const knownPortfolio = portfolios.find((portfolio) => portfolio.id === application.portfolioId);
+    const portfolioTitle = knownPortfolio?.title || application.portfolioTitle;
+    const isSaved = isFavoritePortfolio(application.portfolioId);
+
+    requestConfirmation(
+      `${isSaved ? "remove" : "save"} ${portfolioTitle} ${isSaved ? "from" : "to"} your favorite portfolios`,
+      () => {
+        if (isSaved) {
+          removePortfolio(application.portfolioId);
+          showFeedback("Portfolio removed from your favorites.");
+        } else {
+          savePortfolio(application.portfolioId);
+          showFeedback("Portfolio saved to your favorites.");
+        }
+      },
+      isSaved ? "danger" : "gold"
+    );
+  };
+
   const renderModals = () => (
     <>
       <InternshipFormModal
@@ -1108,7 +1131,10 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
           </div>
 
           <div className="divide-y divide-border">
-            {sortedApplications.length > 0 ? sortedApplications.map((application) => (
+            {sortedApplications.length > 0 ? sortedApplications.map((application) => {
+              const portfolioSaved = isFavoritePortfolio(application.portfolioId);
+
+              return (
               <div key={application.id} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(9rem,0.45fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-4 px-6 py-4 items-center">
                 <div className="min-w-0">
                   <p className="text-text-primary text-sm font-sans truncate mb-1">{application.studentName}</p>
@@ -1126,6 +1152,14 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
                   <p className="text-text-secondary text-xs font-mono">
                     {application.projectCount} projects - contributor score {application.contributionScore}
                   </p>
+                  <Button
+                    size="sm"
+                    variant={portfolioSaved ? "gold" : "secondary"}
+                    className="mt-3"
+                    onClick={() => handleFavoritePortfolioToggle(application)}
+                  >
+                    {portfolioSaved ? "Remove Portfolio" : "Save Portfolio"}
+                  </Button>
                 </div>
 
                 <div>
@@ -1147,7 +1181,8 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
                   )}
                 </div>
               </div>
-            )) : (
+              );
+            }) : (
               <p className="px-6 py-5 text-text-secondary text-sm font-sans">No students have applied for this internship yet.</p>
             )}
           </div>

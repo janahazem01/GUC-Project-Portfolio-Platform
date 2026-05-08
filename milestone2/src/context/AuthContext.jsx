@@ -1,46 +1,58 @@
-import { createContext, useState, useEffect } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState } from "react";
 import { dummyUsers } from "../data/dummy";
 
 export const AuthContext = createContext();
 
 // Simple OTP generator for demo
 const generateOtp = () => Math.random().toString().slice(2, 6);
+const userOverridesStorageKey = "gucUserOverrides";
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [resetOtp, setResetOtp] = useState(null);
+const getUserOverrides = () => {
+  try {
+    const raw = localStorage.getItem(userOverridesStorageKey);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
 
-  const mergeWithLatestDummyUser = (savedUser) => {
-    if (!savedUser?.email) return savedUser;
+const saveUserOverrides = (overrides) => {
+  localStorage.setItem(userOverridesStorageKey, JSON.stringify(overrides));
+};
 
-    const latestDummyUser = dummyUsers.find((dummyUser) => dummyUser.email === savedUser.email);
-    return latestDummyUser ? { ...latestDummyUser, ...savedUser } : savedUser;
-  };
+const mergeWithLatestDummyUser = (savedUser) => {
+  if (!savedUser?.email) return savedUser;
 
-  // Initialize from localStorage on mount
-  useEffect(() => {
+  const latestDummyUser = dummyUsers.find((dummyUser) => dummyUser.email === savedUser.email);
+  const savedOverrides = getUserOverrides()[savedUser.email] || {};
+  const mergedUser = latestDummyUser
+    ? { ...latestDummyUser, ...savedUser, ...savedOverrides }
+    : { ...savedUser, ...savedOverrides };
+  delete mergedUser.password;
+  return mergedUser;
+};
+
+const getSavedUser = () => {
+  try {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
       const hydratedUser = mergeWithLatestDummyUser(parsedUser);
-      setUser(hydratedUser);
       localStorage.setItem("user", JSON.stringify(hydratedUser));
+      return hydratedUser;
     }
-    setLoading(false);
-  }, []);
+  } catch {
+    localStorage.removeItem("user");
+  }
 
-  // Auto-detect role from email pattern
-  const detectRoleFromEmail = (email) => {
-    if (email.includes("@student.guc.edu.eg")) return "student";
-    if (email.includes("@guc.edu.eg")) return "admin";
-    if (email.includes("@guc.edu.eg")) {
-      // Could be instructor if not admin
-      const user = dummyUsers.find(u => u.email === email);
-      return user?.role || "instructor";
-    }
-    return "employer"; // Default to employer for external emails
-  };
+  return null;
+};
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(getSavedUser);
+  const [resetOtp, setResetOtp] = useState(null);
+  const loading = false;
 
   const login = (email, password) => {
     const localUsers = getLocalUsers();
@@ -66,13 +78,42 @@ export const AuthProvider = ({ children }) => {
     try {
       const raw = localStorage.getItem("localUsers");
       return raw ? JSON.parse(raw) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   };
 
   const saveLocalUsers = (arr) => {
     localStorage.setItem("localUsers", JSON.stringify(arr));
+  };
+
+  const persistUserProfile = (nextUser) => {
+    if (!nextUser?.email) return;
+
+    const cleanUser = { ...nextUser };
+    delete cleanUser.password;
+
+    const localUsers = getLocalUsers();
+    const hasLocalUser = localUsers.some((localUser) => localUser.email === cleanUser.email);
+
+    if (hasLocalUser) {
+      saveLocalUsers(
+        localUsers.map((localUser) =>
+          localUser.email === cleanUser.email
+            ? { ...localUser, ...cleanUser, password: localUser.password }
+            : localUser
+        )
+      );
+    }
+
+    const overrides = getUserOverrides();
+    saveUserOverrides({
+      ...overrides,
+      [cleanUser.email]: {
+        ...(overrides[cleanUser.email] || {}),
+        ...cleanUser,
+      },
+    });
   };
 
   const register = (payload) => {
@@ -93,6 +134,8 @@ export const AuthProvider = ({ children }) => {
     const newUser = {
       id: Date.now(),
       role,
+      favoriteProjectIds: [],
+      favoritePortfolioIds: [],
       ...payload,
       email,
     };
@@ -114,9 +157,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (updatedData) => {
+    if (!user) return;
     const newUser = { ...user, ...updatedData };
     setUser(newUser);
     localStorage.setItem("user", JSON.stringify(newUser));
+    persistUserProfile(newUser);
   };
 
   const requestPasswordReset = (email) => {

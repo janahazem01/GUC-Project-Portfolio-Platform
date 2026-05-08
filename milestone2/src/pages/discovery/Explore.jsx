@@ -194,9 +194,12 @@
 
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Badge, Stars, Button, Input, PageHeader } from "../../components/ui";
-import { projects, courses } from "../../data/dummy";
+import { Card, Badge, Stars, Button, Input, PageHeader, ConfirmActionModal } from "../../components/ui";
+import { projects, courses, portfolios } from "../../data/dummy";
 import { AuthContext } from "../../context/AuthContext";
+import { useFavorites } from "../../hooks/useFavorites";
+
+const portfolioByOwner = new Map(portfolios.map((portfolio) => [portfolio.owner, portfolio]));
 
 export default function Explore() {
   const [search, setSearch] = useState("");
@@ -208,10 +211,60 @@ export default function Explore() {
 
   // ✅ NEW: single sorting option
   const [sortBy, setSortBy] = useState("");
+  const [confirmation, setConfirmation] = useState(null);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
 
   const { user } = useContext(AuthContext);
+  const {
+    canUseFavorites,
+    isFavoriteProject,
+    isFavoritePortfolio,
+    saveProject,
+    removeProject,
+    savePortfolio,
+    removePortfolio,
+  } = useFavorites();
   const navigate = useNavigate();
   const viewProject = (projectId) => navigate(`/projects/${projectId}`, { state: { activeNav: "/explore" } });
+
+  const requestProjectFavorite = (event, project) => {
+    event.stopPropagation();
+    const isSaved = isFavoriteProject(project.id);
+
+    setConfirmation({
+      action: `${isSaved ? "remove this project from" : "save this project to"} your favorites`,
+      variant: isSaved ? "danger" : "gold",
+      onConfirm: () => {
+        if (isSaved) {
+          removeProject(project.id);
+          setFeedbackMessage("Project removed from your favorites.");
+        } else {
+          saveProject(project.id);
+          setFeedbackMessage("Project saved to your favorites.");
+        }
+      },
+    });
+  };
+
+  const requestPortfolioFavorite = (event, portfolio) => {
+    event.stopPropagation();
+    if (!portfolio) return;
+
+    const isSaved = isFavoritePortfolio(portfolio.id);
+    setConfirmation({
+      action: `${isSaved ? "remove this portfolio from" : "save this portfolio to"} your favorites`,
+      variant: isSaved ? "danger" : "gold",
+      onConfirm: () => {
+        if (isSaved) {
+          removePortfolio(portfolio.id);
+          setFeedbackMessage("Portfolio removed from your favorites.");
+        } else {
+          savePortfolio(portfolio.id);
+          setFeedbackMessage("Portfolio saved to your favorites.");
+        }
+      },
+    });
+  };
 
   // 🔹 FILTERING (unchanged)
   const filtered = projects.filter((p) => {
@@ -245,6 +298,15 @@ export default function Explore() {
   return (
     <div>
       <PageHeader title="Explore Projects" subtitle="Discover what GUC students have built" />
+
+      {feedbackMessage && (
+        <Card className="mb-4 border-success/40 bg-success/10">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-success text-sm font-sans">{feedbackMessage}</p>
+            <Button variant="ghost" size="sm" onClick={() => setFeedbackMessage("")}>Dismiss</Button>
+          </div>
+        </Card>
+      )}
 
       {/* 🔥 FILTER BAR */}
       <div className="flex gap-4 mb-8 flex-wrap">
@@ -301,7 +363,12 @@ export default function Explore() {
 
       {/* PROJECTS */}
       <div className="grid grid-cols-3 gap-4">
-        {sorted.map((p) => (
+        {sorted.map((p) => {
+          const ownerPortfolio = portfolioByOwner.get(p.owner);
+          const projectSaved = isFavoriteProject(p.id);
+          const portfolioSaved = ownerPortfolio ? isFavoritePortfolio(ownerPortfolio.id) : false;
+
+          return (
           <Card
             key={p.id}
             hover
@@ -337,7 +404,27 @@ export default function Explore() {
                 <span className="font-mono text-xs text-text-secondary">Created {p.createdAt}</span>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                {canUseFavorites && (
+                  <>
+                    <Button
+                      variant={projectSaved ? "danger" : "gold"}
+                      size="sm"
+                      onClick={(event) => requestProjectFavorite(event, p)}
+                    >
+                      {projectSaved ? "Remove Project" : "Save Project"}
+                    </Button>
+                    {ownerPortfolio && (
+                      <Button
+                        variant={portfolioSaved ? "danger" : "gold"}
+                        size="sm"
+                        onClick={(event) => requestPortfolioFavorite(event, ownerPortfolio)}
+                      >
+                        {portfolioSaved ? "Remove Portfolio" : "Save Portfolio"}
+                      </Button>
+                    )}
+                  </>
+                )}
                 <Button variant="ghost" size="sm" onClick={(event) => {
                   event.stopPropagation();
                   viewProject(p.id);
@@ -352,7 +439,8 @@ export default function Explore() {
               </div>
             </div>
           </Card>
-        ))}
+          );
+        })}
 
         {sorted.length === 0 && (
           <div className="col-span-3 text-center py-16 text-text-secondary font-sans">
@@ -360,6 +448,14 @@ export default function Explore() {
           </div>
         )}
       </div>
+
+      <ConfirmActionModal
+        isOpen={Boolean(confirmation)}
+        action={confirmation?.action}
+        variant={confirmation?.variant}
+        onClose={() => setConfirmation(null)}
+        onConfirm={confirmation?.onConfirm}
+      />
     </div>
   );
 }

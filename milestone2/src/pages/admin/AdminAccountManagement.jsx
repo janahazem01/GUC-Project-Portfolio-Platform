@@ -10,6 +10,11 @@ const roleLabels = {
   admin: "Administrator",
 };
 
+const statusOptions = [
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
+
 export default function AdminAccountManagement() {
   const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -17,16 +22,10 @@ export default function AdminAccountManagement() {
   const [confirmModal, setConfirmModal] = useState({ open: false, action: null, user: null });
   const [alertModal, setAlertModal] = useState({ open: false, message: "" });
 
-  const statusOptions = [
-    { value: "active", label: "Active" },
-    { value: "inactive", label: "Inactive" },
-  ];
-
-  const visibleStatuses = selectedStatus ? [selectedStatus] : statusOptions.map((opt) => opt.value);
-  const filteredUsers = useMemo(
-    () => dummyUsers.filter((user) => visibleStatuses.includes(user.status)),
-    [visibleStatuses]
-  );
+  const filteredUsers = useMemo(() => {
+    const visibleStatuses = selectedStatus ? [selectedStatus] : statusOptions.map((opt) => opt.value);
+    return dummyUsers.filter((user) => visibleStatuses.includes(user.status));
+  }, [selectedStatus]);
 
   const handleActivate = (user) => {
     if (user.status === "active") {
@@ -46,7 +45,10 @@ export default function AdminAccountManagement() {
 
   const confirmAction = () => {
     const { action, user } = confirmModal;
-    user.status = action === "activate" ? "active" : "inactive";
+    const targetUser = dummyUsers.find((item) => item.id === user?.id);
+    if (targetUser) {
+      targetUser.status = action === "activate" ? "active" : "inactive";
+    }
     setConfirmModal({ open: false, action: null, user: null });
     setAlertModal({ open: true, message: `Account ${action}d successfully.` });
   };

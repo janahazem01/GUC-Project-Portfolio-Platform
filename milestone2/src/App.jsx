@@ -125,6 +125,7 @@ import Projects     from "./pages/projects/Projects";
 import ProjectDetails from "./pages/projects/ProjectDetails";
 import ProjectPreview from "./pages/projects/ProjectPreview";
 import Explore      from "./pages/discovery/Explore";
+import Favorites    from "./pages/favorites/Favorites";
 import Profile      from "./pages/profile/Profile";
 import Admin        from "./pages/admin/Admin";
 import AdminDataPage from "./pages/admin/AdminDataPage";
@@ -220,6 +221,15 @@ function AppRoutes() {
             <AppLayout><Profile /></AppLayout>
           </ProtectedRoute>
         } 
+      />
+
+      <Route
+        path="/favorites"
+        element={
+          <ProtectedRoute allowedRoles={["student", "employer"]}>
+            <AppLayout><Favorites /></AppLayout>
+          </ProtectedRoute>
+        }
       />
 
       <Route 

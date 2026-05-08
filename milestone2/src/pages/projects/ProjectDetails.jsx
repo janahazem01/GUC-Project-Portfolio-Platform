@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Badge, Button, Card, PageHeader, Stars } from "../../components/ui";
-import { projects } from "../../data/dummy";
+import { Badge, Button, Card, ConfirmActionModal, PageHeader, Stars } from "../../components/ui";
+import { portfolios, projects } from "../../data/dummy";
+import { useFavorites } from "../../hooks/useFavorites";
+
+const portfolioByOwner = new Map(portfolios.map((portfolio) => [portfolio.owner, portfolio]));
 
 function ReadmeSection({ title, children }) {
   return (
@@ -19,6 +23,56 @@ export default function ProjectDetails() {
   const openExternal = (url) => window.open(url, "_blank", "noopener,noreferrer");
   const activeNav = location.state?.activeNav || "/projects";
   const openPreview = () => navigate(`/projects/${project.id}/preview`, { state: { activeNav } });
+  const [confirmation, setConfirmation] = useState(null);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const {
+    canUseFavorites,
+    isFavoriteProject,
+    isFavoritePortfolio,
+    saveProject,
+    removeProject,
+    savePortfolio,
+    removePortfolio,
+  } = useFavorites();
+  const ownerPortfolio = project ? portfolioByOwner.get(project.owner) : null;
+
+  const requestProjectFavorite = () => {
+    if (!project) return;
+    const isSaved = isFavoriteProject(project.id);
+
+    setConfirmation({
+      action: `${isSaved ? "remove this project from" : "save this project to"} your favorites`,
+      variant: isSaved ? "danger" : "gold",
+      onConfirm: () => {
+        if (isSaved) {
+          removeProject(project.id);
+          setFeedbackMessage("Project removed from your favorites.");
+        } else {
+          saveProject(project.id);
+          setFeedbackMessage("Project saved to your favorites.");
+        }
+      },
+    });
+  };
+
+  const requestPortfolioFavorite = () => {
+    if (!ownerPortfolio) return;
+    const isSaved = isFavoritePortfolio(ownerPortfolio.id);
+
+    setConfirmation({
+      action: `${isSaved ? "remove this portfolio from" : "save this portfolio to"} your favorites`,
+      variant: isSaved ? "danger" : "gold",
+      onConfirm: () => {
+        if (isSaved) {
+          removePortfolio(ownerPortfolio.id);
+          setFeedbackMessage("Portfolio removed from your favorites.");
+        } else {
+          savePortfolio(ownerPortfolio.id);
+          setFeedbackMessage("Portfolio saved to your favorites.");
+        }
+      },
+    });
+  };
 
   if (!project) {
     return (
@@ -35,13 +89,48 @@ export default function ProjectDetails() {
     );
   }
 
+  const projectSaved = isFavoriteProject(project.id);
+  const portfolioSaved = ownerPortfolio ? isFavoritePortfolio(ownerPortfolio.id) : false;
+  const headerAction = (
+    <div className="flex flex-wrap justify-end gap-2">
+      {canUseFavorites && (
+        <>
+          <Button
+            variant={projectSaved ? "gold" : "secondary"}
+            onClick={requestProjectFavorite}
+          >
+            {projectSaved ? "Remove Project" : "Save Project"}
+          </Button>
+          {ownerPortfolio && (
+            <Button
+              variant={portfolioSaved ? "gold" : "secondary"}
+              onClick={requestPortfolioFavorite}
+            >
+              {portfolioSaved ? "Remove Portfolio" : "Save Portfolio"}
+            </Button>
+          )}
+        </>
+      )}
+      <Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>
+    </div>
+  );
+
   return (
     <div>
       <PageHeader
         title={project.title}
         subtitle={`${project.course} - ${project.owner}`}
-        action={<Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>}
+        action={headerAction}
       />
+
+      {feedbackMessage && (
+        <Card className="mb-4 border-success/40 bg-success/10">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-success text-sm font-sans">{feedbackMessage}</p>
+            <Button variant="ghost" size="sm" onClick={() => setFeedbackMessage("")}>Dismiss</Button>
+          </div>
+        </Card>
+      )}
 
       <div className="flex flex-col gap-4">
         <Card>
@@ -148,6 +237,14 @@ export default function ProjectDetails() {
           </div>
         </Card>
       </div>
+
+      <ConfirmActionModal
+        isOpen={Boolean(confirmation)}
+        action={confirmation?.action}
+        variant={confirmation?.variant}
+        onClose={() => setConfirmation(null)}
+        onConfirm={confirmation?.onConfirm}
+      />
     </div>
   );
 }

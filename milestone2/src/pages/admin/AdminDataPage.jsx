@@ -19,6 +19,13 @@ const pageTitles = {
   flagged: ["Flagged Projects", "Reported or flagged project records."],
 };
 
+const roleOptions = [
+  { value: "student", label: "Student" },
+  { value: "instructor", label: "Course Instructor" },
+  { value: "employer", label: "Employer" },
+  { value: "admin", label: "Administrator" },
+];
+
 function DataHeader({ columns, style, alignments = [] }) {
   return (
     <div className="grid gap-4 border-b border-border px-4 py-4 items-center" style={style ?? { gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
@@ -60,30 +67,20 @@ export default function AdminDataPage() {
   const [courseSuccessMessage, setCourseSuccessMessage] = useState("");
   const page = pageTitles[section];
 
-  if (!page) return <Navigate to="/" replace />;
-
-  const roleOptions = [
-    { value: "student", label: "Student" },
-    { value: "instructor", label: "Course Instructor" },
-    { value: "employer", label: "Employer" },
-    { value: "admin", label: "Administrator" },
-  ];
-
   const employerUsers = dummyUsers.filter((user) => user.role === "employer");
-  const availableRoles = roleOptions.map((option) => option.value);
-  const visibleRoles = selectedRole ? [selectedRole] : availableRoles;
   const isFiltered = Boolean(selectedRole);
-  const filteredUsers = useMemo(
-    () => dummyUsers.filter((user) => visibleRoles.includes(user.role)),
-    [visibleRoles]
-  );
-  const groupedUsers = useMemo(
-    () =>
-      selectedRole
-        ? [{ role: selectedRole, users: dummyUsers.filter((user) => user.role === selectedRole) }]
-        : [],
-    [selectedRole]
-  );
+  const filteredUsers = useMemo(() => {
+    const availableRoles = roleOptions.map((option) => option.value);
+    const visibleRoles = selectedRole ? [selectedRole] : availableRoles;
+    return dummyUsers.filter((user) => visibleRoles.includes(user.role));
+  }, [selectedRole]);
+  const groupedUsers = useMemo(() => (
+    selectedRole
+      ? [{ role: selectedRole, users: dummyUsers.filter((user) => user.role === selectedRole) }]
+      : []
+  ), [selectedRole]);
+
+  if (!page) return <Navigate to="/" replace />;
 
   const resetCourseForm = () => {
     setCourseForm({ name: "", code: "" });

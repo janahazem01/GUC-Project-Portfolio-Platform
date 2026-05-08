@@ -101,12 +101,31 @@ export function Modal({ isOpen, onClose, title, children, backdropClassName = ""
               onClick={onClose}
               className="text-text-secondary hover:text-text-primary text-xl"
             >
-              ✕
+              x
             </button>
           </div>
           {children}
         </Card>
       </div>
     </>
+  );
+}
+
+export function ConfirmActionModal({ isOpen, action, onClose, onConfirm, variant = "gold" }) {
+  const handleConfirm = () => {
+    onConfirm?.();
+    onClose?.();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Confirm action">
+      <p className="text-text-secondary text-sm font-sans mb-6">
+        Are you sure you want to {action}?
+      </p>
+      <div className="flex justify-end gap-3">
+        <Button variant="secondary" onClick={onClose}>No</Button>
+        <Button variant={variant} onClick={handleConfirm}>Yes</Button>
+      </div>
+    </Modal>
   );
 }

@@ -1,21 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Badge, PageHeader, Modal, Input, Button } from "../../components/ui";
+import { Card, PageHeader, Modal, Input, Button } from "../../components/ui";
 import { courses, dummyUsers, employerApplications, projects } from "../../data/dummy";
-
-const userRoleGroups = [
-  { key: "student", label: "Students", badge: "blue" },
-  { key: "instructor", label: "Course Instructors", badge: "gold" },
-  { key: "employer", label: "Employers", badge: "success" },
-  { key: "admin", label: "Admins", badge: "danger" },
-];
-
-const roleLabels = {
-  student: "Student",
-  instructor: "Course Instructor",
-  employer: "Employer",
-  admin: "Administrator",
-};
 
 const shortcuts = [
   {

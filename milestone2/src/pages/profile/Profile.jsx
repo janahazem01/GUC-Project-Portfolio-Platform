@@ -1,10 +1,11 @@
 import { useState, useContext } from "react";
-import { Card, Badge, Stars, Button, PageHeader, Input, Modal } from "../../components/ui";
+import { Card, Badge, Stars, Button, PageHeader, Input, Modal, ConfirmActionModal } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
-import { courses, instructorDirectory, projects } from "../../data/dummy";
+import { courses, instructorDirectory, projects, internships } from "../../data/dummy";
 
 function StudentProfile({ user, updateUser, myProjects }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState(null);
   const [formData, setFormData] = useState({
     major: user?.major || "",
     linkedIn: user?.linkedIn || "",
@@ -41,12 +42,18 @@ function StudentProfile({ user, updateUser, myProjects }) {
   };
 
   const handleSaveProfile = () => {
-    updateUser({
-      major: formData.major,
-      linkedIn: formData.linkedIn,
-      skills: formData.skills,
+    setConfirmation({
+      action: "save these changes to your portfolio",
+      variant: "primary",
+      onConfirm: () => {
+        updateUser({
+          major: formData.major,
+          linkedIn: formData.linkedIn,
+          skills: formData.skills,
+        });
+        setIsEditModalOpen(false);
+      },
     });
-    setIsEditModalOpen(false);
   };
 
   return (
@@ -114,6 +121,85 @@ function StudentProfile({ user, updateUser, myProjects }) {
         </Card>
       )}
 
+      {/* Statistics Section */}
+      {myProjects.length > 0 && (
+        <div className="mt-8">
+          <PageHeader title="Project Statistics" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <h3 className="font-display text-lg text-text-primary mb-4">Programming Languages</h3>
+              {(() => {
+                const languageCount = {};
+                myProjects.forEach(project => {
+                  project.languages.forEach(lang => {
+                    languageCount[lang] = (languageCount[lang] || 0) + 1;
+                  });
+                });
+                const total = Object.values(languageCount).reduce((sum, count) => sum + count, 0);
+                return Object.entries(languageCount)
+                  .sort(([,a], [,b]) => b - a)
+                  .map(([lang, count]) => (
+                    <div key={lang} className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-text-primary">{lang}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 bg-bg-elevated rounded-full h-2">
+                          <div
+                            className="bg-accent-gold h-2 rounded-full"
+                            style={{ width: `${(count / total) * 100}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-xs text-text-secondary w-8 text-right">{Math.round((count / total) * 100)}%</span>
+                      </div>
+                    </div>
+                  ));
+              })()}
+            </Card>
+            <Card>
+              <h3 className="font-display text-lg text-text-primary mb-4">Top Collaborators per Project</h3>
+              {myProjects.map(project => (
+                <div key={project.id} className="mb-4 last:mb-0">
+                  <h4 className="font-display text-sm text-text-primary mb-2">{project.title}</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {project.team.filter(member => member !== user.name).map(collaborator => (
+                      <Badge key={collaborator} variant="blue" className="text-xs">{collaborator}</Badge>
+                    ))}
+                    {project.team.filter(member => member !== user.name).length === 0 && (
+                      <span className="text-xs text-text-secondary">No collaborators</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Internships Section */}
+      {user?.completedInternships?.length > 0 && (
+        <div className="mt-8">
+          <PageHeader title="Completed Internships" />
+          <div className="grid grid-cols-1 gap-4">
+            {user.completedInternships.map(internship => (
+              <Card key={internship.id}>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-display text-base text-text-primary mb-1">{internship.title}</h3>
+                    <p className="text-accent-gold font-mono text-sm mb-2">{internship.company}</p>
+                    <p className="text-text-secondary text-sm mb-3">{internship.description}</p>
+                    <div className="flex items-center gap-4 text-xs text-text-secondary">
+                      <span>{internship.startDate} - {internship.endDate}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap mt-3">
+                  {internship.skills.map(skill => <Badge key={skill} variant="blue">{skill}</Badge>)}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Portfolio">
         <div className="flex flex-col gap-4">
           <Input
@@ -158,12 +244,21 @@ function StudentProfile({ user, updateUser, myProjects }) {
           </div>
         </div>
       </Modal>
+
+      <ConfirmActionModal
+        isOpen={Boolean(confirmation)}
+        action={confirmation?.action}
+        variant={confirmation?.variant}
+        onClose={() => setConfirmation(null)}
+        onConfirm={confirmation?.onConfirm}
+      />
     </div>
   );
 }
 
 function InstructorProfile({ user, updateUser, myCourses }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState(null);
   const [formData, setFormData] = useState({
     bio: user?.bio || "",
     researchInterests: user?.researchInterests || [],
@@ -220,17 +315,23 @@ function InstructorProfile({ user, updateUser, myCourses }) {
   };
 
   const handleSaveProfile = () => {
-    updateUser({
-      bio: formData.bio,
-      researchInterests: formData.researchInterests,
-      education: formData.education,
-      coursesTaught: formData.coursesTaught.includes(4)
-        ? formData.coursesTaught
-        : [...formData.coursesTaught, 4],
-      linkedin: formData.linkedin,
-      officeHours: formData.officeHours,
+    setConfirmation({
+      action: "save these changes to your instructor profile",
+      variant: "primary",
+      onConfirm: () => {
+        updateUser({
+          bio: formData.bio,
+          researchInterests: formData.researchInterests,
+          education: formData.education,
+          coursesTaught: formData.coursesTaught.includes(4)
+            ? formData.coursesTaught
+            : [...formData.coursesTaught, 4],
+          linkedin: formData.linkedin,
+          officeHours: formData.officeHours,
+        });
+        setIsEditModalOpen(false);
+      },
     });
-    setIsEditModalOpen(false);
   };
 
   return (
@@ -412,6 +513,14 @@ function InstructorProfile({ user, updateUser, myCourses }) {
           </div>
         </div>
       </Modal>
+
+      <ConfirmActionModal
+        isOpen={Boolean(confirmation)}
+        action={confirmation?.action}
+        variant={confirmation?.variant}
+        onClose={() => setConfirmation(null)}
+        onConfirm={confirmation?.onConfirm}
+      />
     </div>
   );
 }
@@ -440,6 +549,7 @@ function InstructorDirectoryPreview() {
 
 function EmployerProfile({ user, updateUser }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState(null);
   const [formData, setFormData] = useState({
     companyName: user?.companyName || "",
     companyBio: user?.companyBio || "",
@@ -503,18 +613,24 @@ function EmployerProfile({ user, updateUser }) {
   };
 
   const handleSaveProfile = () => {
-    updateUser({
-      companyName: formData.companyName,
-      companyBio: formData.companyBio,
-      address: formData.address,
-      location: formData.location,
-      companyEmail: formData.companyEmail,
-      companyPhone: formData.companyPhone,
-      verificationStatus: formData.verificationStatus,
-      uploadedDocs: formData.uploadedDocs,
-      logo: formData.logo,
+    setConfirmation({
+      action: "save these changes to your company profile",
+      variant: "primary",
+      onConfirm: () => {
+        updateUser({
+          companyName: formData.companyName,
+          companyBio: formData.companyBio,
+          address: formData.address,
+          location: formData.location,
+          companyEmail: formData.companyEmail,
+          companyPhone: formData.companyPhone,
+          verificationStatus: formData.verificationStatus,
+          uploadedDocs: formData.uploadedDocs,
+          logo: formData.logo,
+        });
+        setIsEditModalOpen(false);
+      },
     });
-    setIsEditModalOpen(false);
   };
 
   const handlePickLocation = () => {
@@ -709,6 +825,14 @@ function EmployerProfile({ user, updateUser }) {
           </div>
         </div>
       </Modal>
+
+      <ConfirmActionModal
+        isOpen={Boolean(confirmation)}
+        action={confirmation?.action}
+        variant={confirmation?.variant}
+        onClose={() => setConfirmation(null)}
+        onConfirm={confirmation?.onConfirm}
+      />
     </div>
   );
 }
