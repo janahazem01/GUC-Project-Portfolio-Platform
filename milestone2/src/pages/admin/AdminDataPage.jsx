@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { useMemo, useState } from "react";
-=======
-import { useState } from "react";
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, Modal, PageHeader } from "../../components/ui";
 import { courses, dummyUsers, employerApplications, projects } from "../../data/dummy";
@@ -23,7 +19,6 @@ const pageTitles = {
   flagged: ["Flagged Projects", "Reported or flagged project records."],
 };
 
-<<<<<<< HEAD
 function DataHeader({ columns, style, alignments = [] }) {
   return (
     <div className="grid gap-4 border-b border-border px-4 py-4 items-center" style={style ?? { gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
@@ -34,27 +29,14 @@ function DataHeader({ columns, style, alignments = [] }) {
         >
           {column}
         </p>
-=======
-function DataHeader({ columns }) {
-  return (
-    <div className="grid gap-4 border-b border-border px-4 py-3" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
-      {columns.map((column) => (
-        <p key={column} className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{column}</p>
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
       ))}
     </div>
   );
 }
 
-<<<<<<< HEAD
 function DataRow({ children, columns, style }) {
   return (
     <div className="grid gap-4 px-4 py-5 items-center border-b border-border last:border-0" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, ...style }}>
-=======
-function DataRow({ children, columns }) {
-  return (
-    <div className="grid gap-4 px-4 py-4 items-center border-b border-border last:border-0" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
       {children}
     </div>
   );
@@ -63,7 +45,6 @@ function DataRow({ children, columns }) {
 export default function AdminDataPage() {
   const { section } = useParams();
   const navigate = useNavigate();
-<<<<<<< HEAD
   const [selectedRole, setSelectedRole] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [filtersAddedOpen, setFiltersAddedOpen] = useState(false);
@@ -77,11 +58,6 @@ export default function AdminDataPage() {
   const [courseDeleteOpen, setCourseDeleteOpen] = useState(false);
   const [courseSuccessOpen, setCourseSuccessOpen] = useState(false);
   const [courseSuccessMessage, setCourseSuccessMessage] = useState("");
-=======
-  const [selectedRoles, setSelectedRoles] = useState([]);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [filtersAddedOpen, setFiltersAddedOpen] = useState(false);
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
   const page = pageTitles[section];
 
   if (!page) return <Navigate to="/" replace />;
@@ -95,7 +71,6 @@ export default function AdminDataPage() {
 
   const employerUsers = dummyUsers.filter((user) => user.role === "employer");
   const availableRoles = roleOptions.map((option) => option.value);
-<<<<<<< HEAD
   const visibleRoles = selectedRole ? [selectedRole] : availableRoles;
   const isFiltered = Boolean(selectedRole);
   const filteredUsers = useMemo(
@@ -199,22 +174,6 @@ export default function AdminDataPage() {
         title={page[0]}
         subtitle={page[1]}
         action={section === "courses" ? courseHeaderAction : <Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>}
-=======
-  const visibleRoles = selectedRoles.length > 0 ? selectedRoles : availableRoles;
-  const isFiltered = selectedRoles.length > 0;
-  const filteredUsers = dummyUsers.filter((user) => visibleRoles.includes(user.role));
-  const groupedUsers = selectedRoles
-    .map((role) => ({ role, users: dummyUsers.filter((user) => user.role === role) }))
-    .filter((group) => group.users.length > 0);
-
-
-  return (
-    <div>
-      <PageHeader
-        title={page[0]}
-        subtitle={page[1]}
-        action={<Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>}
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
       />
 
       {section === "users" && (
@@ -233,20 +192,12 @@ export default function AdminDataPage() {
                     <path d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
                   </svg>
                 </span>
-<<<<<<< HEAD
                 {selectedRole ? `Filter: ${roleLabels[selectedRole]}` : "Filter by role"}
-=======
-                Filter by role
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
               </Button>
               {filterOpen && (
                 <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-border bg-bg-base p-3 shadow-xl">
                   <div className="mb-3 flex items-center justify-between">
-<<<<<<< HEAD
                     <p className="text-sm font-display text-text-primary">Select role</p>
-=======
-                    <p className="text-sm font-display text-text-primary">Select roles</p>
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
                     <button
                       type="button"
                       onClick={() => setFilterOpen(false)}
@@ -257,14 +208,10 @@ export default function AdminDataPage() {
                   </div>
                   <button
                     type="button"
-<<<<<<< HEAD
                     onClick={() => {
                       setSelectedRole("");
                       setFilterOpen(false);
                     }}
-=======
-                    onClick={() => setSelectedRoles([])}
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
                     className="mb-2 w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left text-sm font-sans text-text-secondary hover:border-text-primary hover:text-text-primary"
                   >
                     Clear filter
@@ -274,7 +221,6 @@ export default function AdminDataPage() {
                       <button
                         key={roleOption.value}
                         type="button"
-<<<<<<< HEAD
                         onClick={() => {
                           setSelectedRole(roleOption.value);
                           setFilterOpen(false);
@@ -282,15 +228,6 @@ export default function AdminDataPage() {
                         }}
                         className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-sans transition-colors ${
                           selectedRole === roleOption.value
-=======
-                        onClick={() => setSelectedRoles((current) =>
-                          current.includes(roleOption.value)
-                            ? current.filter((role) => role !== roleOption.value)
-                            : [...current, roleOption.value]
-                        )}
-                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-sans transition-colors ${
-                          selectedRoles.includes(roleOption.value)
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
                             ? "border-accent-blue bg-accent-blue/10 text-text-primary"
                             : "border-border bg-bg-elevated text-text-secondary hover:border-text-primary hover:text-text-primary"
                         }`}
@@ -299,20 +236,6 @@ export default function AdminDataPage() {
                       </button>
                     ))}
                   </div>
-<<<<<<< HEAD
-=======
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      onClick={() => {
-                        setFilterOpen(false);
-                        setFiltersAddedOpen(true);
-                      }}
-                      className="w-full"
-                    >
-                      Done
-                    </Button>
-                  </div>
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
                 </div>
               )}
             </div>
@@ -320,16 +243,12 @@ export default function AdminDataPage() {
 
 
           <Card className="p-0 overflow-hidden">
-<<<<<<< HEAD
             <div className="grid gap-4 border-b border-border px-4 py-4 bg-bg-elevated/50 items-center" style={{ gridTemplateColumns: "2.6fr 2.3fr 1.4fr 1.1fr" }}>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Full Name</p>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Email</p>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Role</p>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Status</p>
             </div>
-=======
-            <DataHeader columns={["Full Name", "Email", "Role"]} />
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
             {isFiltered ? (
               groupedUsers.map(({ role, users }) => (
                 <div key={role}>
@@ -339,7 +258,6 @@ export default function AdminDataPage() {
                     </p>
                   </div>
                   {users.map((user) => (
-<<<<<<< HEAD
                     <DataRow key={`${role}-${user.id}`} columns={4} style={{ gridTemplateColumns: "2.6fr 2.3fr 1.4fr 1.1fr" }}>
                       <div className="truncate text-left">
                         <p className="text-sm text-text-primary font-semibold truncate">{user.name}</p>
@@ -353,21 +271,12 @@ export default function AdminDataPage() {
                       <div className="flex items-center justify-start">
                         <Badge variant={user.status === "active" ? "success" : "danger"}>{user.status}</Badge>
                       </div>
-=======
-                    <DataRow key={`${role}-${user.id}`} columns={3}>
-                      <p className="text-sm text-text-primary font-sans truncate">{user.name}</p>
-                      <p className="text-sm text-text-secondary font-sans truncate">{user.email}</p>
-                      <div>
-                        <Badge variant="blue">{roleLabels[user.role]}</Badge>
-                      </div>
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
                     </DataRow>
                   ))}
                 </div>
               ))
             ) : (
               filteredUsers.map((user) => (
-<<<<<<< HEAD
                 <DataRow key={user.id} columns={4} style={{ gridTemplateColumns: "2.6fr 2.3fr 1.4fr 1.1fr" }}>
                   <div className="truncate text-left">
                     <p className="text-sm text-text-primary font-semibold truncate">{user.name}</p>
@@ -381,14 +290,6 @@ export default function AdminDataPage() {
                   <div className="flex items-center justify-start">
                     <Badge variant={user.status === "active" ? "success" : "danger"}>{user.status}</Badge>
                   </div>
-=======
-                <DataRow key={user.id} columns={3}>
-                  <p className="text-sm text-text-primary font-sans truncate">{user.name}</p>
-                  <p className="text-sm text-text-secondary font-sans truncate">{user.email}</p>
-                  <div>
-                    <Badge variant="blue">{roleLabels[user.role]}</Badge>
-                  </div>
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
                 </DataRow>
               ))
             )}
@@ -397,7 +298,6 @@ export default function AdminDataPage() {
           <Modal
             isOpen={filtersAddedOpen}
             onClose={() => setFiltersAddedOpen(false)}
-<<<<<<< HEAD
             title="Filters were added successfully"
           >
             <p className="text-text-secondary text-sm mb-6">Your filter selection has been applied.</p>
@@ -406,20 +306,12 @@ export default function AdminDataPage() {
                 Cancel
               </Button>
               <Button onClick={() => setFiltersAddedOpen(false)}>Okay</Button>
-=======
-            title="Filters changed successfully"
-          >
-            <p className="text-text-secondary text-sm mb-6">Your filter selection changed successfully.</p>
-            <div className="flex justify-end">
-              <Button onClick={() => setFiltersAddedOpen(false)}>OK</Button>
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
             </div>
           </Modal>
         </>
       )}
 
       {section === "courses" && (
-<<<<<<< HEAD
         <>
           <div className="w-full">
             <Card className="p-0 overflow-hidden">
@@ -512,18 +404,6 @@ export default function AdminDataPage() {
             </div>
           </Modal>
         </>
-=======
-        <Card className="p-0 overflow-hidden">
-          <DataHeader columns={["Course Name", "Code", "Linked Projects"]} />
-          {courses.map((course) => (
-            <DataRow key={course.id} columns={3}>
-              <p className="text-sm text-text-primary font-sans">{course.name}</p>
-              <p className="text-sm text-text-secondary font-mono">{course.code}</p>
-              <Badge variant="blue">{projects.filter((project) => project.courseCode === course.code).length}</Badge>
-            </DataRow>
-          ))}
-        </Card>
->>>>>>> 947f23eb38b7a936206e6d7835bbbf2aa4fcb2e2
       )}
 
       {section === "projects" && (
