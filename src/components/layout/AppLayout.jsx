@@ -1,7 +1,8 @@
 import { useState, useContext, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-import { ConfirmActionModal, Card } from "../ui";
+import { ConfirmActionModal } from "../ui";
+import { Card } from "../ui";
 import {
   getNotificationPresentation,
   getUnreadNotificationCount,
@@ -438,5 +439,3 @@ function LiveNotificationToastBoundary() {
     </div>
   );
 }
-
-
