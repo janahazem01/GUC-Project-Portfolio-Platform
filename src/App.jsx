@@ -18,6 +18,7 @@ import AdminAccountManagement from "./pages/admin/AdminAccountManagement";
 import Internships  from "./pages/internships/Internships";
 import Notifications from "./pages/Notifications";
 import Messages     from "./pages/Messages";
+import CoursesDirectory from "./pages/courses/CoursesDirectory";
 
 // ✅ Protected route wrapper (UPDATED LOGIC ONLY)
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -98,6 +99,15 @@ function AppRoutes() {
         } 
       />
 
+      <Route
+        path="/courses"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "instructor"]}>
+            <AppLayout><CoursesDirectory /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route 
         path="/profile" 
         element={
@@ -116,14 +126,13 @@ function AppRoutes() {
         }
       />
 
-      <Route 
-        path="/admin" 
+      <Route
+        path="/admin"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <AppLayout><Admin /></AppLayout>
-            <Navigate to="/" replace />
           </ProtectedRoute>
-        } 
+        }
       />
 
       <Route

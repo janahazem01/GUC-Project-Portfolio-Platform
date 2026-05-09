@@ -60,7 +60,7 @@ export const dummyUsers = [
     bio: "Associate Professor in Software Engineering",
     researchInterests: ["Software Architecture", "Design Patterns", "Agile Methods"],
     education: ["PhD in Computer Science - Cairo University", "BSc in Computer Science"],
-    coursesTaught: [1, 4], // IDs from courses array
+    coursesTaught: [1, 2, 4],
     officeHours: "Mon 12:00-14:00",
     linkedin: "https://linkedin.com/in/dr-sara",
     avatar: null,
@@ -84,6 +84,21 @@ export const dummyUsers = [
     uploadedDocs: [
       { id: 1, name: "tax_certificate.pdf", uploadedAt: "2026-03-15" }
     ],
+    avatar: null,
+    status: "active",
+  },
+  {
+    id: 5,
+    name: "Dr. Aya Salama",
+    email: "dr.aya@guc.edu.eg",
+    password: "password",
+    role: "instructor",
+    bio: "Lecturer in Human-Computer Interaction",
+    researchInterests: ["UX Research", "Usability Testing", "Interaction Design"],
+    education: ["PhD in HCI - University of Warwick"],
+    coursesTaught: [2, 3],
+    officeHours: "Wed 10:00-12:00",
+    linkedin: "https://linkedin.com/in/dr-aya",
     avatar: null,
     status: "active",
   },
@@ -200,6 +215,11 @@ export const projects = [
       { label: "Live Project", url: "https://smart-campus-navigator.example.com" },
       { label: "Final Report", url: "#" },
     ],
+    platformActive: true,
+    flagged: false,
+    flagReason: null,
+    hiddenFromPublic: false,
+    appealSubmitted: false,
   },
   {
     id: 2,
@@ -237,6 +257,11 @@ export const projects = [
       { label: "Live Project", url: "https://arabic-sentiment.example.com" },
       { label: "Final Report", url: "#" },
     ],
+    platformActive: false,
+    flagged: true,
+    flagReason: "Report appendix matches a publicly posted assignment solution without attribution.",
+    hiddenFromPublic: false,
+    appealSubmitted: false,
   },
   {
     id: 3,
@@ -274,6 +299,26 @@ export const projects = [
       { label: "Live Project", url: "https://guc-portfolio-platform.example.com" },
       { label: "Final Report", url: "#" },
     ],
+    platformActive: false,
+    flagged: true,
+    flagReason: "Multiple students reported inconsistent team contribution claims in the project description.",
+    hiddenFromPublic: false,
+    appealSubmitted: true,
+  },
+];
+
+/** Student appeals to lift moderation after a flag (admin inbox). */
+export let projectAppeals = [
+  {
+    id: 1,
+    projectId: 3,
+    projectTitle: "GUC Portfolio Platform",
+    studentName: "Sara Mahmoud",
+    studentEmail: "sara.mahmoud@student.guc.edu.eg",
+    message:
+      "The contribution section was drafted as a placeholder before final team sign-off — we will update roles and percentages with receipts.",
+    submittedAt: "2026-05-07",
+    status: "pending",
   },
 ];
 
@@ -353,25 +398,478 @@ export const courses = [
   { id: 4, name: "Bachelor Project", code: "BP" },
 ];
 
+export function createCourseRecord(name, code) {
+  const trimmedName = name?.trim() || "";
+  const trimmedCode = code?.trim() || "";
+  if (!trimmedName || !trimmedCode) return { ok: false, error: "Name and code are required." };
+  const codeNorm = trimmedCode.toUpperCase();
+  if (courses.some((course) => course.code.toUpperCase() === codeNorm)) {
+    return { ok: false, error: "A course with this code already exists." };
+  }
+  const id = courses.length ? Math.max(...courses.map((course) => course.id)) + 1 : 1;
+  const row = { id, name: trimmedName, code: trimmedCode };
+  courses.push(row);
+  emitDummyUpdate();
+  return { ok: true, course: row };
+}
+
+export function updateCourseRecord(courseId, name, code) {
+  const trimmedName = name?.trim() || "";
+  const trimmedCode = code?.trim() || "";
+  if (!trimmedName || !trimmedCode) return { ok: false, error: "Name and code are required." };
+  const index = courses.findIndex((course) => course.id === courseId);
+  if (index === -1) return { ok: false, error: "Course not found." };
+  const codeNorm = trimmedCode.toUpperCase();
+  const clash = courses.some(
+    (course, idx) => idx !== index && course.code.toUpperCase() === codeNorm
+  );
+  if (clash) return { ok: false, error: "Another course already uses this code." };
+  const updated = { ...courses[index], name: trimmedName, code: trimmedCode };
+  courses[index] = updated;
+  emitDummyUpdate();
+  return { ok: true, course: updated };
+}
+
+export function deleteCourseRecord(courseId) {
+  const index = courses.findIndex((course) => course.id === courseId);
+  if (index === -1) return { ok: false, error: "Course not found." };
+  courses.splice(index, 1);
+  emitDummyUpdate();
+  return { ok: true };
+}
+
 export const notifications = [
-  { id: 1, text: "Dr. Sara rated your project Smart Campus Navigator 4.5/5", read: false, time: "2h ago", audience: ["student"] },
-  { id: 2, text: "Youssef Ahmed accepted your collaboration invite", read: false, time: "5h ago", audience: ["student"] },
-  { id: 3, text: "New feedback on task: Design DB Schema", read: true, time: "1d ago", audience: ["student", "instructor"] },
-  { id: 4, text: "Your company verification documents are under review", read: false, time: "3h ago", audience: ["employer"] },
-  { id: 5, text: "Admin approved your company profile", read: true, time: "1d ago", audience: ["employer"] },
-  { id: 6, text: "New employer application waiting for review", read: false, time: "45m ago", audience: ["admin"] },
+  {
+    id: 1,
+    kind: "rating",
+    title: "Instructor rated your project",
+    text: "Dr. Sara rated your project Smart Campus Navigator 4.5/5",
+    read: false,
+    time: "2h ago",
+    audience: ["student"],
+  },
+  {
+    id: 2,
+    kind: "collab",
+    title: "Collaboration update",
+    text: "Youssef Ahmed accepted your collaboration invite",
+    read: false,
+    time: "5h ago",
+    audience: ["student"],
+  },
+  {
+    id: 3,
+    kind: "feedback",
+    title: "Task feedback",
+    text: "New feedback on task: Design DB Schema",
+    read: true,
+    time: "1d ago",
+    audience: ["student", "instructor"],
+  },
+  {
+    id: 4,
+    kind: "employer_verification",
+    title: "Verification in progress",
+    text: "Your company verification documents are under review",
+    read: false,
+    time: "3h ago",
+    audience: ["employer"],
+  },
+  {
+    id: 5,
+    kind: "employer_verification",
+    title: "Company profile approved",
+    text: "Admin approved your company profile",
+    read: true,
+    time: "1d ago",
+    audience: ["employer"],
+  },
+  {
+    id: 6,
+    kind: "admin_employer",
+    title: "Employer application",
+    text: "New employer application waiting for review",
+    read: false,
+    time: "45m ago",
+    audience: ["admin"],
+  },
+  {
+    id: 7,
+    kind: "course_link_request",
+    title: "Instructor wants to link a course",
+    text: "Dr. Aya Salama requested to link to course CSEN401 (Software Engineering).",
+    read: false,
+    time: "12m ago",
+    audience: ["admin"],
+    courseLinkMeta: { type: "link", courseCode: "CSEN401", instructorName: "Dr. Aya Salama" },
+  },
+  {
+    id: 8,
+    kind: "course_unlink_request",
+    title: "Instructor wants to unlink a course",
+    text: "Dr. Sara Abdelhamid submitted a request to unlink from course CSEN901 (Machine Intelligence).",
+    read: true,
+    time: "1d ago",
+    audience: ["admin"],
+    courseLinkMeta: { type: "unlink", courseCode: "CSEN901", instructorName: "Dr. Sara Abdelhamid" },
+  },
+  {
+    id: 9,
+    kind: "project_flagged",
+    title: "Your project needs review",
+    text: 'Your project "Arabic NLP Sentiment Analyzer" was flagged for review. Reason: Report appendix matches a publicly posted assignment solution without attribution. Visibility is paused until administrators process an appeal.',
+    read: false,
+    time: "18h ago",
+    audience: ["student"],
+    targetStudentEmail: "ahmed.elsayed@student.guc.edu.eg",
+  },
 ];
+
+const dummyUpdateListeners = new Set();
+
+export function subscribeDummyUpdates(listener) {
+  dummyUpdateListeners.add(listener);
+  return () => dummyUpdateListeners.delete(listener);
+}
+
+export function emitDummyUpdate() {
+  dummyUpdateListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+/** Pending instructor link/unlink course requests (admin queue). */
+export let instructorCourseRequests = [
+  {
+    id: 1,
+    instructorId: 5,
+    instructorName: "Dr. Aya Salama",
+    instructorEmail: "dr.aya@guc.edu.eg",
+    courseId: 1,
+    courseCode: "CSEN401",
+    courseName: "Software Engineering",
+    type: "link",
+    requestedAt: "2026-05-09",
+  },
+  {
+    id: 2,
+    instructorId: 3,
+    instructorName: "Dr. Sara Abdelhamid",
+    instructorEmail: "dr.sara@guc.edu.eg",
+    courseId: 2,
+    courseCode: "CSEN901",
+    courseName: "Machine Intelligence",
+    type: "unlink",
+    requestedAt: "2026-05-08",
+  },
+];
+
+export function removeInstructorCourseRequest(requestId) {
+  const index = instructorCourseRequests.findIndex((request) => request.id === requestId);
+  if (index === -1) return false;
+  instructorCourseRequests.splice(index, 1);
+  emitDummyUpdate();
+  return true;
+}
+
+function findCourseByCode(code) {
+  return courses.find((course) => course.code === code);
+}
+
+export function applyInstructorCourseRequestDecision(requestId, accept) {
+  const request = instructorCourseRequests.find((item) => item.id === requestId);
+  if (!request) return { ok: false };
+
+  const instructorUser = dummyUsers.find(
+    (user) => user.role === "instructor" && user.email === request.instructorEmail
+  );
+
+  if (accept && instructorUser && Array.isArray(instructorUser.coursesTaught)) {
+    const courseMeta = findCourseByCode(request.courseCode);
+    const courseKey = courseMeta ? courseMeta.id : request.courseId;
+    if (request.type === "link") {
+      if (!instructorUser.coursesTaught.includes(courseKey)) {
+        instructorUser.coursesTaught.push(courseKey);
+      }
+    } else {
+      instructorUser.coursesTaught = instructorUser.coursesTaught.filter((courseId) => courseId !== courseKey);
+    }
+  }
+
+  removeInstructorCourseRequest(requestId);
+
+  const decisionWord = accept ? "approved" : "declined";
+  const nid = notifications.length ? Math.max(...notifications.map((notification) => notification.id)) + 1 : 1;
+  notifications.push({
+    id: nid,
+    kind: request.type === "unlink" ? "course_unlink_decision" : "course_link_decision",
+    title: `Course ${request.type === "unlink" ? "unlink" : "link"} ${decisionWord}`,
+    text: `${request.instructorName}, your ${request.type === "unlink" ? "unlink" : "link"} request for ${request.courseCode} was ${decisionWord} by an administrator.`,
+    read: false,
+    time: "Just now",
+    audience: ["instructor"],
+    targetInstructorEmail: request.instructorEmail,
+    courseLinkMeta: {
+      type: request.type,
+      courseCode: request.courseCode,
+      decision: decisionWord,
+    },
+  });
+  emitDummyUpdate();
+
+  return { ok: true };
+}
+
+export function appendInstructorCourseRequest(payload) {
+  const nextId = instructorCourseRequests.length
+    ? Math.max(...instructorCourseRequests.map((request) => request.id)) + 1
+    : 1;
+  const courseMeta = courses.find((course) => course.id === payload.courseId || course.code === payload.courseCode);
+  const row = {
+    id: nextId,
+    instructorId: payload.instructorId,
+    instructorName: payload.instructorName,
+    instructorEmail: payload.instructorEmail,
+    courseId: courseMeta?.id ?? payload.courseId,
+    courseCode: courseMeta?.code ?? payload.courseCode,
+    courseName: courseMeta?.name ?? payload.courseName,
+    type: payload.type === "unlink" ? "unlink" : "link",
+    requestedAt: payload.requestedAt || new Date().toISOString().slice(0, 10),
+  };
+  instructorCourseRequests.push(row);
+
+  const linkVerb = row.type === "link" ? "link to" : "unlink from";
+  const nid = notifications.length ? Math.max(...notifications.map((notification) => notification.id)) + 1 : 1;
+  notifications.push({
+    id: nid,
+    kind: row.type === "unlink" ? "course_unlink_request" : "course_link_request",
+    title: row.type === "unlink" ? "Instructor unlink request" : "Instructor link request",
+    text: `${row.instructorName} submitted a request to ${linkVerb} course ${row.courseCode} (${row.courseName}).`,
+    read: false,
+    time: "Just now",
+    audience: ["admin"],
+    courseLinkMeta: {
+      type: row.type,
+      courseCode: row.courseCode,
+      courseName: row.courseName,
+      instructorName: row.instructorName,
+    },
+  });
+  emitDummyUpdate();
+}
+
+export function markNotificationReadForUser(notificationId, user) {
+  const visible = getVisibleNotifications(user);
+  const target = visible.find((notification) => notification.id === notificationId);
+  if (!target) return false;
+  const stored = notifications.find((notification) => notification.id === notificationId);
+  if (stored) stored.read = true;
+  else target.read = true;
+  emitDummyUpdate();
+  return true;
+}
+
+export function markAllNotificationsReadForUser(user) {
+  const visibleIds = new Set(getVisibleNotifications(user).map((notification) => notification.id));
+  let changed = false;
+  notifications.forEach((notification) => {
+    if (visibleIds.has(notification.id) && !notification.read) {
+      notification.read = true;
+      changed = true;
+    }
+  });
+  if (changed) emitDummyUpdate();
+}
+
+export function setProjectPlatformActive(projectId, active) {
+  const project = projects.find((item) => item.id === projectId);
+  if (!project) return false;
+  project.platformActive = active;
+  emitDummyUpdate();
+  return true;
+}
 
 export function getVisibleNotifications(user) {
   if (!user?.role) return notifications;
 
-  return notifications.filter((notification) =>
-    !notification.audience || notification.audience.includes(user.role)
+  return notifications.filter((notification) => {
+    if (notification.audience && !notification.audience.includes(user.role)) {
+      return false;
+    }
+    if (notification.targetStudentEmail && notification.targetStudentEmail !== user.email) {
+      return false;
+    }
+    if (notification.targetInstructorEmail && notification.targetInstructorEmail !== user.email) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/** UI helper: icon bubble for notification rows (dock + full page). */
+export function getNotificationPresentation(notification) {
+  const kind = notification.kind || "";
+  if (kind === "course_link_request" || kind === "course_link_decision") {
+    return { glyph: "🔗", label: "Course link", bubble: "bg-accent-gold/15 text-accent-gold border-accent-gold/25" };
+  }
+  if (kind === "course_unlink_request" || kind === "course_unlink_decision") {
+    return { glyph: "⎋", label: "Course unlink", bubble: "bg-warning/10 text-warning border-warning/25" };
+  }
+  if (kind === "project_flagged") {
+    return { glyph: "⚑", label: "Moderation", bubble: "bg-danger/10 text-danger border-danger/25" };
+  }
+  if (kind === "student_appeal") {
+    return { glyph: "✉", label: "Appeal", bubble: "bg-accent-blue/10 text-accent-blue border-accent-blue/25" };
+  }
+  if (kind === "rating" || kind === "feedback") {
+    return { glyph: "✦", label: "Academic", bubble: "bg-accent-blue/10 text-accent-blue border-accent-blue/25" };
+  }
+  if (kind === "employer_verification" || kind === "admin_employer") {
+    return { glyph: "🏢", label: "Employer", bubble: "bg-bg-elevated text-text-secondary border-border" };
+  }
+  if (kind === "collab") {
+    return { glyph: "👥", label: "Social", bubble: "bg-success/10 text-success border-success/25" };
+  }
+  return { glyph: "🔔", label: "Update", bubble: "bg-bg-elevated text-text-secondary border-border" };
+}
+
+export function isProjectListedPublicly(project) {
+  const active = project.platformActive !== false;
+  const hidden = project.hiddenFromPublic === true;
+  const isPublicVisibility = project.visibility === "public";
+  return Boolean(active && !hidden && isPublicVisibility && !project.flagged);
+}
+
+export function exploreProjectsForUser(user) {
+  if (!user) return projects.filter((project) => isProjectListedPublicly(project));
+  if (user.role === "admin" || user.role === "instructor") {
+    return projects.filter((project) => project.hiddenFromPublic !== true);
+  }
+  return projects.filter((project) => isProjectListedPublicly(project));
+}
+
+function studentPortfolioEmailForOwner(ownerName) {
+  const portfolioEntry = portfolios.find((portfolio) => portfolio.owner === ownerName);
+  return portfolioEntry?.studentEmail || null;
+}
+
+export function getProjectAppeals() {
+  return [...projectAppeals].sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt)));
+}
+
+export function flagProjectModeration(actorUser, projectId, reason) {
+  const project = projects.find((item) => item.id === projectId);
+  if (!project || !reason?.trim()) return { ok: false, error: "Missing project or reason." };
+  const role = actorUser?.role;
+  if (!["admin", "instructor"].includes(role)) return { ok: false, error: "Not allowed." };
+
+  project.flagged = true;
+  project.flagReason = reason.trim();
+  project.platformActive = false;
+  project.hiddenFromPublic = false;
+  project.appealSubmitted = false;
+
+  const targetEmail =
+    dummyUsers.find((student) => student.role === "student" && student.name === project.owner)?.email ||
+    studentPortfolioEmailForOwner(project.owner);
+
+  const nid = notifications.length ? Math.max(...notifications.map((notification) => notification.id)) + 1 : 1;
+  const actorLabel =
+    actorUser?.name || (role === "admin" ? "An administrator" : "A course instructor");
+  notifications.push({
+    id: nid,
+    kind: "project_flagged",
+    title: "Project flagged for policy review",
+    text: `${actorLabel} flagged your project "${project.title}". Reason: ${project.flagReason}. The project is deactivated on the platform until you submit an appeal or an administrator clears the flag.`,
+    read: false,
+    time: "Just now",
+    audience: ["student"],
+    targetStudentEmail: targetEmail || undefined,
+  });
+  emitDummyUpdate();
+  return { ok: true };
+}
+
+export function submitProjectAppeal(studentUser, projectId, message) {
+  const project = projects.find((item) => item.id === projectId);
+  if (!project?.flagged || project.owner !== studentUser?.name) {
+    return { ok: false, error: "You can only appeal your own flagged projects." };
+  }
+  const hasPendingAppeal = projectAppeals.some(
+    (appeal) => appeal.projectId === projectId && appeal.status === "pending"
   );
+  if (hasPendingAppeal || project.appealSubmitted) {
+    return { ok: false, error: "You already have a pending appeal for this project." };
+  }
+  const trimmed = message?.trim() || "";
+  if (trimmed.length < 16) return { ok: false, error: "Please write a slightly longer explanation (at least 16 characters)." };
+  if (trimmed.length > 420) return { ok: false, error: "Please keep your explanation under 420 characters." };
+
+  const nextAppealId = projectAppeals.length
+    ? Math.max(...projectAppeals.map((appeal) => appeal.id)) + 1
+    : 1;
+  projectAppeals.push({
+    id: nextAppealId,
+    projectId,
+    projectTitle: project.title,
+    studentName: studentUser.name,
+    studentEmail: studentUser.email,
+    message: trimmed,
+    submittedAt: new Date().toISOString().slice(0, 10),
+    status: "pending",
+  });
+  project.appealSubmitted = true;
+
+  const aid = notifications.length ? Math.max(...notifications.map((notification) => notification.id)) + 1 : 1;
+  notifications.push({
+    id: aid,
+    kind: "student_appeal",
+    title: "Student submitted an appeal",
+    text: `${studentUser.name} submitted an appeal for "${project.title}".`,
+    read: false,
+    time: "Just now",
+    audience: ["admin"],
+  });
+  emitDummyUpdate();
+  return { ok: true };
+}
+
+export function adminHideFlaggedProject(projectId) {
+  const project = projects.find((item) => item.id === projectId);
+  if (!project || !project.flagged) return { ok: false };
+  project.hiddenFromPublic = true;
+  project.platformActive = false;
+  emitDummyUpdate();
+  return { ok: true };
+}
+
+export function adminClearProjectFlag(projectId) {
+  const project = projects.find((item) => item.id === projectId);
+  if (!project || !project.flagged) return { ok: false };
+  project.flagged = false;
+  project.flagReason = null;
+  project.hiddenFromPublic = false;
+  project.platformActive = true;
+  project.appealSubmitted = false;
+  projectAppeals.forEach((appeal) => {
+    if (appeal.projectId === projectId && appeal.status === "pending") {
+      appeal.status = "resolved";
+    }
+  });
+  emitDummyUpdate();
+  return { ok: true };
 }
 
 export function getUnreadNotificationCount(user) {
   return getVisibleNotifications(user).filter((notification) => !notification.read).length;
+}
+
+export function getFlaggedProjects() {
+  return projects.filter((project) => project.flagged === true);
 }
 
 export const internships = [

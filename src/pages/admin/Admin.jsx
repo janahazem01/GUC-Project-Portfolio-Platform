@@ -1,7 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, PageHeader, Modal, Input, Button } from "../../components/ui";
-import { courses, dummyUsers, employerApplications, projects } from "../../data/dummy";
+import { Badge, Button, Card, Input, Modal, PageHeader } from "../../components/ui";
+import {
+  courses,
+  dummyUsers,
+  employerApplications,
+  emitDummyUpdate,
+  projects,
+  subscribeDummyUpdates,
+} from "../../data/dummy";
 
 const shortcuts = [
   {
@@ -28,7 +35,7 @@ const shortcuts = [
         <path d="M9 12h11" />
       </svg>
     ),
-    path: "/admin/courses",
+    path: "/courses",
   },
   {
     title: "Projects",
@@ -55,6 +62,7 @@ const shortcuts = [
     path: "/admin/employers",
   },
   { title: "Approvals", subtitle: "Pending employer docs", icon: "✓", path: "/admin/approvals" },
+  { title: "Appeals", subtitle: "Student flag appeals", icon: "✉", path: "/admin/appeals" },
   { title: "Flagged", subtitle: "Reported projects", icon: "!", path: "/admin/flagged" },
   {
     title: "Create Admin",
@@ -85,12 +93,26 @@ const shortcuts = [
 
 export default function Admin() {
   const navigate = useNavigate();
+  const [dataRevision, setDataRevision] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [newAdminName, setNewAdminName] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
   const [errors, setErrors] = useState({});
+
+  useEffect(() => subscribeDummyUpdates(() => setDataRevision((n) => n + 1)), []);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("portfolio-toast-notification", {
+        detail: {
+          title: "Instructor course request (demo)",
+          body: "Dr. Aya Salama requested to link to CSEN401 — Software Engineering. This toast appears every time you open the admin dashboard so you can test the bottom-right popup.",
+        },
+      })
+    );
+  }, []);
 
   const openCreateAdminModal = () => {
     setNewAdminName("");
@@ -133,30 +155,86 @@ export default function Admin() {
     };
 
     dummyUsers.push(newAdmin);
+    emitDummyUpdate();
     setIsConfirmOpen(false);
     setIsCreateOpen(false);
     setShowSuccess(true);
   };
 
-  const stats = useMemo(() => ([
-    { label: "Total Users", value: String(dummyUsers.length) },
-    { label: "Total Projects", value: String(projects.length) },
-    { label: "Courses", value: String(courses.length) },
-    { label: "Pending Approvals", value: String(employerApplications.filter((application) => application.verificationStatus === "pending").length) },
-  ]), []);
+  const telemetry = useMemo(() => {
+    const students = dummyUsers.filter((u) => u.role === "student").length;
+    const instructors = dummyUsers.filter((u) => u.role === "instructor").length;
+    const employers = dummyUsers.filter((u) => u.role === "employer").length;
+    const administrators = dummyUsers.filter((u) => u.role === "admin").length;
+    const flagged = projects.filter((project) => project.flagged).length;
+    const roleTotal = students + instructors + employers;
+    return {
+      students,
+      instructors,
+      employers,
+      administrators,
+      roleTotal,
+      totalAccounts: dummyUsers.length,
+      projects: projects.length,
+      courses: courses.length,
+      pendingApprovals: employerApplications.filter((application) => application.verificationStatus === "pending").length,
+      flagged,
+    };
+  }, [dataRevision]);
 
   return (
     <div>
       <PageHeader title="Admin Dashboard" subtitle="Platform overview and controls" />
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <p className="text-text-secondary text-xs font-sans uppercase tracking-widest mb-2">{stat.label}</p>
-            <p className="font-mono text-3xl text-text-primary">{stat.value}</p>
-          </Card>
-        ))}
-      </div>
+      <Card className="mb-8 p-6 border-border">
+        <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-text-secondary mb-4">Usage overview</p>
+        <p className="text-text-secondary text-sm font-sans mb-6 max-w-2xl">
+          Headcount covers students, employers, and course instructors only. Project and course totals reflect what is stored in this demo catalog.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-xl border border-border bg-bg-elevated/40 px-5 py-4">
+            <p className="text-xs font-sans text-text-secondary mb-1">People on the platform</p>
+            <p className="font-display text-3xl text-text-primary tabular-nums">{telemetry.roleTotal}</p>
+            <dl className="mt-3 space-y-2 text-sm font-sans text-text-secondary">
+              <div className="flex justify-between gap-4">
+                <dt>Students</dt>
+                <dd className="font-mono text-text-primary">{telemetry.students}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Employers</dt>
+                <dd className="font-mono text-text-primary">{telemetry.employers}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Course instructors</dt>
+                <dd className="font-mono text-text-primary">{telemetry.instructors}</dd>
+              </div>
+            </dl>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-elevated/40 px-5 py-4">
+            <p className="text-xs font-sans text-text-secondary mb-1">Projects</p>
+            <p className="font-display text-3xl text-text-primary tabular-nums">{telemetry.projects}</p>
+            <p className="mt-3 text-sm text-text-secondary font-sans leading-relaxed">
+              Submissions tracked in the portfolio system ({telemetry.flagged} currently flagged for review).
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-bg-elevated/40 px-5 py-4 sm:col-span-2 lg:col-span-1">
+            <p className="text-xs font-sans text-text-secondary mb-1">Courses</p>
+            <p className="font-display text-3xl text-text-primary tabular-nums">{telemetry.courses}</p>
+            <p className="mt-3 text-sm text-text-secondary font-sans leading-relaxed">
+              Active catalog entries. Manage names and codes from the Courses shortcut.
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-sans text-text-secondary">
+          <span>
+            All accounts in directory (including admins):{" "}
+            <span className="font-mono text-text-primary">{telemetry.totalAccounts}</span>
+          </span>
+          {telemetry.pendingApprovals > 0 && (
+            <Badge variant="warning">{telemetry.pendingApprovals} employer verification pending</Badge>
+          )}
+        </div>
+      </Card>
 
       <Card className="mb-8 p-0 overflow-hidden">
         <div className="px-6 py-5 border-b border-border">

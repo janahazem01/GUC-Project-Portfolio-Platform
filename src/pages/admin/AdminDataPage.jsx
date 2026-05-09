@@ -1,7 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, Modal, PageHeader } from "../../components/ui";
-import { courses, dummyUsers, employerApplications, projects } from "../../data/dummy";
+import {
+  adminClearProjectFlag,
+  adminHideFlaggedProject,
+  applyInstructorCourseRequestDecision,
+  dummyUsers,
+  employerApplications,
+  getFlaggedProjects,
+  getProjectAppeals,
+  instructorCourseRequests,
+  projects,
+  setProjectPlatformActive,
+  subscribeDummyUpdates,
+} from "../../data/dummy";
 
 const roleLabels = {
   student: "Student",
@@ -17,6 +29,8 @@ const pageTitles = {
   employers: ["Employers", "Employer accounts registered on the platform."],
   approvals: ["Approvals", "Employer verification requests and statuses."],
   flagged: ["Flagged Projects", "Reported or flagged project records."],
+  requests: ["Instructor Requests", "Link and unlink requests from course instructors."],
+  appeals: ["Student Appeals", "Short appeals submitted after projects are flagged for review."],
 };
 
 const roleOptions = [
@@ -49,23 +63,28 @@ function DataRow({ children, columns, style }) {
   );
 }
 
+function isPlatformProjectActive(project) {
+  return project.platformActive !== false;
+}
+
 export default function AdminDataPage() {
   const { section } = useParams();
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [filtersAddedOpen, setFiltersAddedOpen] = useState(false);
-  const [courseList, setCourseList] = useState([...courses]);
-  const [courseModalOpen, setCourseModalOpen] = useState(false);
-  const [courseAction, setCourseAction] = useState("create");
-  const [editingCourse, setEditingCourse] = useState(null);
-  const [courseForm, setCourseForm] = useState({ name: "", code: "" });
-  const [courseErrors, setCourseErrors] = useState({});
-  const [courseConfirmOpen, setCourseConfirmOpen] = useState(false);
-  const [courseDeleteOpen, setCourseDeleteOpen] = useState(false);
-  const [courseSuccessOpen, setCourseSuccessOpen] = useState(false);
-  const [courseSuccessMessage, setCourseSuccessMessage] = useState("");
+  const [, bumpDummyRevision] = useState(0);
+  const [actionFeedbackOpen, setActionFeedbackOpen] = useState(false);
+  const [actionFeedbackMessage, setActionFeedbackMessage] = useState("");
+  const [projectDeactivateTarget, setProjectDeactivateTarget] = useState(null);
   const page = pageTitles[section];
+
+  useEffect(() => {
+    const unsubscribe = subscribeDummyUpdates(() =>
+      bumpDummyRevision((revision) => revision + 1)
+    );
+    return unsubscribe;
+  }, []);
 
   const employerUsers = dummyUsers.filter((user) => user.role === "employer");
   const isFiltered = Boolean(selectedRole);
@@ -81,96 +100,14 @@ export default function AdminDataPage() {
   ), [selectedRole]);
 
   if (!page) return <Navigate to="/" replace />;
-
-  const resetCourseForm = () => {
-    setCourseForm({ name: "", code: "" });
-    setCourseErrors({});
-    setEditingCourse(null);
-    setCourseAction("create");
-  };
-
-  const openCourseModal = (action, course = null) => {
-    if (action === "edit" && course) {
-      setCourseAction("edit");
-      setEditingCourse(course);
-      setCourseForm({ name: course.name, code: course.code });
-    } else {
-      resetCourseForm();
-      setCourseAction("create");
-    }
-    setCourseModalOpen(true);
-  };
-
-  const validateCourseForm = () => {
-    const errors = {};
-    if (!courseForm.name.trim()) errors.name = "Course name is required.";
-    if (!courseForm.code.trim()) errors.code = "Course code is required.";
-    setCourseErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleCourseSave = (event) => {
-    event.preventDefault();
-    if (!validateCourseForm()) return;
-    setCourseConfirmOpen(true);
-  };
-
-  const applyCourseSave = () => {
-    if (courseAction === "create") {
-      const id = courseList.length ? Math.max(...courseList.map((course) => course.id)) + 1 : 1;
-      const newCourse = { id, name: courseForm.name.trim(), code: courseForm.code.trim() };
-      courses.push(newCourse);
-      setCourseList([...courseList, newCourse]);
-      setCourseSuccessMessage("Course created successfully.");
-    } else if (editingCourse) {
-      const updatedCourse = { ...editingCourse, name: courseForm.name.trim(), code: courseForm.code.trim() };
-      const nextList = courseList.map((course) => (course.id === editingCourse.id ? updatedCourse : course));
-      const index = courses.findIndex((course) => course.id === editingCourse.id);
-      if (index !== -1) courses[index] = updatedCourse;
-      setCourseList(nextList);
-      setCourseSuccessMessage("Course updated successfully.");
-    }
-
-    setCourseConfirmOpen(false);
-    setCourseModalOpen(false);
-    setCourseSuccessOpen(true);
-  };
-
-  const handleCourseDelete = (course) => {
-    setEditingCourse(course);
-    setCourseDeleteOpen(true);
-  };
-
-  const confirmCourseDelete = () => {
-    if (!editingCourse) return;
-    setCourseList(courseList.filter((course) => course.id !== editingCourse.id));
-    const index = courses.findIndex((course) => course.id === editingCourse.id);
-    if (index !== -1) courses.splice(index, 1);
-    setCourseDeleteOpen(false);
-    setCourseSuccessMessage("Course deleted successfully.");
-    setCourseSuccessOpen(true);
-  };
-
-  const closeCourseModals = () => {
-    setCourseModalOpen(false);
-    setCourseConfirmOpen(false);
-    setCourseDeleteOpen(false);
-    setCourseErrors({});
-  };
-
-  const courseHeaderAction = (
-    <div className="flex flex-wrap items-center justify-end gap-3">
-      <Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>
-      <Button onClick={() => openCourseModal("create")}>+ Create Course</Button>
-    </div>
-  );
+  if (section === "courses") return <Navigate to="/courses" replace />;
 
   return (
     <div className="mx-auto max-w-6xl px-4">
       <PageHeader
         title={page[0]}
         subtitle={page[1]}
-        action={section === "courses" ? courseHeaderAction : <Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>}
+        action={<Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>}
       />
 
       {section === "users" && (
@@ -308,112 +245,98 @@ export default function AdminDataPage() {
         </>
       )}
 
-      {section === "courses" && (
-        <>
-          <div className="w-full">
-            <Card className="p-0 overflow-hidden">
-              <DataHeader
-                columns={["Course Name", "Code", "Linked Projects", "Actions"]}
-                style={{ gridTemplateColumns: "2.7fr 1.6fr 1.2fr 1fr" }}
-                alignments={["text-left", "text-left", "text-center", "text-center"]}
-              />
-              {courseList.map((course) => (
-                <DataRow key={course.id} columns={4} style={{ gridTemplateColumns: "2.7fr 1.6fr 1.2fr 1fr" }}>
-                  <div className="truncate text-left">
-                    <p className="text-sm text-text-primary font-semibold truncate">{course.name}</p>
-                  </div>
-                  <div className="truncate text-left">
-                    <p className="text-sm text-text-secondary font-mono truncate">{course.code}</p>
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <Badge variant="blue">{projects.filter((project) => project.courseCode === course.code).length}</Badge>
-                  </div>
-                  <div className="flex gap-2 justify-center w-full">
-                    <Button size="sm" onClick={() => openCourseModal("edit", course)}>
-                      Edit
-                    </Button>
-                    <Button size="sm" variant="danger" onClick={() => handleCourseDelete(course)}>
-                      Delete
-                    </Button>
-                  </div>
-                </DataRow>
-              ))}
-            </Card>
-          </div>
-
-          <Modal isOpen={courseModalOpen} onClose={closeCourseModals} title={courseAction === "edit" ? "Edit Course" : "Create Course"}>
-            <form onSubmit={handleCourseSave} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-sm text-text-secondary font-sans">Course Name</label>
-                <input
-                  value={courseForm.name}
-                  onChange={(e) => setCourseForm((current) => ({ ...current, name: e.target.value }))}
-                  className={`w-full rounded-lg border px-4 py-2.5 text-text-primary bg-bg-elevated focus:outline-none focus:border-accent-blue transition ${courseErrors.name ? "border-danger" : "border-border"}`}
-                />
-                {courseErrors.name && <p className="text-danger text-sm">{courseErrors.name}</p>}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm text-text-secondary font-sans">Course Code</label>
-                <input
-                  value={courseForm.code}
-                  onChange={(e) => setCourseForm((current) => ({ ...current, code: e.target.value }))}
-                  className={`w-full rounded-lg border px-4 py-2.5 text-text-primary bg-bg-elevated focus:outline-none focus:border-accent-blue transition ${courseErrors.code ? "border-danger" : "border-border"}`}
-                />
-                {courseErrors.code && <p className="text-danger text-sm">{courseErrors.code}</p>}
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="secondary" onClick={closeCourseModals}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save Changes</Button>
-              </div>
-            </form>
-          </Modal>
-
-          <Modal isOpen={courseConfirmOpen} onClose={() => setCourseConfirmOpen(false)} title="Confirm action">
-            <p className="text-text-secondary text-sm mb-6">
-              Are you sure you want to {courseAction === "edit" ? "save changes to" : "create"} this course?
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setCourseConfirmOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={applyCourseSave}>Yes</Button>
-            </div>
-          </Modal>
-
-          <Modal isOpen={courseDeleteOpen} onClose={() => setCourseDeleteOpen(false)} title="Delete course">
-            <p className="text-text-secondary text-sm mb-6">
-              Are you sure you want to delete {editingCourse?.name}?
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setCourseDeleteOpen(false)}>
-                Cancel
-              </Button>
-              <Button variant="danger" onClick={confirmCourseDelete}>Yes</Button>
-            </div>
-          </Modal>
-
-          <Modal isOpen={courseSuccessOpen} onClose={() => setCourseSuccessOpen(false)} title="Success">
-            <p className="text-text-secondary text-sm mb-6">{courseSuccessMessage}</p>
-            <div className="flex justify-end gap-3">
-              <Button onClick={() => setCourseSuccessOpen(false)}>Okay</Button>
-            </div>
-          </Modal>
-        </>
-      )}
-
       {section === "projects" && (
         <Card className="p-0 overflow-hidden">
-          <DataHeader columns={["Project", "Owner", "Course", "Created"]} />
-          {projects.map((project) => (
-            <DataRow key={project.id} columns={4}>
-              <p className="text-sm text-text-primary font-sans truncate">{project.title}</p>
-              <p className="text-sm text-text-secondary font-sans truncate">{project.owner}</p>
-              <Badge variant="blue">{project.courseCode}</Badge>
-              <p className="text-sm text-text-secondary font-mono">{project.createdAt}</p>
-            </DataRow>
-          ))}
+          <div className="px-4 py-3 border-b border-border bg-bg-elevated/40">
+            <p className="text-sm font-sans text-text-secondary">
+              All projects in one place. Scroll horizontally on smaller screens; columns stay aligned.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[880px] text-left border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-bg-base">
+                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal min-w-[14rem]">
+                    Project
+                  </th>
+                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal min-w-[8.5rem]">
+                    Owner
+                  </th>
+                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[6.5rem]">
+                    Code
+                  </th>
+                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[7.5rem]">
+                    Platform
+                  </th>
+                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[8.5rem]">
+                    Created
+                  </th>
+                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-right w-[12rem]">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {projects.map((project) => {
+                  const active = isPlatformProjectActive(project);
+                  const vis =
+                    project.visibility === "public" ? "Public" : project.visibility === "private" ? "Private" : project.visibility;
+                  return (
+                    <tr
+                      key={project.id}
+                      className="border-b border-border last:border-0 hover:bg-bg-elevated/20 transition-colors align-middle"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-sm font-semibold text-text-primary font-sans leading-snug">{project.title}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {project.flagged && <Badge variant="danger">Flagged</Badge>}
+                            <Badge variant="default">{vis}</Badge>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-text-secondary font-sans">{project.owner}</p>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant="blue">{project.courseCode}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={active ? "success" : "warning"}>{active ? "Active" : "Inactive"}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="text-xs font-mono text-text-secondary whitespace-nowrap">{project.createdAt}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={active}
+                            onClick={() => {
+                              setProjectPlatformActive(project.id, true);
+                              setActionFeedbackMessage(`${project.title} was activated successfully.`);
+                              setActionFeedbackOpen(true);
+                            }}
+                          >
+                            Activate
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            disabled={!active}
+                            onClick={() => setProjectDeactivateTarget(project)}
+                          >
+                            Deactivate
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
 
@@ -445,14 +368,229 @@ export default function AdminDataPage() {
         </Card>
       )}
 
-      {section === "flagged" && (
-        <Card>
-          <div className="flex items-center justify-between">
-            <p className="text-text-secondary text-sm font-sans">No flagged projects at this time.</p>
-            <Badge variant="danger">0 flagged</Badge>
+      {section === "requests" && (
+        <Card className="p-0 overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b border-border bg-bg-elevated/40">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="blue">
+                {instructorCourseRequests.length} pending
+              </Badge>
+              <p className="text-text-secondary text-sm font-sans">
+                Accept to apply course links. Reject to decline without linking changes.
+              </p>
+            </div>
           </div>
+          <DataHeader
+            columns={["Instructor", "Email", "Course", "Type", "Requested", "Actions"]}
+            style={{ gridTemplateColumns: "1.3fr 1.6fr 1.1fr 0.95fr 0.95fr 1.2fr" }}
+            alignments={["text-left", "text-left", "text-left", "text-center", "text-center", "text-center"]}
+          />
+          {instructorCourseRequests.length === 0 ? (
+            <div className="px-4 py-6 text-sm font-sans text-text-secondary border-b border-border">
+              No pending instructor requests.
+            </div>
+          ) : (
+            instructorCourseRequests.map((request) => (
+              <DataRow
+                key={request.id}
+                columns={6}
+                style={{ gridTemplateColumns: "1.3fr 1.6fr 1.1fr 0.95fr 0.95fr 1.2fr" }}
+              >
+                <p className="text-sm text-text-primary font-semibold truncate">{request.instructorName}</p>
+                <p className="text-sm text-text-secondary font-sans truncate">{request.instructorEmail}</p>
+                <div className="min-w-0 text-left">
+                  <p className="text-sm text-text-primary font-sans truncate">{request.courseCode}</p>
+                  <p className="text-xs text-text-secondary font-sans truncate">{request.courseName}</p>
+                </div>
+                <div className="flex justify-center">
+                  <Badge variant={request.type === "unlink" ? "warning" : "success"}>
+                    {request.type === "unlink" ? "Unlink" : "Link"}
+                  </Badge>
+                </div>
+                <p className="text-sm text-text-secondary font-mono text-center">{request.requestedAt}</p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      applyInstructorCourseRequestDecision(request.id, true);
+                      setActionFeedbackMessage("This step was completed successfully.");
+                      setActionFeedbackOpen(true);
+                    }}
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => {
+                      applyInstructorCourseRequestDecision(request.id, false);
+                      setActionFeedbackMessage("This step was completed successfully.");
+                      setActionFeedbackOpen(true);
+                    }}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </DataRow>
+            ))
+          )}
         </Card>
       )}
+
+      {section === "flagged" && (
+        <>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <Badge variant="danger">{getFlaggedProjects().length} flagged</Badge>
+            <span className="text-text-secondary text-sm font-sans">
+              Deactivate automatically when instructors or administrators record a flag — use the controls to hide listings or restore visibility.
+            </span>
+          </div>
+          <Card className="p-0 overflow-hidden">
+            <DataHeader
+              columns={["Project", "Owner", "Course", "Reason", "Visibility", "Moderation"]}
+              style={{ gridTemplateColumns: "1.6fr 1.1fr 0.75fr minmax(0, 1.55fr) 0.95fr 1.4fr" }}
+              alignments={["text-left", "text-left", "text-center", "text-left", "text-center", "text-center"]}
+            />
+            {getFlaggedProjects().length === 0 ? (
+              <div className="px-4 py-6 text-sm font-sans text-text-secondary border-b border-border">
+                No flagged projects at this time.
+              </div>
+            ) : (
+              getFlaggedProjects().map((project) => {
+                const hidden = project.hiddenFromPublic === true;
+                const active = isPlatformProjectActive(project);
+                return (
+                  <DataRow
+                    key={project.id}
+                    columns={6}
+                    style={{ gridTemplateColumns: "1.6fr 1.1fr 0.75fr minmax(0, 1.55fr) 0.95fr 1.4fr" }}
+                  >
+                    <p className="text-sm text-text-primary font-semibold font-sans truncate">{project.title}</p>
+                    <p className="text-sm text-text-secondary font-sans truncate">{project.owner}</p>
+                    <div className="flex justify-center">
+                      <Badge variant="blue">{project.courseCode}</Badge>
+                    </div>
+                    <p className="text-sm text-text-secondary font-sans whitespace-normal break-words leading-relaxed">
+                      {project.flagReason || "—"}
+                    </p>
+                    <div className="flex flex-col items-center gap-1 justify-center">
+                      {hidden ? (
+                        <Badge variant="warning">Hidden from public</Badge>
+                      ) : (
+                        <Badge variant="success">Listed (review)</Badge>
+                      )}
+                      <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-text-secondary">
+                        {active ? "Active pipeline" : "Paused pipeline"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-2 justify-center items-stretch">
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={hidden}
+                        onClick={() => {
+                          const result = adminHideFlaggedProject(project.id);
+                          if (!result.ok) return;
+                          setActionFeedbackMessage(`${project.title} is now hidden from public discovery.`);
+                          setActionFeedbackOpen(true);
+                        }}
+                      >
+                        Hide from public
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const result = adminClearProjectFlag(project.id);
+                          if (!result.ok) return;
+                          setActionFeedbackMessage(`${project.title} flag was cleared and visibility restored.`);
+                          setActionFeedbackOpen(true);
+                        }}
+                      >
+                        Clear flag & keep visible
+                      </Button>
+                    </div>
+                  </DataRow>
+                );
+              })
+            )}
+          </Card>
+        </>
+      )}
+
+      {section === "appeals" && (
+        <Card className="p-0 overflow-hidden">
+          <DataHeader
+            columns={["Student", "Project", "Submitted", "Status", "Message preview"]}
+            style={{ gridTemplateColumns: "1.1fr 1.3fr 0.85fr 0.75fr minmax(0, 2.2fr)" }}
+            alignments={["text-left", "text-left", "text-center", "text-center", "text-left"]}
+          />
+          {getProjectAppeals().length === 0 ? (
+            <div className="px-4 py-6 text-sm font-sans text-text-secondary border-b border-border">
+              Appeals will appear automatically when students reply to flags.
+            </div>
+          ) : (
+            getProjectAppeals().map((appeal) => (
+              <DataRow
+                key={appeal.id}
+                columns={5}
+                style={{ gridTemplateColumns: "1.1fr 1.3fr 0.85fr 0.75fr minmax(0, 2.2fr)" }}
+              >
+                <div className="min-w-0 text-left space-y-1">
+                  <p className="text-sm font-semibold text-text-primary truncate">{appeal.studentName}</p>
+                  <p className="text-[11px] font-mono text-text-secondary truncate">{appeal.studentEmail}</p>
+                </div>
+                <p className="text-sm text-text-secondary font-sans truncate">{appeal.projectTitle}</p>
+                <p className="text-xs font-mono text-text-secondary text-center">{appeal.submittedAt}</p>
+                <div className="flex justify-center">
+                  <Badge variant={appeal.status === "pending" ? "warning" : "success"}>{appeal.status}</Badge>
+                </div>
+                <p className="text-sm text-text-secondary font-sans whitespace-normal break-words leading-relaxed line-clamp-4">
+                  {appeal.message}
+                </p>
+              </DataRow>
+            ))
+          )}
+        </Card>
+      )}
+
+      <Modal
+        isOpen={actionFeedbackOpen}
+        onClose={() => setActionFeedbackOpen(false)}
+        title="Success"
+      >
+        <p className="text-text-secondary text-sm mb-6">{actionFeedbackMessage}</p>
+        <div className="flex justify-end gap-3">
+          <Button onClick={() => setActionFeedbackOpen(false)}>Okay</Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(projectDeactivateTarget)}
+        onClose={() => setProjectDeactivateTarget(null)}
+        title="Deactivate project"
+      >
+        <p className="text-text-secondary text-sm mb-6">
+          Are you sure you want to deactivate {projectDeactivateTarget?.title ?? "this project"}?
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button variant="ghost" onClick={() => setProjectDeactivateTarget(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              if (!projectDeactivateTarget?.id) return;
+              setProjectPlatformActive(projectDeactivateTarget.id, false);
+              const title = projectDeactivateTarget.title;
+              setProjectDeactivateTarget(null);
+              setActionFeedbackMessage(`${title} was deactivated successfully.`);
+              setActionFeedbackOpen(true);
+            }}
+          >
+            Yes
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
