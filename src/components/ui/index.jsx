@@ -14,7 +14,7 @@ export function Card({ children, className = "", hover = false, ...props }) {
 }
 
 export function Button({ children, variant = "primary", size = "md", className = "", ...props }) {
-  const base = "font-sans font-medium rounded-lg transition-all duration-150 cursor-pointer";
+  const base = "font-sans font-medium rounded-lg transition-all duration-150 cursor-pointer disabled:opacity-45 disabled:pointer-events-none disabled:cursor-not-allowed";
   const sizes = { sm: "px-3 py-1.5 text-sm", md: "px-5 py-2.5 text-sm", lg: "px-6 py-3 text-base" };
   const variants = {
     primary: "bg-accent-blue text-white hover:bg-accent-blue/80",

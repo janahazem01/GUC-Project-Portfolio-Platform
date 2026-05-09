@@ -1,38 +1,120 @@
-import { useContext } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { Card, Button, PageHeader } from "../components/ui";
 import { AuthContext } from "../context/AuthContext";
-import { getVisibleNotifications } from "../data/dummy";
+import {
+  getNotificationPresentation,
+  getVisibleNotifications,
+  markAllNotificationsReadForUser,
+  markNotificationReadForUser,
+  subscribeDummyUpdates,
+} from "../data/dummy";
 
 export default function Notifications() {
   const { user } = useContext(AuthContext);
-  const notifications = getVisibleNotifications(user);
+  const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = subscribeDummyUpdates(() =>
+      setRevision((tick) => tick + 1)
+    );
+    return unsubscribe;
+  }, []);
+
+  const notifications = useMemo(() => getVisibleNotifications(user), [user, revision]);
+
+  const unreadCount = useMemo(
+    () => notifications.filter((notification) => !notification.read).length,
+    [notifications]
+  );
+
+  const bump = () => setRevision((tick) => tick + 1);
+
+  const handleMarkSingle = (notificationId) => {
+    markNotificationReadForUser(notificationId, user);
+    bump();
+  };
+
+  const handleMarkAll = () => {
+    markAllNotificationsReadForUser(user);
+    bump();
+  };
+
+  const sorted = useMemo(
+    () => [...notifications].sort((a, b) => Number(b.id) - Number(a.id)),
+    [notifications]
+  );
 
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <PageHeader
         title="Notifications"
-        action={<Button variant="ghost" size="sm">Mark all as read</Button>}
+        subtitle="Unread items stay highlighted. Instructor link and unlink requests appear here for admins; decisions go to the instructor’s inbox."
+        action={
+          <Button variant="ghost" size="sm" onClick={handleMarkAll} disabled={unreadCount === 0}>
+            Mark all as read
+          </Button>
+        }
       />
-      <Card>
-        <div className="flex flex-col divide-y divide-border">
-          {notifications.length > 0 ? notifications.map((n) => (
-            <div key={n.id} className={`py-4 flex items-start gap-3 ${!n.read ? "opacity-100" : "opacity-50"}`}>
-              <span className={`w-2 h-2 rounded-full mt-2 shrink-0 ${!n.read ? "bg-accent-blue" : "bg-transparent border border-border"}`} />
-              <div className="flex-1">
-                <p className="text-sm font-sans text-text-primary">{n.text}</p>
-                <p className="text-xs font-mono text-text-secondary mt-1">{n.time}</p>
-              </div>
-              {!n.read && (
-                <Button variant="ghost" size="sm">Mark read</Button>
-              )}
-            </div>
-          )) : (
-            <div className="py-4 text-sm text-text-secondary font-sans">
-              No notifications for your role yet.
-            </div>
-          )}
-        </div>
-      </Card>
+
+      <div className="flex flex-wrap items-center gap-2 mb-6">
+        <span className="text-text-secondary text-sm font-sans">
+          {unreadCount === 0
+            ? "You’re all caught up."
+            : `${unreadCount} unread for your account`}
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {sorted.length > 0 ? (
+          sorted.map((notification) => {
+            const vis = getNotificationPresentation(notification);
+            return (
+              <Card
+                key={notification.id}
+                className={`p-0 overflow-hidden border ${
+                  !notification.read ? "border-accent-blue/35 bg-accent-blue/[0.03]" : "border-border"
+                }`}
+              >
+                <div className="flex gap-4 p-4">
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border text-lg ${vis.bubble}`}
+                    title={vis.label}
+                  >
+                    <span aria-hidden="true">{vis.glyph}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-sans text-sm font-semibold text-text-primary leading-snug">
+                          {notification.title || "Notification"}
+                        </p>
+                        <p className="font-sans text-sm text-text-secondary mt-1.5 leading-relaxed">
+                          {notification.text}
+                        </p>
+                      </div>
+                      {!notification.read && (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-accent-blue mt-1.5" aria-label="Unread" />
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+                      <span className="text-[11px] font-mono text-text-secondary">{notification.time}</span>
+                      {!notification.read && (
+                        <Button variant="ghost" size="sm" onClick={() => handleMarkSingle(notification.id)}>
+                          Mark read
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })
+        ) : (
+          <Card className="py-12 text-center">
+            <p className="text-text-secondary text-sm font-sans">No notifications yet.</p>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

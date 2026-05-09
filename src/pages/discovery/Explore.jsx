@@ -195,7 +195,7 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Badge, Stars, Button, Input, PageHeader, ConfirmActionModal } from "../../components/ui";
-import { projects, courses, portfolios } from "../../data/dummy";
+import { exploreProjectsForUser, projects, courses, portfolios } from "../../data/dummy";
 import { AuthContext } from "../../context/AuthContext";
 import { useFavorites } from "../../hooks/useFavorites";
 
@@ -266,8 +266,9 @@ export default function Explore() {
     });
   };
 
-  // 🔹 FILTERING (unchanged)
-  const filtered = projects.filter((p) => {
+  // 🔹 FILTERING — respects moderation visibility based on viewer role.
+  const visiblePool = exploreProjectsForUser(user);
+  const filtered = visiblePool.filter((p) => {
     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase());
     const matchCourse = filterCourse ? p.courseCode === filterCourse : true;
 
