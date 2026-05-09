@@ -2,7 +2,14 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, Badge, Button, Input, Modal, PageHeader, SuccessToast, ConfirmActionModal } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
-import { internships, portfolios, pushInternshipApplicationDecisionNotification } from "../../data/dummy";
+import {
+  internships,
+  portfolios,
+  pushInternshipApplicationDecisionNotification,
+  getEmployerEmailForInternshipCompany,
+  internshipStudentCannotSubmitAnotherApplication,
+  pushInternshipApplicationReceivedNotification,
+} from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
 
 const internshipsStorageKey = "gucEmployerInternships";
@@ -328,7 +335,20 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
     setConfirmation({ action, onConfirm });
   };
 
+  const studentCannotApply = (internship) =>
+    !internship ||
+    internship.status !== "hiring" ||
+    internshipStudentCannotSubmitAnotherApplication(internship, user);
+
+  const applyButtonLabel = (internship) => {
+    if (!internship) return "Apply";
+    if (internship.status !== "hiring") return "Filled";
+    if (internshipStudentCannotSubmitAnotherApplication(internship, user)) return "Applied";
+    return "Apply";
+  };
+
   const handleApplyClick = (internship) => {
+    if (studentCannotApply(internship)) return;
     setSelectedInternship(internship);
     setShowApplicationForm(true);
   };
@@ -362,6 +382,13 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
       );
 
       setInternshipList(updatedInternships);
+      const employerEmail = getEmployerEmailForInternshipCompany(selectedInternship.company);
+      pushInternshipApplicationReceivedNotification({
+        employerEmail,
+        studentName: user?.name,
+        internshipTitle: selectedInternship.title,
+        internshipId: selectedInternship.id,
+      });
       setSuccessMessage("Application submitted successfully!");
       setSelectedInternship(null);
     });
@@ -502,6 +529,7 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
         {visibleInternships.length > 0 ? (
           visibleInternships.map((internship) => {
+            const applyLocked = studentCannotApply(internship);
             return (
               <Card
                 key={String(internship.id)}
@@ -546,10 +574,17 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
                     variant="gold"
                     size="sm"
                     onClick={() => handleApplyClick(internship)}
-                    disabled={internship.status !== "hiring"}
-                    className={internship.status !== "hiring" ? "opacity-50 cursor-not-allowed" : ""}
+                    disabled={applyLocked}
+                    className={applyLocked ? "opacity-50 cursor-not-allowed" : ""}
+                    title={
+                      internshipStudentCannotSubmitAnotherApplication(internship, user)
+                        ? "You already have an active application or were accepted for this internship"
+                        : internship.status !== "hiring"
+                          ? "This position is no longer accepting applications"
+                          : undefined
+                    }
                   >
-                    {internship.status === "hiring" ? "Apply" : "Filled"}
+                    {applyButtonLabel(internship)}
                   </Button>
                 </div>
               </Card>
@@ -615,12 +650,24 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
               <Button variant="secondary" onClick={() => setViewedInternship(null)}>
                 Close
               </Button>
-              <Button variant="gold" onClick={() => {
-                handleApplyClick(viewedInternship);
-                setViewedInternship(null);
-              }}
+              <Button
+                variant="gold"
+                disabled={studentCannotApply(viewedInternship)}
+                className={studentCannotApply(viewedInternship) ? "opacity-50 cursor-not-allowed" : ""}
+                title={
+                  viewedInternship && internshipStudentCannotSubmitAnotherApplication(viewedInternship, user)
+                    ? "You already have an active application or were accepted for this internship"
+                    : viewedInternship?.status !== "hiring"
+                      ? "This position is no longer accepting applications"
+                      : undefined
+                }
+                onClick={() => {
+                  if (studentCannotApply(viewedInternship)) return;
+                  handleApplyClick(viewedInternship);
+                  setViewedInternship(null);
+                }}
               >
-                Apply
+                {applyButtonLabel(viewedInternship)}
               </Button>
             </div>
           </div>

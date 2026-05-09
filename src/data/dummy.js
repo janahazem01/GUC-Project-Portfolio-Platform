@@ -910,6 +910,51 @@ export function markAllNotificationsReadForUser(user) {
   if (changed) emitDummyUpdate();
 }
 
+/** True if the student must see "Applied" / cannot apply again: they submitted (nominated) or were accepted. Rejected allows re-applying. */
+export function internshipStudentCannotSubmitAnotherApplication(internship, user) {
+  if (!internship?.applications?.length || !user?.email) return false;
+  const email = String(user.email).toLowerCase().trim();
+  return internship.applications.some(
+    (app) =>
+      String(app.studentEmail || "").toLowerCase().trim() === email &&
+      (app.status === "nominated" || app.status === "accepted")
+  );
+}
+
+/** Employer login email for a company name (demo catalog match on companyName). */
+export function getEmployerEmailForInternshipCompany(companyName) {
+  const norm = companyName?.trim();
+  if (!norm) return null;
+  const employer = dummyUsers.find((u) => u.role === "employer" && u.companyName?.trim() === norm);
+  return employer?.email || null;
+}
+
+/** Employer inbox: student submitted an application (demo). */
+export function pushInternshipApplicationReceivedNotification({
+  employerEmail,
+  studentName,
+  internshipTitle,
+  internshipId,
+}) {
+  if (!employerEmail) return;
+  const nid = notifications.length ? Math.max(...notifications.map((notification) => notification.id)) + 1 : 1;
+  const who = studentName?.trim() || "A student";
+  const roleTitle = internshipTitle?.trim() || "an internship";
+  notifications.push({
+    id: nid,
+    kind: "internship_application_received",
+    title: "New internship application",
+    text: `${who} has applied for the ${roleTitle} internship.`,
+    read: false,
+    time: "Just now",
+    audience: ["employer"],
+    targetUserEmail: employerEmail,
+    actionPath: internshipId != null ? `/internships/${internshipId}` : "/internships",
+    internshipId: internshipId ?? undefined,
+  });
+  emitDummyUpdate();
+}
+
 /** Student receives inbox row + toast when an employer accepts or rejects their internship application (demo). */
 export function pushInternshipApplicationDecisionNotification({
   studentEmail,
@@ -920,14 +965,23 @@ export function pushInternshipApplicationDecisionNotification({
   if (!studentEmail || !decision) return;
   const nid = notifications.length ? Math.max(...notifications.map((notification) => notification.id)) + 1 : 1;
   const accepted = decision === "accepted";
-  const title = accepted ? "Internship application accepted" : "Internship application update";
-  const body = `${companyName || "An employer"} has ${accepted ? "accepted" : "rejected"} your application for "${internshipTitle || "an internship"}".`;
+  const rejected = decision === "rejected";
+  const title = accepted
+    ? "Internship application accepted"
+    : rejected
+      ? "Internship application rejected"
+      : "Internship application update";
+  const body = accepted
+    ? `${companyName || "An employer"} has accepted your application for "${internshipTitle || "an internship"}".`
+    : rejected
+      ? `Your application for "${internshipTitle || "an internship"}" at ${companyName || "the company"} was not successful — you have not been selected for this role.`
+      : `${companyName || "An employer"} has updated your application for "${internshipTitle || "an internship"}".`;
 
   notifications.push({
     id: nid,
     kind: "internship_application_decision",
     title,
-    text: `${body} Open Internships to review details.`,
+    text: `${body} Open Internships for details.`,
     read: false,
     time: "Just now",
     audience: ["student"],
@@ -945,6 +999,11 @@ export function setProjectPlatformActive(projectId, active) {
   return true;
 }
 
+function emailsMatchForNotification(target, userEmail) {
+  if (!target || !userEmail) return !target;
+  return String(target).toLowerCase().trim() === String(userEmail).toLowerCase().trim();
+}
+
 export function getVisibleNotifications(user) {
   if (!user?.role) return notifications;
 
@@ -952,13 +1011,13 @@ export function getVisibleNotifications(user) {
     if (notification.audience && !notification.audience.includes(user.role)) {
       return false;
     }
-    if (notification.targetStudentEmail && notification.targetStudentEmail !== user.email) {
+    if (notification.targetStudentEmail && !emailsMatchForNotification(notification.targetStudentEmail, user.email)) {
       return false;
     }
-    if (notification.targetInstructorEmail && notification.targetInstructorEmail !== user.email) {
+    if (notification.targetInstructorEmail && !emailsMatchForNotification(notification.targetInstructorEmail, user.email)) {
       return false;
     }
-    if (notification.targetUserEmail && notification.targetUserEmail !== user.email) {
+    if (notification.targetUserEmail && !emailsMatchForNotification(notification.targetUserEmail, user.email)) {
       return false;
     }
     return true;
@@ -995,6 +1054,9 @@ export function getNotificationPresentation(notification) {
   if (kind === "internship_application_decision") {
     return { glyph: "◐", label: "Internship", bubble: "bg-accent-gold/15 text-accent-gold border-accent-gold/25" };
   }
+  if (kind === "internship_application_received") {
+    return { glyph: "◐", label: "Internship", bubble: "bg-accent-blue/10 text-accent-blue border-accent-blue/25" };
+  }
   return { glyph: "🔔", label: "Update", bubble: "bg-bg-elevated text-text-secondary border-border" };
 }
 
@@ -1029,6 +1091,8 @@ export function getNotificationActionPath(notification) {
       return "/messages";
     case "internship_application_decision":
       return "/internships";
+    case "internship_application_received":
+      return notification.actionPath || "/internships";
     default:
       return null;
   }
