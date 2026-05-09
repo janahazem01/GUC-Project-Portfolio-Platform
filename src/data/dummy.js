@@ -37,6 +37,15 @@ export const dummyUsers = [
         skills: ["Python", "PyTorch", "Data Analysis"],
         description: "Supported automotive AI experiments by preparing datasets and training models.",
       },
+      {
+        id: 3,
+        title: "React Platform Intern",
+        company: "TechCompany Egypt",
+        startDate: "2026-01-10",
+        endDate: "2026-04-10",
+        skills: ["React", "Tailwind CSS", "UX"],
+        description: "Shipped portfolio discovery flows and refined shared UI components with the product team.",
+      },
     ],
   },
   // Admin
@@ -320,7 +329,21 @@ export let projectAppeals = [
     submittedAt: "2026-05-07",
     status: "pending",
   },
+  {
+    id: 2,
+    projectId: 2,
+    projectTitle: "Arabic NLP Sentiment Analyzer",
+    studentName: "Ahmed El-Sayed",
+    studentEmail: "ahmed.elsayed@student.guc.edu.eg",
+    message:
+      "We added full attribution in the report appendix and uploaded the revised PDF to the course submission folder.",
+    submittedAt: "2026-04-20",
+    status: "resolved",
+  },
 ];
+
+/** Majors shown in Explore → portfolios filter and on portfolio cards. */
+export const GUC_MAJORS = ["MET", "IET", "BI", "Management", "Law", "Dentistry", "Mechatronics"];
 
 export const portfolios = [
   {
@@ -329,7 +352,7 @@ export const portfolios = [
     studentName: "Ahmed El-Sayed",
     studentEmail: "ahmed.elsayed@student.guc.edu.eg",
     title: "Smart Campus Navigator Portfolio",
-    headline: "Media Engineering & Technology",
+    headline: "MET",
     skills: ["React", "Node.js", "Python", "Figma"],
     projectIds: [1, 2],
     contributionScore: 96,
@@ -340,7 +363,7 @@ export const portfolios = [
     studentName: "Mariam Hassan",
     studentEmail: "mariam.hassan@student.guc.edu.eg",
     title: "Mobile Observability Toolkit",
-    headline: "Frontend Engineering",
+    headline: "IET",
     skills: ["React", "TypeScript", "Testing"],
     projectIds: [],
     contributionScore: 88,
@@ -351,7 +374,7 @@ export const portfolios = [
     studentName: "Sara Mahmoud",
     studentEmail: "sara.mahmoud@student.guc.edu.eg",
     title: "GUC Portfolio Platform",
-    headline: "Full Stack Development",
+    headline: "BI",
     skills: ["React", "FastAPI", "PostgreSQL"],
     projectIds: [3],
     contributionScore: 98,
@@ -362,7 +385,7 @@ export const portfolios = [
     studentName: "Omar Tarek",
     studentEmail: "omar.tarek@student.guc.edu.eg",
     title: "Arabic Vision Research Lab",
-    headline: "Machine Learning Research",
+    headline: "Law",
     skills: ["Python", "PyTorch", "Computer Vision"],
     projectIds: [],
     contributionScore: 92,
@@ -373,7 +396,7 @@ export const portfolios = [
     studentName: "Youssef Ahmed",
     studentEmail: "youssef.ahmed@student.guc.edu.eg",
     title: "Course Planner Dashboard",
-    headline: "Product Design and Accessibility",
+    headline: "Mechatronics",
     skills: ["React", "Figma", "Accessibility"],
     projectIds: [],
     contributionScore: 84,
@@ -384,18 +407,201 @@ export const portfolios = [
     studentName: "Laila Mostafa",
     studentEmail: "laila.mostafa@student.guc.edu.eg",
     title: "Database Audit Console",
-    headline: "Backend Development",
+    headline: "Dentistry",
     skills: ["Node.js", "PostgreSQL", "Technical Writing"],
     projectIds: [],
     contributionScore: 91,
   },
 ];
 
+/** Demo direct messages (student / instructor / employer only in UI). */
+export let messageThreads = [
+  {
+    id: "thread-1",
+    /** Last message id fully read through (inclusive); missing key => nothing read yet */
+    lastReadMessageIdByUserId: {
+      1: "m2",
+      3: "m2",
+    },
+    participants: [
+      { userId: 1, name: "Ahmed El-Sayed", email: "ahmed.elsayed@student.guc.edu.eg", role: "student" },
+      { userId: 3, name: "Dr. Sara Abdelhamid", email: "dr.sara@guc.edu.eg", role: "instructor" },
+    ],
+    messages: [
+      {
+        id: "m1",
+        senderId: 3,
+        text: "Thanks for submitting the milestone — the architecture section reads clearly.",
+        time: "May 7 · 9:14 AM",
+      },
+      { id: "m2", senderId: 1, text: "Appreciate the quick feedback!", time: "May 7 · 11:02 AM" },
+    ],
+  },
+  {
+    id: "thread-2",
+    /** Student demo: recruiter message still unread until opened */
+    lastReadMessageIdByUserId: {
+      4: "m3",
+    },
+    participants: [
+      { userId: 1, name: "Ahmed El-Sayed", email: "ahmed.elsayed@student.guc.edu.eg", role: "student" },
+      { userId: 4, name: "Recruiter", email: "recruiter@techcompany.com", role: "employer" },
+    ],
+    messages: [
+      {
+        id: "m3",
+        senderId: 4,
+        text: "We would like to invite you to discuss internship opportunities next week.",
+        time: "May 6 · 3:20 PM",
+      },
+    ],
+  },
+  {
+    id: "thread-3",
+    lastReadMessageIdByUserId: {
+      3: "m4",
+    },
+    participants: [
+      { userId: 3, name: "Dr. Sara Abdelhamid", email: "dr.sara@guc.edu.eg", role: "instructor" },
+      { userId: 4, name: "Recruiter", email: "recruiter@techcompany.com", role: "employer" },
+    ],
+    messages: [
+      {
+        id: "m4",
+        senderId: 3,
+        text: "Sharing the list of students who opted in for company presentations.",
+        time: "May 5 · 2:01 PM",
+      },
+    ],
+  },
+];
+
+export function getThreadsForUser(user) {
+  if (!user?.id) return [];
+  return messageThreads.filter((thread) => thread.participants.some((p) => p.userId === user.id));
+}
+
+export function getThreadById(threadId) {
+  return messageThreads.find((t) => t.id === threadId) || null;
+}
+
+export function getOtherParticipant(thread, user) {
+  if (!thread || !user) return null;
+  return thread.participants.find((p) => p.userId !== user.id) || null;
+}
+
+function readCursorIndex(thread, userId) {
+  if (!thread?.messages?.length) return -1;
+  const map = thread.lastReadMessageIdByUserId || {};
+  const readId = map[userId] ?? map[String(userId)];
+  if (!readId) return -1;
+  const idx = thread.messages.findIndex((m) => m.id === readId);
+  return idx >= 0 ? idx : -1;
+}
+
+/** DM preview row: unread = messages from everyone else after last read marker */
+export function getThreadUnreadInboundCount(thread, user) {
+  if (!thread?.messages?.length || !user?.id) return 0;
+  const uid = user.id;
+  const afterIdx = readCursorIndex(thread, uid);
+  return thread.messages
+    .slice(afterIdx + 1)
+    .filter((m) => m.senderId !== uid).length;
+}
+
+export function markThreadReadForViewer(threadId, user) {
+  const thread = messageThreads.find((t) => t.id === threadId);
+  if (!thread?.messages?.length || !user?.id) return;
+  const last = thread.messages[thread.messages.length - 1];
+  if (!thread.lastReadMessageIdByUserId) thread.lastReadMessageIdByUserId = {};
+  if (thread.lastReadMessageIdByUserId[user.id] === last.id) return;
+  thread.lastReadMessageIdByUserId[user.id] = last.id;
+  emitDummyUpdate();
+}
+
+export function getUnreadInboundThreadTotal(user) {
+  if (!user?.id) return 0;
+  return getThreadsForUser(user).reduce((sum, t) => sum + getThreadUnreadInboundCount(t, user), 0);
+}
+
+export function sendThreadMessage(threadId, senderUser, text) {
+  const thread = messageThreads.find((t) => t.id === threadId);
+  if (!thread || !senderUser || !text?.trim()) return { ok: false, error: "Invalid message." };
+  const trimmed = text.trim();
+  const mid = `m-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  const timeLabel = new Date().toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  thread.messages.push({ id: mid, senderId: senderUser.id, text: trimmed, time: timeLabel });
+
+  if (!thread.lastReadMessageIdByUserId) thread.lastReadMessageIdByUserId = {};
+  thread.lastReadMessageIdByUserId[senderUser.id] = mid;
+
+  const others = thread.participants.filter((p) => p.userId !== senderUser.id);
+  others.forEach((recipient) => {
+    const nid = notifications.length ? Math.max(...notifications.map((n) => n.id)) + 1 : 1;
+    const preview = trimmed.length > 120 ? `${trimmed.slice(0, 120)}…` : trimmed;
+    notifications.push({
+      id: nid,
+      kind: "private_message",
+      title: "New message",
+      text: `${senderUser.name}: ${preview}`,
+      read: false,
+      time: "Just now",
+      audience: ["student", "instructor", "employer"],
+      targetUserEmail: recipient.email,
+      actionPath: `/messages?thread=${encodeURIComponent(threadId)}`,
+      messageThreadId: threadId,
+    });
+  });
+  emitDummyUpdate();
+  return { ok: true };
+}
+
 export const courses = [
-  { id: 1, name: "Software Engineering", code: "CSEN401" },
-  { id: 2, name: "Machine Intelligence", code: "CSEN901" },
-  { id: 3, name: "Database II", code: "CSEN604" },
-  { id: 4, name: "Bachelor Project", code: "BP" },
+  {
+    id: 1,
+    name: "Software Engineering",
+    code: "CSEN401",
+    creditHours: 4,
+    brief:
+      "End-to-end software engineering practice: requirements, design, implementation, testing, and teamwork using an iterative lifecycle.",
+    materials: ["Lecture slides", "Team project briefs", "Git / CI lab sheets", "IEEE-style documentation guide"],
+    enrolledCount: 128,
+  },
+  {
+    id: 2,
+    name: "Machine Intelligence",
+    code: "CSEN901",
+    creditHours: 3,
+    brief:
+      "Core ideas in machine learning and intelligent systems, from classical models to neural networks and responsible deployment.",
+    materials: ["Recorded lectures", "Jupyter lab notebooks", "Textbook chapters (selected)", "Kaggle-style mini assignments"],
+    enrolledCount: 96,
+  },
+  {
+    id: 3,
+    name: "Database II",
+    code: "CSEN604",
+    creditHours: 3,
+    brief:
+      "Advanced database concepts including normalization beyond basics, query optimization, transactions, and practical SQL engineering.",
+    materials: ["ER modeling sheets", "PostgreSQL lab VMs", "Past exam problem sets"],
+    enrolledCount: 74,
+  },
+  {
+    id: 4,
+    name: "Bachelor Project",
+    code: "BP",
+    creditHours: 12,
+    brief:
+      "Capstone research and engineering project with faculty supervision, milestones, and a final report and defense.",
+    materials: ["Supervision charter", "Milestone rubric", "Thesis template", "Ethics & plagiarism checklist"],
+    enrolledCount: 210,
+  },
 ];
 
 export function createCourseRecord(name, code) {
@@ -407,7 +613,15 @@ export function createCourseRecord(name, code) {
     return { ok: false, error: "A course with this code already exists." };
   }
   const id = courses.length ? Math.max(...courses.map((course) => course.id)) + 1 : 1;
-  const row = { id, name: trimmedName, code: trimmedCode };
+  const row = {
+    id,
+    name: trimmedName,
+    code: trimmedCode,
+    creditHours: 3,
+    brief: "Overview for this catalog entry — update the description from the course detail view context as the term progresses.",
+    materials: ["Course syllabus", "Lecture materials"],
+    enrolledCount: 0,
+  };
   courses.push(row);
   emitDummyUpdate();
   return { ok: true, course: row };
@@ -447,6 +661,7 @@ export const notifications = [
     read: false,
     time: "2h ago",
     audience: ["student"],
+    targetProjectId: 1,
   },
   {
     id: 2,
@@ -456,6 +671,7 @@ export const notifications = [
     read: false,
     time: "5h ago",
     audience: ["student"],
+    actionPath: "/messages",
   },
   {
     id: 3,
@@ -465,6 +681,7 @@ export const notifications = [
     read: true,
     time: "1d ago",
     audience: ["student", "instructor"],
+    actionPath: "/projects",
   },
   {
     id: 4,
@@ -474,6 +691,7 @@ export const notifications = [
     read: false,
     time: "3h ago",
     audience: ["employer"],
+    actionPath: "/profile",
   },
   {
     id: 5,
@@ -483,6 +701,7 @@ export const notifications = [
     read: true,
     time: "1d ago",
     audience: ["employer"],
+    actionPath: "/profile",
   },
   {
     id: 6,
@@ -492,6 +711,7 @@ export const notifications = [
     read: false,
     time: "45m ago",
     audience: ["admin"],
+    actionPath: "/admin/approvals",
   },
   {
     id: 7,
@@ -502,6 +722,7 @@ export const notifications = [
     time: "12m ago",
     audience: ["admin"],
     courseLinkMeta: { type: "link", courseCode: "CSEN401", instructorName: "Dr. Aya Salama" },
+    actionPath: "/admin/requests",
   },
   {
     id: 8,
@@ -512,6 +733,7 @@ export const notifications = [
     time: "1d ago",
     audience: ["admin"],
     courseLinkMeta: { type: "unlink", courseCode: "CSEN901", instructorName: "Dr. Sara Abdelhamid" },
+    actionPath: "/admin/requests",
   },
   {
     id: 9,
@@ -522,6 +744,7 @@ export const notifications = [
     time: "18h ago",
     audience: ["student"],
     targetStudentEmail: "ahmed.elsayed@student.guc.edu.eg",
+    targetProjectId: 2,
   },
 ];
 
@@ -613,6 +836,7 @@ export function applyInstructorCourseRequestDecision(requestId, accept) {
     time: "Just now",
     audience: ["instructor"],
     targetInstructorEmail: request.instructorEmail,
+    actionPath: "/courses",
     courseLinkMeta: {
       type: request.type,
       courseCode: request.courseCode,
@@ -652,6 +876,7 @@ export function appendInstructorCourseRequest(payload) {
     read: false,
     time: "Just now",
     audience: ["admin"],
+    actionPath: "/admin/requests",
     courseLinkMeta: {
       type: row.type,
       courseCode: row.courseCode,
@@ -685,6 +910,33 @@ export function markAllNotificationsReadForUser(user) {
   if (changed) emitDummyUpdate();
 }
 
+/** Student receives inbox row + toast when an employer accepts or rejects their internship application (demo). */
+export function pushInternshipApplicationDecisionNotification({
+  studentEmail,
+  internshipTitle,
+  companyName,
+  decision,
+}) {
+  if (!studentEmail || !decision) return;
+  const nid = notifications.length ? Math.max(...notifications.map((notification) => notification.id)) + 1 : 1;
+  const accepted = decision === "accepted";
+  const title = accepted ? "Internship application accepted" : "Internship application update";
+  const body = `${companyName || "An employer"} has ${accepted ? "accepted" : "rejected"} your application for "${internshipTitle || "an internship"}".`;
+
+  notifications.push({
+    id: nid,
+    kind: "internship_application_decision",
+    title,
+    text: `${body} Open Internships to review details.`,
+    read: false,
+    time: "Just now",
+    audience: ["student"],
+    targetUserEmail: studentEmail,
+    actionPath: "/internships",
+  });
+  emitDummyUpdate();
+}
+
 export function setProjectPlatformActive(projectId, active) {
   const project = projects.find((item) => item.id === projectId);
   if (!project) return false;
@@ -704,6 +956,9 @@ export function getVisibleNotifications(user) {
       return false;
     }
     if (notification.targetInstructorEmail && notification.targetInstructorEmail !== user.email) {
+      return false;
+    }
+    if (notification.targetUserEmail && notification.targetUserEmail !== user.email) {
       return false;
     }
     return true;
@@ -734,7 +989,49 @@ export function getNotificationPresentation(notification) {
   if (kind === "collab") {
     return { glyph: "👥", label: "Social", bubble: "bg-success/10 text-success border-success/25" };
   }
+  if (kind === "private_message") {
+    return { glyph: "✉", label: "Message", bubble: "bg-accent-blue/10 text-accent-blue border-accent-blue/25" };
+  }
+  if (kind === "internship_application_decision") {
+    return { glyph: "◐", label: "Internship", bubble: "bg-accent-gold/15 text-accent-gold border-accent-gold/25" };
+  }
   return { glyph: "🔔", label: "Update", bubble: "bg-bg-elevated text-text-secondary border-border" };
+}
+
+/** Route to open when the user follows a notification (full page + dock). */
+export function getNotificationActionPath(notification) {
+  if (!notification) return null;
+  if (notification.actionPath) return notification.actionPath;
+  if (notification.targetProjectId != null) return `/projects/${notification.targetProjectId}`;
+
+  const kind = notification.kind || "";
+  switch (kind) {
+    case "rating":
+    case "feedback":
+      return "/projects";
+    case "collab":
+      return "/messages";
+    case "employer_verification":
+      return "/profile";
+    case "admin_employer":
+      return "/admin/approvals";
+    case "course_link_request":
+    case "course_unlink_request":
+      return "/admin/requests";
+    case "course_link_decision":
+    case "course_unlink_decision":
+      return "/courses";
+    case "project_flagged":
+      return "/projects";
+    case "student_appeal":
+      return "/admin/appeals";
+    case "private_message":
+      return "/messages";
+    case "internship_application_decision":
+      return "/internships";
+    default:
+      return null;
+  }
 }
 
 export function isProjectListedPublicly(project) {
@@ -746,8 +1043,9 @@ export function isProjectListedPublicly(project) {
 
 export function exploreProjectsForUser(user) {
   if (!user) return projects.filter((project) => isProjectListedPublicly(project));
+  const listedInExplore = (project) => project.platformActive !== false && project.hiddenFromPublic !== true;
   if (user.role === "admin" || user.role === "instructor") {
-    return projects.filter((project) => project.hiddenFromPublic !== true);
+    return projects.filter(listedInExplore);
   }
   return projects.filter((project) => isProjectListedPublicly(project));
 }
@@ -789,6 +1087,7 @@ export function flagProjectModeration(actorUser, projectId, reason) {
     time: "Just now",
     audience: ["student"],
     targetStudentEmail: targetEmail || undefined,
+    targetProjectId: projectId,
   });
   emitDummyUpdate();
   return { ok: true };
@@ -833,6 +1132,7 @@ export function submitProjectAppeal(studentUser, projectId, message) {
     read: false,
     time: "Just now",
     audience: ["admin"],
+    actionPath: "/admin/appeals",
   });
   emitDummyUpdate();
   return { ok: true };

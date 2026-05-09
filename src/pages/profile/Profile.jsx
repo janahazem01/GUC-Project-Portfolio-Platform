@@ -1,7 +1,7 @@
 import { useState, useContext } from "react";
 import { Card, Badge, Stars, Button, PageHeader, Input, Modal, ConfirmActionModal, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
-import { courses, instructorDirectory, projects, internships } from "../../data/dummy";
+import { courses, instructorDirectory, projects } from "../../data/dummy";
 
 function StudentProfile({ user, updateUser, myProjects }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -121,59 +121,6 @@ function StudentProfile({ user, updateUser, myProjects }) {
         <Card>
           <p className="text-text-secondary text-sm">No public projects yet. Create your first project!</p>
         </Card>
-      )}
-
-      {/* Statistics Section */}
-      {myProjects.length > 0 && (
-        <div className="mt-8">
-          <PageHeader title="Project Statistics" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <h3 className="font-display text-lg text-text-primary mb-4">Programming Languages</h3>
-              {(() => {
-                const languageCount = {};
-                myProjects.forEach(project => {
-                  project.languages.forEach(lang => {
-                    languageCount[lang] = (languageCount[lang] || 0) + 1;
-                  });
-                });
-                const total = Object.values(languageCount).reduce((sum, count) => sum + count, 0);
-                return Object.entries(languageCount)
-                  .sort(([,a], [,b]) => b - a)
-                  .map(([lang, count]) => (
-                    <div key={lang} className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-text-primary">{lang}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 bg-bg-elevated rounded-full h-2">
-                          <div
-                            className="bg-accent-gold h-2 rounded-full"
-                            style={{ width: `${(count / total) * 100}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-xs text-text-secondary w-8 text-right">{Math.round((count / total) * 100)}%</span>
-                      </div>
-                    </div>
-                  ));
-              })()}
-            </Card>
-            <Card>
-              <h3 className="font-display text-lg text-text-primary mb-4">Top Collaborators per Project</h3>
-              {myProjects.map(project => (
-                <div key={project.id} className="mb-4 last:mb-0">
-                  <h4 className="font-display text-sm text-text-primary mb-2">{project.title}</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {project.team.filter(member => member !== user.name).map(collaborator => (
-                      <Badge key={collaborator} variant="blue" className="text-xs">{collaborator}</Badge>
-                    ))}
-                    {project.team.filter(member => member !== user.name).length === 0 && (
-                      <span className="text-xs text-text-secondary">No collaborators</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </Card>
-          </div>
-        </div>
       )}
 
       {/* Internships Section */}
@@ -526,6 +473,7 @@ function InstructorProfile({ user, updateUser, myCourses }) {
         onClose={() => setConfirmation(null)}
         onConfirm={confirmation?.onConfirm}
       />
+      <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
     </div>
   );
 }
@@ -569,6 +517,7 @@ function EmployerProfile({ user, updateUser }) {
   });
   const [pendingLocation, setPendingLocation] = useState(user?.location || "Cairo, Egypt");
   const [viewingDoc, setViewingDoc] = useState(null);
+  const [locationConfirmOpen, setLocationConfirmOpen] = useState(false);
 
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(formData.location || pendingLocation)}&output=embed`;
 
@@ -621,7 +570,16 @@ function EmployerProfile({ user, updateUser }) {
 
   const handleSaveProfile = () => {
     if (formData.uploadedDocs.length === 0) {
-      alert("A tax certificate is required to save profile changes.");
+      setSuccessMessage("");
+      window.dispatchEvent(
+        new CustomEvent("portfolio-toast-notification", {
+          detail: {
+            title: "Tax certificate required",
+            body: "Upload at least one verification PDF (for example your tax certificate) before saving employer profile changes.",
+            dismissSessionKey: "portfolio-employer-tax-cert-hint",
+          },
+        })
+      );
       return;
     }
     setConfirmation({
@@ -645,7 +603,7 @@ function EmployerProfile({ user, updateUser }) {
     });
   };
 
-  const handlePickLocation = () => {
+  const applyPinnedLocation = () => {
     setFormData((previous) => ({
       ...previous,
       location: pendingLocation,
@@ -655,6 +613,7 @@ function EmployerProfile({ user, updateUser }) {
       location: pendingLocation,
     });
     setSuccessMessage("Location updated successfully!");
+    setLocationConfirmOpen(false);
   };
 
   const removeDoc = (docId) => {
@@ -798,7 +757,9 @@ function EmployerProfile({ user, updateUser }) {
             onChange={(e) => setPendingLocation(e.target.value)}
           />
           <div className="flex items-end">
-            <Button type="button" variant="primary" onClick={handlePickLocation}>Use this location</Button>
+            <Button type="button" variant="primary" onClick={() => setLocationConfirmOpen(true)}>
+              Use this location
+            </Button>
           </div>
         </div>
       </Card>
@@ -918,6 +879,13 @@ function EmployerProfile({ user, updateUser }) {
         variant={confirmation?.variant}
         onClose={() => setConfirmation(null)}
         onConfirm={confirmation?.onConfirm}
+      />
+      <ConfirmActionModal
+        isOpen={locationConfirmOpen}
+        action={`update your pinned map location to "${pendingLocation}"`}
+        variant="gold"
+        onClose={() => setLocationConfirmOpen(false)}
+        onConfirm={applyPinnedLocation}
       />
       <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
     </div>

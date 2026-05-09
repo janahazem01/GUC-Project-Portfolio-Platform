@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Badge, Button, Card, Input, Modal, PageHeader } from "../../components/ui";
+import { Link, useNavigate } from "react-router-dom";
+import { Badge, Button, Card, Input, Modal, PageHeader, ConfirmActionModal } from "../../components/ui";
 import {
   courses,
   createCourseRecord,
@@ -74,6 +74,7 @@ export default function CoursesDirectory() {
       if (!result.ok) {
         setFeedback({ variant: "error", message: result.error });
         setConfirmOpen(false);
+        closeModal();
         return;
       }
       setFeedback({ variant: "ok", message: "Course created." });
@@ -82,6 +83,7 @@ export default function CoursesDirectory() {
       if (!result.ok) {
         setFeedback({ variant: "error", message: result.error });
         setConfirmOpen(false);
+        closeModal();
         return;
       }
       setFeedback({ variant: "ok", message: "Course updated." });
@@ -114,7 +116,7 @@ export default function CoursesDirectory() {
         subtitle="Create, edit, or remove catalog entries. Every course has a display name and a unique course code."
         action={
           <div className="flex flex-wrap items-center gap-2 justify-end">
-            <Button variant="secondary" onClick={() => navigate(-1)}>
+            <Button variant="secondary" onClick={() => navigate("/")}>
               Back
             </Button>
             <Button onClick={openCreate}>+ Add course</Button>
@@ -184,9 +186,12 @@ export default function CoursesDirectory() {
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-accent-gold/40 text-xs font-mono text-accent-gold">
                         {course.code.slice(0, 2).toUpperCase()}
                       </span>
-                      <span className="font-display text-sm text-text-primary truncate">
+                      <Link
+                        to={`/courses/${course.id}`}
+                        className="font-display text-sm text-accent-blue hover:underline whitespace-normal break-words text-left"
+                      >
                         {course.name}
-                      </span>
+                      </Link>
                     </div>
                   </td>
                   <td className="px-4 py-4">
@@ -253,36 +258,26 @@ export default function CoursesDirectory() {
         </form>
       </Modal>
 
-      <Modal isOpen={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm">
-        <p className="text-text-secondary text-sm font-sans mb-6">
-          {mode === "edit"
-            ? "Save changes to this course?"
-            : "Add this course to the catalog?"}
-        </p>
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={() => setConfirmOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={applySave}>
-            Confirm
-          </Button>
-        </div>
-      </Modal>
+      <ConfirmActionModal
+        isOpen={confirmOpen}
+        action={mode === "edit" ? "save these changes to the course" : "add this course to the catalog"}
+        variant="gold"
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={applySave}
+      />
 
-      <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete course">
-        <p className="text-text-secondary text-sm font-sans mb-6">
-          Remove <span className="text-text-primary font-medium">{deleteTarget?.name}</span> ({deleteTarget?.code}
-          ) from the catalog? Linked projects keep their stored course code in data.
-        </p>
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={() => setDeleteOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="button" variant="danger" onClick={confirmDelete}>
-            Delete
-          </Button>
-        </div>
-      </Modal>
+      <ConfirmActionModal
+        isOpen={deleteOpen}
+        action={`remove ${deleteTarget?.name ? `"${deleteTarget.name}" (${deleteTarget.code})` : "this course"} from the catalog (linked projects keep their stored codes)`}
+        variant="danger"
+        onClose={() => {
+          setDeleteOpen(false);
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          confirmDelete();
+        }}
+      />
     </div>
   );
 }

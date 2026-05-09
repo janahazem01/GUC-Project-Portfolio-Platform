@@ -4,13 +4,35 @@ import { AuthContext } from "../../context/AuthContext";
 import { ConfirmActionModal } from "../ui";
 import { Card } from "../ui";
 import {
+  getNotificationActionPath,
   getNotificationPresentation,
   getUnreadNotificationCount,
+  getUnreadInboundThreadTotal,
   getVisibleNotifications,
   markAllNotificationsReadForUser,
   markNotificationReadForUser,
   subscribeDummyUpdates,
 } from "../../data/dummy";
+
+const DO_NOT_DISTURB_KEY = "gucDoNotDisturb";
+
+function readDoNotDisturb() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(DO_NOT_DISTURB_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function navigateStateForPath(path) {
+  if (!path) return undefined;
+  if (path.startsWith("/projects/")) return { activeNav: "/projects" };
+  if (path.startsWith("/courses")) return { activeNav: "/courses" };
+  if (path.startsWith("/internships/")) return { activeNav: "/internships" };
+  if (path.startsWith("/messages")) return { activeNav: "/messages" };
+  return { activeNav: path };
+}
 
 function playNotificationChime() {
   try {
@@ -42,7 +64,7 @@ const allNavItems = [
   { label: "Requests",    icon: "◧", path: "/admin/requests", roles: ["admin"] },
   { label: "Portfolio",   icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
   { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor", "employer"] },
-  { label: "Messages",    icon: "◇", path: "/messages", roles: ["student", "instructor", "employer", "admin"] },
+  { label: "Messages",    icon: "✉", path: "/messages", roles: ["student", "instructor", "employer"] },
   { label: "Favorites",   icon: "★", path: "/favorites", roles: ["student", "employer"] },
 ];
 
@@ -123,11 +145,11 @@ export function AppLayout({ children }) {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(() =>
     getUnreadNotificationCount(user)
   );
+  const [unreadDmTotal, setUnreadDmTotal] = useState(() => getUnreadInboundThreadTotal(user));
   const bootstrapNotificationIdsRef = useRef(new Set());
-
-  useEffect(() => {
-    setUnreadNotificationCount(getUnreadNotificationCount(user));
-  }, [user]);
+  const [, setDoNotDisturbBump] = useState(0);
+  const doNotDisturb = readDoNotDisturb();
+  const canUseDoNotDisturb = ["student", "employer", "instructor"].includes(user?.role);
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -141,6 +163,7 @@ export function AppLayout({ children }) {
       setUnreadNotificationCount(
         visibleNow.filter((notification) => !notification.read).length
       );
+      setUnreadDmTotal(getUnreadInboundThreadTotal(user));
 
       const boot = bootstrapNotificationIdsRef.current;
 
@@ -158,12 +181,16 @@ export function AppLayout({ children }) {
             !notification.read && notification.audience?.includes(user.role)
         );
 
-      if (pick) {
+      const mutePopups =
+        ["student", "employer", "instructor"].includes(user?.role) && readDoNotDisturb();
+
+      if (pick && !mutePopups) {
         window.dispatchEvent(
           new CustomEvent("portfolio-toast-notification", {
             detail: {
               title: pick.title || "New notification",
               body: pick.text,
+              dismissSessionKey: `portfolio-notif-toast-${pick.id}`,
             },
           })
         );
@@ -173,13 +200,24 @@ export function AppLayout({ children }) {
 
     syncUnread();
     return subscribeDummyUpdates(syncUnread);
-  }, [user?.id]);
+  }, [user]);
+
+  const toggleDoNotDisturb = () => {
+    const next = !readDoNotDisturb();
+    try {
+      window.localStorage.setItem(DO_NOT_DISTURB_KEY, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+    setDoNotDisturbBump((value) => value + 1);
+  };
 
   const unreadBadgeLabel = useMemo(() => {
+    if (doNotDisturb) return null;
     if (unreadNotificationCount <= 0) return null;
     if (unreadNotificationCount > 99) return "99+";
     return String(unreadNotificationCount);
-  }, [unreadNotificationCount]);
+  }, [unreadNotificationCount, doNotDisturb]);
 
   return (
     <div className="flex min-h-screen bg-bg-base">
@@ -200,6 +238,8 @@ export function AppLayout({ children }) {
           {navItems.map((item) => {
             const active = activeNavPath === item.path ||
               (item.path !== "/" && activeNavPath.startsWith(item.path));
+            const showUnreadDmCue =
+              item.path === "/messages" && unreadDmTotal > 0 && !(canUseDoNotDisturb && doNotDisturb);
             return (
               <Link
                 key={item.path}
@@ -210,7 +250,18 @@ export function AppLayout({ children }) {
                     : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
                   }`}
               >
-                <span className="flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">{item.icon}</span>
+                <span className="relative flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">
+                  <span aria-hidden="true">{item.icon}</span>
+                  {showUnreadDmCue && (
+                    <abbr
+                      title="Unread messages"
+                      className="absolute -top-1.5 -right-0 text-[13px] font-bold text-danger no-underline leading-none"
+                      aria-label="Unread messages"
+                    >
+                      !
+                    </abbr>
+                  )}
+                </span>
                 {!collapsed && <span className="truncate">{item.label}</span>}
                 <SidebarTooltip collapsed={collapsed} label={item.label} />
               </Link>
@@ -218,12 +269,36 @@ export function AppLayout({ children }) {
           })}
         </nav>
 
-        {/* Notifications + Collapse */}
+        {/* Do not disturb + Notifications + Collapse */}
         <div className="shrink-0 border-t border-border p-2 flex flex-col gap-1">
+          {canUseDoNotDisturb && (
+            <button
+              type="button"
+              onClick={toggleDoNotDisturb}
+              aria-pressed={doNotDisturb}
+              title={doNotDisturb ? "Turn off Do not disturb" : "Do not disturb — mute notification pop-ups and sounds"}
+              className={`group relative flex items-center rounded-lg text-sm transition-colors ${collapsed ? "justify-center px-0 py-2.5 w-full text-left font-sans" : "gap-3 px-3 py-2.5 w-full text-left font-sans"} ${
+                doNotDisturb
+                  ? "text-accent-gold bg-accent-gold/10 border border-accent-gold/35"
+                  : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+              }`}
+            >
+              <span className="flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none" aria-hidden>
+                {doNotDisturb ? "🌙" : "☾"}
+              </span>
+              {!collapsed && (
+                <span className="truncate">{doNotDisturb ? "Do not disturb on" : "Do not disturb"}</span>
+              )}
+              <SidebarTooltip collapsed={collapsed} label={doNotDisturb ? "Notifications muted" : "Mute notifications"} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setNotificationsOpen((open) => !open)}
-            className={`group relative flex items-center rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors ${collapsed ? "justify-center px-0 py-2.5 w-full text-left font-sans" : "gap-3 px-3 py-2.5 w-full text-left font-sans"}`}
+            className={`group relative flex items-center rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors ${collapsed ? "justify-center px-0 py-2.5 w-full text-left font-sans" : "gap-3 px-3 py-2.5 w-full text-left font-sans"} ${
+              doNotDisturb && canUseDoNotDisturb ? "opacity-60" : ""
+            }`}
+            title={doNotDisturb && canUseDoNotDisturb ? "Notifications muted (Do not disturb)" : undefined}
           >
             <span className="relative flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">
               <span aria-hidden="true">🔔</span>
@@ -244,6 +319,7 @@ export function AppLayout({ children }) {
             <NotificationsDock
               collapsed={collapsed}
               user={user}
+              navigate={navigate}
               onClose={() => setNotificationsOpen(false)}
               onOpenFull={() => {
                 navigate("/notifications");
@@ -281,7 +357,7 @@ export function AppLayout({ children }) {
   );
 }
 
-function NotificationsDock({ collapsed, user, onClose, onOpenFull, markRead, markAllRead }) {
+function NotificationsDock({ collapsed, user, navigate, onClose, onOpenFull, markRead, markAllRead }) {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Escape") onClose?.();
@@ -336,10 +412,37 @@ function NotificationsDock({ collapsed, user, onClose, onOpenFull, markRead, mar
             ) : (
               items.map((notification) => {
                 const vis = getNotificationPresentation(notification);
+                const actionPath = getNotificationActionPath(notification);
+                const rowInteractive = Boolean(actionPath);
                 return (
                   <div
                     key={notification.id}
-                    className={`flex items-start gap-3 px-4 py-3 ${!notification.read ? "bg-accent-blue/[0.04]" : ""}`}
+                    role={rowInteractive ? "link" : undefined}
+                    tabIndex={rowInteractive ? 0 : undefined}
+                    onKeyDown={
+                      rowInteractive
+                        ? (event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              markRead(notification.id);
+                              navigate(actionPath, { state: navigateStateForPath(actionPath) });
+                              onClose?.();
+                            }
+                          }
+                        : undefined
+                    }
+                    onClick={
+                      rowInteractive
+                        ? () => {
+                            markRead(notification.id);
+                            navigate(actionPath, { state: navigateStateForPath(actionPath) });
+                            onClose?.();
+                          }
+                        : undefined
+                    }
+                    className={`flex items-start gap-3 px-4 py-3 ${!notification.read ? "bg-accent-blue/[0.04]" : ""} ${
+                      rowInteractive ? "cursor-pointer hover:bg-bg-elevated/80" : ""
+                    }`}
                   >
                     <div
                       className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-base leading-none ${vis.bubble}`}
@@ -348,10 +451,12 @@ function NotificationsDock({ collapsed, user, onClose, onOpenFull, markRead, mar
                       <span aria-hidden="true">{vis.glyph}</span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold font-sans text-text-primary leading-snug">
+                      <p className="text-sm font-semibold font-sans text-text-primary leading-normal break-words">
                         {notification.title || "Notification"}
                       </p>
-                      <p className="text-sm font-sans text-text-secondary mt-1 leading-relaxed">{notification.text}</p>
+                      <p className="text-sm font-sans text-text-secondary mt-1 leading-relaxed break-words">
+                        {notification.text}
+                      </p>
                       <p className="text-[11px] font-mono text-text-secondary mt-1.5">{notification.time}</p>
                     </div>
                     {!notification.read && (
@@ -397,39 +502,82 @@ function NotificationsDock({ collapsed, user, onClose, onOpenFull, markRead, mar
   );
 }
 
+function toastSessionStorageKey(title, body) {
+  const s = `${title}|${body}`;
+  let hash = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    hash = (Math.imul(31, hash) + s.charCodeAt(i)) | 0;
+  }
+  return `portfolio-toast-${hash}`;
+}
+
 function LiveNotificationToastBoundary() {
+  const { user } = useContext(AuthContext);
   const [toast, setToast] = useState(null);
+  const dndApplies = ["student", "employer", "instructor"].includes(user?.role);
+
+  const clearToast = (persistDismiss) => {
+    setToast((current) => {
+      if (persistDismiss && current?.dismissSessionKey) {
+        try {
+          sessionStorage.setItem(current.dismissSessionKey, "1");
+        } catch {
+          /* ignore */
+        }
+      }
+      return null;
+    });
+  };
 
   useEffect(() => {
     const handler = (event) => {
+      if (readDoNotDisturb()) return;
       const payload = event?.detail || {};
+      const title = payload.title || "New notification";
+      const body = payload.body || "";
+      const sessionKey = payload.dismissSessionKey || toastSessionStorageKey(title, body);
+      if (typeof window !== "undefined") {
+        try {
+          if (window.sessionStorage.getItem(sessionKey)) return;
+        } catch {
+          /* ignore */
+        }
+      }
       setToast({
         id: `${Date.now()}-${Math.floor(Math.random() * 1e9)}`,
-        title: payload.title || "New notification",
-        body: payload.body || "",
+        title,
+        body,
+        dismissSessionKey: sessionKey,
       });
     };
     window.addEventListener("portfolio-toast-notification", handler);
     return () => window.removeEventListener("portfolio-toast-notification", handler);
-  }, []);
+  }, [dndApplies]);
 
   if (!toast) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-6 right-6 z-[60] w-full max-w-sm px-4">
-      <Card className="pointer-events-auto border-accent-blue/40 shadow-2xl p-4">
+    <div className="pointer-events-none fixed bottom-6 right-6 z-[60] w-full max-w-md px-4">
+      <Card className="pointer-events-auto border-accent-blue/40 shadow-2xl p-4 max-h-[min(22rem,50vh)] overflow-y-auto">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 text-lg shrink-0" aria-hidden="true">
             🔔
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-display text-text-primary">{toast.title}</p>
-            <p className="text-sm font-sans text-text-secondary mt-1 leading-snug">{toast.body}</p>
+            <p className="text-sm font-display text-text-primary leading-normal break-words">{toast.title}</p>
+            <p className="text-sm font-sans text-text-secondary mt-1.5 leading-relaxed break-words">{toast.body}</p>
+            <button
+              type="button"
+              onClick={() => clearToast(true)}
+              className="pointer-events-auto mt-3 text-xs font-sans font-medium text-accent-blue hover:underline"
+            >
+              Dismiss
+            </button>
           </div>
           <button
             type="button"
             aria-label="Close notification"
-            onClick={() => setToast(null)}
+            onClick={() => clearToast(true)}
             className="shrink-0 rounded-md px-2 py-1 text-text-secondary hover:bg-bg-elevated hover:text-text-primary text-lg leading-none"
           >
             ×

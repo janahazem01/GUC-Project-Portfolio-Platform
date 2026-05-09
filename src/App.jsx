@@ -10,6 +10,7 @@ import Projects     from "./pages/projects/Projects";
 import ProjectDetails from "./pages/projects/ProjectDetails";
 import ProjectPreview from "./pages/projects/ProjectPreview";
 import Explore      from "./pages/discovery/Explore";
+import PortfolioDetail from "./pages/discovery/PortfolioDetail";
 import Favorites    from "./pages/favorites/Favorites";
 import Profile      from "./pages/profile/Profile";
 import Admin        from "./pages/admin/Admin";
@@ -19,6 +20,7 @@ import Internships  from "./pages/internships/Internships";
 import Notifications from "./pages/Notifications";
 import Messages     from "./pages/Messages";
 import CoursesDirectory from "./pages/courses/CoursesDirectory";
+import CourseDetail from "./pages/courses/CourseDetail";
 
 // ✅ Protected route wrapper (UPDATED LOGIC ONLY)
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -90,6 +92,15 @@ function AppRoutes() {
         }
       />
 
+      <Route
+        path="/explore/portfolio/:portfolioId"
+        element={
+          <ProtectedRoute allowedRoles={["student", "instructor", "employer", "admin"]}>
+            <AppLayout><PortfolioDetail /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route 
         path="/explore" 
         element={
@@ -97,6 +108,15 @@ function AppRoutes() {
             <AppLayout><Explore /></AppLayout>
           </ProtectedRoute>
         } 
+      />
+
+      <Route
+        path="/courses/:courseId"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "instructor"]}>
+            <AppLayout><CourseDetail /></AppLayout>
+          </ProtectedRoute>
+        }
       />
 
       <Route
@@ -183,7 +203,7 @@ function AppRoutes() {
       <Route 
         path="/messages" 
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["student", "instructor", "employer"]}>
             <AppLayout><Messages /></AppLayout>
           </ProtectedRoute>
         } 

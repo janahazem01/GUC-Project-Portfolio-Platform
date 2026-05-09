@@ -2,7 +2,7 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, Badge, Button, Input, Modal, PageHeader, SuccessToast, ConfirmActionModal } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
-import { internships, portfolios } from "../../data/dummy";
+import { internships, portfolios, pushInternshipApplicationDecisionNotification } from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
 
 const internshipsStorageKey = "gucEmployerInternships";
@@ -81,36 +81,6 @@ function StatCard({ label, value }) {
       <p className="text-text-secondary text-xs font-sans uppercase tracking-widest mb-2">{label}</p>
       <p className="font-mono text-3xl text-text-primary">{value}</p>
     </Card>
-  );
-}
-
-function ConfirmationModal({ confirmation, onClose }) {
-  const handleYes = () => {
-    confirmation?.onConfirm();
-    onClose();
-  };
-
-  return (
-    <Modal isOpen={Boolean(confirmation)} onClose={onClose} title="Confirm action">
-      <p className="text-text-secondary text-sm font-sans mb-6">
-        are you sure you want to {confirmation?.action}?
-      </p>
-      <div className="flex justify-end gap-3">
-        <Button variant="secondary" onClick={onClose}>No</Button>
-        <Button variant={confirmation?.variant || "gold"} onClick={handleYes}>Yes</Button>
-      </div>
-    </Modal>
-  );
-}
-
-function MessageModal({ message, onClose }) {
-  return (
-    <Modal isOpen={Boolean(message)} onClose={onClose} title="Message">
-      <p className="text-text-primary text-sm font-sans mb-6">{message}</p>
-      <div className="flex justify-end">
-        <Button variant="gold" onClick={onClose}>OK</Button>
-      </div>
-    </Modal>
   );
 }
 
@@ -920,6 +890,14 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
               : internship
           )
         );
+        if (nextStatus === "accepted" || nextStatus === "rejected") {
+          pushInternshipApplicationDecisionNotification({
+            studentEmail: application.studentEmail,
+            internshipTitle: activeInternship.title,
+            companyName: activeInternship.company,
+            decision: nextStatus,
+          });
+        }
         showFeedback(`${application.studentName}'s application status updated.`);
       }
     );

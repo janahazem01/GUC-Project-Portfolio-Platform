@@ -33,22 +33,6 @@ const mergeWithLatestDummyUser = (savedUser) => {
   return mergedUser;
 };
 
-const getSavedUser = () => {
-  try {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      const hydratedUser = mergeWithLatestDummyUser(parsedUser);
-      localStorage.setItem("user", JSON.stringify(hydratedUser));
-      return hydratedUser;
-    }
-  } catch {
-    localStorage.removeItem("user");
-  }
-
-  return null;
-};
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [resetOtp, setResetOtp] = useState(null);

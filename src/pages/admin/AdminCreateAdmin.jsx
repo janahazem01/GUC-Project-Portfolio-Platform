@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Input, Modal, PageHeader, SuccessToast } from "../../components/ui";
+import { Button, Card, Input, Modal, PageHeader } from "../../components/ui";
 import { dummyUsers } from "../../data/dummy";
 
 export default function AdminCreateAdmin() {

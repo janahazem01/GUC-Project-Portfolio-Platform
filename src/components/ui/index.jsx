@@ -30,7 +30,7 @@ export function Button({ children, variant = "primary", size = "md", className =
   );
 }
 
-export function Badge({ children, variant = "default" }) {
+export function Badge({ children, variant = "default", className = "" }) {
   const variants = {
     default: "bg-bg-elevated text-text-secondary",
     gold: "bg-accent-gold/10 text-accent-gold border border-accent-gold/30",
@@ -40,7 +40,7 @@ export function Badge({ children, variant = "default" }) {
     danger: "bg-danger/10 text-danger border border-danger/30",
   };
   return (
-    <span className={`font-mono text-xs px-2 py-0.5 rounded-full ${variants[variant]}`}>
+    <span className={`inline-flex items-center justify-center font-mono text-xs px-2.5 py-0.5 rounded-full whitespace-nowrap ${variants[variant]} ${className}`}>
       {children}
     </span>
   );
@@ -98,10 +98,12 @@ export function Modal({ isOpen, onClose, title, children, backdropClassName = ""
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-display text-xl text-text-primary">{title}</h2>
             <button
+              type="button"
+              aria-label="Close dialog"
               onClick={onClose}
-              className="text-text-secondary hover:text-text-primary text-xl"
+              className="text-text-secondary hover:text-text-primary text-xl leading-none px-2 py-1 rounded-md hover:bg-bg-elevated transition-colors"
             >
-              x
+              ×
             </button>
           </div>
           {children}

@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { Badge, Button, Card, PageHeader, SuccessToast, ConfirmActionModal, Modal } from "../../components/ui";
+import { Badge, Button, Card, PageHeader, ConfirmActionModal, Modal } from "../../components/ui";
 import {
   adminClearProjectFlag,
   adminHideFlaggedProject,
   applyInstructorCourseRequestDecision,
-  courses,
   dummyUsers,
   employerApplications,
   getFlaggedProjects,
@@ -78,6 +77,10 @@ export default function AdminDataPage() {
   const [actionFeedbackOpen, setActionFeedbackOpen] = useState(false);
   const [actionFeedbackMessage, setActionFeedbackMessage] = useState("");
   const [projectDeactivateTarget, setProjectDeactivateTarget] = useState(null);
+  const [projectActivateTarget, setProjectActivateTarget] = useState(null);
+  const [instructorRequestConfirm, setInstructorRequestConfirm] = useState(null);
+  const [flaggedActionConfirm, setFlaggedActionConfirm] = useState(null);
+  const [appealFilter, setAppealFilter] = useState("all");
   const page = pageTitles[section];
 
   useEffect(() => {
@@ -108,7 +111,14 @@ export default function AdminDataPage() {
       <PageHeader
         title={page[0]}
         subtitle={page[1]}
-        action={<Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>}
+        action={
+          <Button
+            variant="secondary"
+            onClick={() => navigate(section === "requests" ? "/" : -1)}
+          >
+            Back
+          </Button>
+        }
       />
 
       {section === "users" && (
@@ -254,10 +264,10 @@ export default function AdminDataPage() {
             </p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] text-left border-collapse">
+            <table className="w-full min-w-[960px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-border bg-bg-base">
-                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal min-w-[14rem]">
+                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal min-w-[12rem]">
                     Project
                   </th>
                   <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal min-w-[8.5rem]">
@@ -265,6 +275,9 @@ export default function AdminDataPage() {
                   </th>
                   <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[6.5rem]">
                     Code
+                  </th>
+                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[8rem]">
+                    Status
                   </th>
                   <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[7.5rem]">
                     Platform
@@ -280,27 +293,24 @@ export default function AdminDataPage() {
               <tbody>
                 {projects.map((project) => {
                   const active = isPlatformProjectActive(project);
-                  const vis =
-                    project.visibility === "public" ? "Public" : project.visibility === "private" ? "Private" : project.visibility;
                   return (
                     <tr
                       key={project.id}
                       className="border-b border-border last:border-0 hover:bg-bg-elevated/20 transition-colors align-middle"
                     >
                       <td className="px-4 py-3">
-                        <div className="min-w-0 space-y-1">
-                          <p className="text-sm font-semibold text-text-primary font-sans leading-snug">{project.title}</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {project.flagged && <Badge variant="danger">Flagged</Badge>}
-                            <Badge variant="default">{vis}</Badge>
-                          </div>
-                        </div>
+                        <p className="text-sm font-semibold text-text-primary font-sans leading-snug break-words">{project.title}</p>
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-sm text-text-secondary font-sans">{project.owner}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant="blue">{project.courseCode}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Badge variant={project.flagged ? "danger" : "success"}>
+                          {project.flagged ? "Flagged" : "Not flagged"}
+                        </Badge>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant={active ? "success" : "warning"}>{active ? "Active" : "Inactive"}</Badge>
@@ -314,11 +324,7 @@ export default function AdminDataPage() {
                             size="sm"
                             variant="secondary"
                             disabled={active}
-                            onClick={() => {
-                              setProjectPlatformActive(project.id, true);
-                              setActionFeedbackMessage(`${project.title} was activated successfully.`);
-                              setActionFeedbackOpen(true);
-                            }}
+                            onClick={() => setProjectActivateTarget(project)}
                           >
                             Activate
                           </Button>
@@ -410,24 +416,13 @@ export default function AdminDataPage() {
                 </div>
                 <p className="text-sm text-text-secondary font-mono text-center">{request.requestedAt}</p>
                 <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      applyInstructorCourseRequestDecision(request.id, true);
-                      setActionFeedbackMessage("This step was completed successfully.");
-                      setActionFeedbackOpen(true);
-                    }}
-                  >
+                  <Button size="sm" onClick={() => setInstructorRequestConfirm({ id: request.id, accept: true })}>
                     Accept
                   </Button>
                   <Button
                     size="sm"
                     variant="danger"
-                    onClick={() => {
-                      applyInstructorCourseRequestDecision(request.id, false);
-                      setActionFeedbackMessage("This step was completed successfully.");
-                      setActionFeedbackOpen(true);
-                    }}
+                    onClick={() => setInstructorRequestConfirm({ id: request.id, accept: false })}
                   >
                     Reject
                   </Button>
@@ -489,23 +484,13 @@ export default function AdminDataPage() {
                         size="sm"
                         variant="danger"
                         disabled={hidden}
-                        onClick={() => {
-                          const result = adminHideFlaggedProject(project.id);
-                          if (!result.ok) return;
-                          setActionFeedbackMessage(`${project.title} is now hidden from public discovery.`);
-                          setActionFeedbackOpen(true);
-                        }}
+                        onClick={() => setFlaggedActionConfirm({ project, action: "hide" })}
                       >
                         Hide from public
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => {
-                          const result = adminClearProjectFlag(project.id);
-                          if (!result.ok) return;
-                          setActionFeedbackMessage(`${project.title} flag was cleared and visibility restored.`);
-                          setActionFeedbackOpen(true);
-                        }}
+                        onClick={() => setFlaggedActionConfirm({ project, action: "clear" })}
                       >
                         Clear flag & keep visible
                       </Button>
@@ -519,39 +504,63 @@ export default function AdminDataPage() {
       )}
 
       {section === "appeals" && (
-        <Card className="p-0 overflow-hidden">
-          <DataHeader
-            columns={["Student", "Project", "Submitted", "Status", "Message preview"]}
-            style={{ gridTemplateColumns: "1.1fr 1.3fr 0.85fr 0.75fr minmax(0, 2.2fr)" }}
-            alignments={["text-left", "text-left", "text-center", "text-center", "text-left"]}
-          />
-          {getProjectAppeals().length === 0 ? (
-            <div className="px-4 py-6 text-sm font-sans text-text-secondary border-b border-border">
-              Appeals will appear automatically when students reply to flags.
-            </div>
-          ) : (
-            getProjectAppeals().map((appeal) => (
-              <DataRow
-                key={appeal.id}
-                columns={5}
-                style={{ gridTemplateColumns: "1.1fr 1.3fr 0.85fr 0.75fr minmax(0, 2.2fr)" }}
-              >
-                <div className="min-w-0 text-left space-y-1">
-                  <p className="text-sm font-semibold text-text-primary truncate">{appeal.studentName}</p>
-                  <p className="text-[11px] font-mono text-text-secondary truncate">{appeal.studentEmail}</p>
-                </div>
-                <p className="text-sm text-text-secondary font-sans truncate">{appeal.projectTitle}</p>
-                <p className="text-xs font-mono text-text-secondary text-center">{appeal.submittedAt}</p>
-                <div className="flex justify-center">
-                  <Badge variant={appeal.status === "pending" ? "warning" : "success"}>{appeal.status}</Badge>
-                </div>
-                <p className="text-sm text-text-secondary font-sans whitespace-normal break-words leading-relaxed line-clamp-4">
-                  {appeal.message}
-                </p>
-              </DataRow>
-            ))
-          )}
-        </Card>
+        <>
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <span className="text-sm text-text-secondary font-sans">Appeals:</span>
+            <Button size="sm" variant={appealFilter === "all" ? "primary" : "secondary"} onClick={() => setAppealFilter("all")}>
+              All
+            </Button>
+            <Button size="sm" variant={appealFilter === "pending" ? "primary" : "secondary"} onClick={() => setAppealFilter("pending")}>
+              Unresolved
+            </Button>
+            <Button size="sm" variant={appealFilter === "resolved" ? "primary" : "secondary"} onClick={() => setAppealFilter("resolved")}>
+              Resolved
+            </Button>
+          </div>
+          <Card className="p-0 overflow-hidden">
+            <DataHeader
+              columns={["Student", "Project", "Submitted", "Status", "Message preview"]}
+              style={{ gridTemplateColumns: "1.1fr 1.3fr 0.85fr 0.75fr minmax(0, 2.2fr)" }}
+              alignments={["text-left", "text-left", "text-center", "text-center", "text-left"]}
+            />
+            {(() => {
+              const appealsShown = getProjectAppeals().filter((appeal) => {
+                if (appealFilter === "pending") return appeal.status === "pending";
+                if (appealFilter === "resolved") return appeal.status === "resolved";
+                return true;
+              });
+              if (appealsShown.length === 0) {
+                return (
+                  <div className="px-4 py-6 text-sm font-sans text-text-secondary border-b border-border">
+                    {getProjectAppeals().length === 0
+                      ? "Appeals will appear automatically when students reply to flags."
+                      : "No appeals match this filter."}
+                  </div>
+                );
+              }
+              return appealsShown.map((appeal) => (
+                <DataRow
+                  key={appeal.id}
+                  columns={5}
+                  style={{ gridTemplateColumns: "1.1fr 1.3fr 0.85fr 0.75fr minmax(0, 2.2fr)" }}
+                >
+                  <div className="min-w-0 text-left space-y-1">
+                    <p className="text-sm font-semibold text-text-primary whitespace-normal break-words">{appeal.studentName}</p>
+                    <p className="text-[11px] font-mono text-text-secondary whitespace-normal break-all">{appeal.studentEmail}</p>
+                  </div>
+                  <p className="text-sm text-text-secondary font-sans whitespace-normal break-words">{appeal.projectTitle}</p>
+                  <p className="text-xs font-mono text-text-secondary text-center whitespace-normal">{appeal.submittedAt}</p>
+                  <div className="flex justify-center">
+                    <Badge variant={appeal.status === "pending" ? "warning" : "success"}>{appeal.status}</Badge>
+                  </div>
+                  <p className="text-sm text-text-secondary font-sans whitespace-normal break-words leading-relaxed">
+                    {appeal.message}
+                  </p>
+                </DataRow>
+              ));
+            })()}
+          </Card>
+        </>
       )}
 
       <Modal
@@ -565,33 +574,80 @@ export default function AdminDataPage() {
         </div>
       </Modal>
 
-      <Modal
+      <ConfirmActionModal
         isOpen={Boolean(projectDeactivateTarget)}
+        action={`deactivate "${projectDeactivateTarget?.title ?? "this project"}"`}
+        variant="danger"
         onClose={() => setProjectDeactivateTarget(null)}
-        title="Deactivate project"
-      >
-        <p className="text-text-secondary text-sm mb-6">
-          Are you sure you want to deactivate {projectDeactivateTarget?.title ?? "this project"}?
-        </p>
-        <div className="flex justify-end gap-3">
-          <Button variant="ghost" onClick={() => setProjectDeactivateTarget(null)}>
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => {
-              if (!projectDeactivateTarget?.id) return;
-              setProjectPlatformActive(projectDeactivateTarget.id, false);
-              const title = projectDeactivateTarget.title;
-              setProjectDeactivateTarget(null);
-              setActionFeedbackMessage(`${title} was deactivated successfully.`);
-              setActionFeedbackOpen(true);
-            }}
-          >
-            Yes
-          </Button>
-        </div>
-      </Modal>
+        onConfirm={() => {
+          if (!projectDeactivateTarget?.id) return;
+          setProjectPlatformActive(projectDeactivateTarget.id, false);
+          const title = projectDeactivateTarget.title;
+          setProjectDeactivateTarget(null);
+          setActionFeedbackMessage(`${title} was deactivated successfully.`);
+          setActionFeedbackOpen(true);
+        }}
+      />
+
+      <ConfirmActionModal
+        isOpen={Boolean(projectActivateTarget)}
+        action={`activate "${projectActivateTarget?.title ?? "this project"}"`}
+        variant="gold"
+        onClose={() => setProjectActivateTarget(null)}
+        onConfirm={() => {
+          if (!projectActivateTarget?.id) return;
+          setProjectPlatformActive(projectActivateTarget.id, true);
+          const title = projectActivateTarget.title;
+          setProjectActivateTarget(null);
+          setActionFeedbackMessage(`${title} was activated successfully.`);
+          setActionFeedbackOpen(true);
+        }}
+      />
+
+      <ConfirmActionModal
+        isOpen={instructorRequestConfirm !== null}
+        action={
+          instructorRequestConfirm?.accept
+            ? "accept this instructor course request"
+            : "reject this instructor course request"
+        }
+        variant={instructorRequestConfirm?.accept ? "gold" : "danger"}
+        onClose={() => setInstructorRequestConfirm(null)}
+        onConfirm={() => {
+          if (!instructorRequestConfirm) return;
+          applyInstructorCourseRequestDecision(instructorRequestConfirm.id, instructorRequestConfirm.accept);
+          setInstructorRequestConfirm(null);
+          setActionFeedbackMessage("This step was completed successfully.");
+          setActionFeedbackOpen(true);
+        }}
+      />
+
+      <ConfirmActionModal
+        isOpen={flaggedActionConfirm !== null}
+        action={
+          flaggedActionConfirm?.action === "hide"
+            ? `hide "${flaggedActionConfirm?.project?.title}" from public discovery`
+            : `clear the flag on "${flaggedActionConfirm?.project?.title}" and restore visibility`
+        }
+        variant={flaggedActionConfirm?.action === "hide" ? "danger" : "gold"}
+        onClose={() => setFlaggedActionConfirm(null)}
+        onConfirm={() => {
+          if (!flaggedActionConfirm?.project) return;
+          if (flaggedActionConfirm.action === "hide") {
+            const result = adminHideFlaggedProject(flaggedActionConfirm.project.id);
+            if (result.ok) {
+              setActionFeedbackMessage(`${flaggedActionConfirm.project.title} is now hidden from public discovery.`);
+            }
+          } else {
+            const result = adminClearProjectFlag(flaggedActionConfirm.project.id);
+            if (result.ok) {
+              setActionFeedbackMessage(`${flaggedActionConfirm.project.title} flag was cleared and visibility restored.`);
+            }
+          }
+          setFlaggedActionConfirm(null);
+          setActionFeedbackOpen(true);
+        }}
+      />
     </div>
   );
 }

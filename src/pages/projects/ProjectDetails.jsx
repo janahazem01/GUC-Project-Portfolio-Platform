@@ -1,8 +1,16 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-import { Badge, Button, Card, ConfirmActionModal, Input, Modal, PageHeader, Stars, SuccessToast } from "../../components/ui";
-import { portfolios, projects, flagProjectModeration, getProjectAppeals, subscribeDummyUpdates, submitProjectAppeal } from "../../data/dummy";
+import { Badge, Button, Card, ConfirmActionModal, Modal, PageHeader, Stars, SuccessToast } from "../../components/ui";
+import {
+  portfolios,
+  projects,
+  flagProjectModeration,
+  getProjectAppeals,
+  setProjectPlatformActive,
+  subscribeDummyUpdates,
+  submitProjectAppeal,
+} from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
 
 const portfolioByOwner = new Map(portfolios.map((portfolio) => [portfolio.owner, portfolio]));
@@ -52,6 +60,7 @@ export default function ProjectDetails() {
   const [flagConfirmAck, setFlagConfirmAck] = useState(false);
   const [appealMessage, setAppealMessage] = useState("");
   const [appealError, setAppealError] = useState("");
+  const [adminExploreDeactivateOpen, setAdminExploreDeactivateOpen] = useState(false);
   const {
     canUseFavorites,
     isFavoriteProject,
@@ -84,6 +93,8 @@ export default function ProjectDetails() {
 
   const canModerateProject = ["admin", "instructor"].includes(user?.role);
   const viewingOwnerStudent = user?.role === "student" && project.owner === user?.name;
+  const adminFromExplore = user?.role === "admin" && activeNav === "/explore";
+  const canAdminDeactivateFromExplore = adminFromExplore && project.platformActive !== false;
 
   const requestProjectFavorite = () => {
     if (!project) return;
@@ -148,6 +159,11 @@ export default function ProjectDetails() {
           )}
         </>
       )}
+      {canAdminDeactivateFromExplore && (
+        <Button variant="danger" onClick={() => setAdminExploreDeactivateOpen(true)}>
+          Deactivate
+        </Button>
+      )}
       {canUseFavorites && (
         <>
           <Button
@@ -184,6 +200,15 @@ export default function ProjectDetails() {
             <p className="text-success text-sm font-sans">{feedbackMessage}</p>
             <Button variant="ghost" size="sm" onClick={() => setFeedbackMessage("")}>Dismiss</Button>
           </div>
+        </Card>
+      )}
+
+      {project.platformActive === false && (
+        <Card className="mb-4 border-warning/50 bg-warning/10">
+          <p className="text-warning text-xs font-mono uppercase tracking-widest mb-1">Platform status</p>
+          <p className="text-text-primary text-sm font-sans">
+            This project is deactivated. It is hidden from Explore until an administrator activates it again from Admin → Projects.
+          </p>
         </Card>
       )}
 
@@ -540,6 +565,19 @@ export default function ProjectDetails() {
         onClose={() => setConfirmation(null)}
         onConfirm={confirmation?.onConfirm}
       />
+
+      <ConfirmActionModal
+        isOpen={adminExploreDeactivateOpen}
+        action={`deactivate "${project.title}" — it will disappear from Explore until an administrator activates it again from Admin → Projects`}
+        variant="danger"
+        onClose={() => setAdminExploreDeactivateOpen(false)}
+        onConfirm={() => {
+          setProjectPlatformActive(project.id, false);
+          setAdminExploreDeactivateOpen(false);
+          setFeedbackMessage(`“${project.title}” was deactivated.`);
+        }}
+      />
+
       <SuccessToast message={feedbackMessage} onClose={() => setFeedbackMessage("")} />
     </div>
   );
