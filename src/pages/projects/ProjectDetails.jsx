@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Badge, Button, Card, ConfirmActionModal, PageHeader, Stars } from "../../components/ui";
+import { Badge, Button, Card, ConfirmActionModal, PageHeader, Stars, SuccessToast } from "../../components/ui";
 import { portfolios, projects } from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
 
@@ -245,6 +245,7 @@ export default function ProjectDetails() {
         onClose={() => setConfirmation(null)}
         onConfirm={confirmation?.onConfirm}
       />
+      <SuccessToast message={feedbackMessage} onClose={() => setFeedbackMessage("")} />
     </div>
   );
 }

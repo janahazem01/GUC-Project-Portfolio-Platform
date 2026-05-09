@@ -1,12 +1,13 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Input } from "../../components/ui";
+import { Button, Input, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -34,7 +35,10 @@ export default function Login() {
 
     const result = login(email, password);
     if (result.success) {
-      navigate("/");
+      setSuccess("Logged in successfully! Redirecting...");
+      setTimeout(() => {
+        navigate("/");
+      }, 1000);
     } else {
       setError(result.error);
     }
@@ -108,6 +112,7 @@ export default function Login() {
           </p>
         </div>
       </div>
+      <SuccessToast message={success} onClose={() => setSuccess("")} />
     </div>
   );
 }

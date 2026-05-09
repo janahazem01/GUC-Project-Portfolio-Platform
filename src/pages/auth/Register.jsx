@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Input } from "../../components/ui";
+import { Button, Input, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 
 export default function Register() {
@@ -11,6 +11,7 @@ export default function Register() {
   const [companyName, setCompanyName] = useState("");
   const [taxCertificate, setTaxCertificate] = useState(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
   const { register } = useContext(AuthContext);
@@ -56,7 +57,10 @@ export default function Register() {
 
     const result = register(payload);
     if (result.success) {
-      navigate("/");
+      setSuccess("Account registered successfully! Redirecting...");
+      setTimeout(() => {
+        navigate("/");
+      }, 1500);
     } else {
       setError(result.error);
     }
@@ -117,6 +121,7 @@ export default function Register() {
           Already have an account? <a href="/login" className="text-accent-blue hover:underline">Sign in</a>
         </div>
       </div>
+      <SuccessToast message={success} onClose={() => setSuccess("")} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useContext } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { getUnreadNotificationCount } from "../../data/dummy";
+import { ConfirmActionModal } from "../ui";
 
 const allNavItems = [
   { label: "Dashboard",   icon: "⊞", path: "/", roles: ["student", "instructor", "employer", "admin"] },
@@ -31,6 +32,7 @@ function SidebarTooltip({ collapsed, label }) {
 function UserMenu({ collapsed }) {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -59,13 +61,21 @@ function UserMenu({ collapsed }) {
       
       {!collapsed && (
         <button
-          onClick={handleLogout}
+          onClick={() => setShowLogoutConfirm(true)}
           className="flex min-h-9 items-center gap-3 px-3 py-1.5 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors w-full text-left font-sans"
         >
           <span>⎋</span>
           <span>Logout</span>
         </button>
       )}
+
+      <ConfirmActionModal
+        isOpen={showLogoutConfirm}
+        action="log out of your account"
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        variant="danger"
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Badge, Button, Card, Modal, PageHeader } from "../../components/ui";
+import { Badge, Button, Card, PageHeader, SuccessToast, ConfirmActionModal, Modal } from "../../components/ui";
 import { dummyUsers } from "../../data/dummy";
 
 const roleLabels = {
@@ -21,6 +21,7 @@ export default function AdminAccountManagement() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ open: false, action: null, user: null });
   const [alertModal, setAlertModal] = useState({ open: false, message: "" });
+  const [successMessage, setSuccessMessage] = useState("");
 
   const filteredUsers = useMemo(() => {
     const visibleStatuses = selectedStatus ? [selectedStatus] : statusOptions.map((opt) => opt.value);
@@ -32,7 +33,7 @@ export default function AdminAccountManagement() {
       setAlertModal({ open: true, message: "This account is already activated." });
       return;
     }
-    setConfirmModal({ open: true, action: "activate", user });
+    setConfirmModal({ open: true, action: "activate", user, variant: "primary" });
   };
 
   const handleDeactivate = (user) => {
@@ -40,7 +41,7 @@ export default function AdminAccountManagement() {
       setAlertModal({ open: true, message: "This account is already deactivated." });
       return;
     }
-    setConfirmModal({ open: true, action: "deactivate", user });
+    setConfirmModal({ open: true, action: "deactivate", user, variant: "danger" });
   };
 
   const confirmAction = () => {
@@ -50,7 +51,7 @@ export default function AdminAccountManagement() {
       targetUser.status = action === "activate" ? "active" : "inactive";
     }
     setConfirmModal({ open: false, action: null, user: null });
-    setAlertModal({ open: true, message: `Account ${action}d successfully.` });
+    setSuccessMessage(`Account ${action}d successfully.`);
   };
 
   return (
@@ -170,15 +171,13 @@ export default function AdminAccountManagement() {
         ))}
       </Card>
 
-      <Modal isOpen={confirmModal.open} onClose={() => setConfirmModal({ open: false, action: null, user: null })} title="Confirm Action">
-        <p className="text-text-secondary text-sm mb-6">
-          Are you sure you want to {confirmModal.action} the account for {confirmModal.user?.name}?
-        </p>
-        <div className="flex justify-end gap-3">
-          <Button variant="ghost" onClick={() => setConfirmModal({ open: false, action: null, user: null })}>Cancel</Button>
-          <Button onClick={confirmAction}>Yes</Button>
-        </div>
-      </Modal>
+      <ConfirmActionModal
+        isOpen={confirmModal.open}
+        action={`${confirmModal.action} the account for ${confirmModal.user?.name}`}
+        onClose={() => setConfirmModal({ open: false, action: null, user: null })}
+        onConfirm={confirmAction}
+        variant={confirmModal.variant}
+      />
 
       <Modal isOpen={alertModal.open} onClose={() => setAlertModal({ open: false, message: "" })} title="Alert">
         <p className="text-text-secondary text-sm mb-6">{alertModal.message}</p>
@@ -186,6 +185,8 @@ export default function AdminAccountManagement() {
           <Button onClick={() => setAlertModal({ open: false, message: "" })}>Okay</Button>
         </div>
       </Modal>
+
+      <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
     </div>
   );
 }

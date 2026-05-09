@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, Badge, Button, Input, Modal, PageHeader } from "../../components/ui";
+import { Card, Badge, Button, Input, Modal, PageHeader, SuccessToast, ConfirmActionModal } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { internships, portfolios } from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
@@ -666,52 +666,26 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
       />
 
       {/* Filter Applied Message */}
-      <Modal
-        isOpen={filterAppliedMessage}
-        onClose={() => setFilterAppliedMessage(false)}
-        title="Filters Applied"
-      >
-        <p className="text-text-primary text-sm font-sans mb-6">✓ Filters are applied successfully</p>
-        <div className="flex justify-end">
-          <Button
-            variant="gold"
-            onClick={() => setFilterAppliedMessage(false)}
-          >
-            OK
-          </Button>
-        </div>
-      </Modal>
+      {filterAppliedMessage && (
+        <SuccessToast message="Filters are applied successfully" onClose={() => setFilterAppliedMessage(false)} />
+      )}
 
       {/* Confirmation Modal */}
-      <Modal isOpen={Boolean(confirmation)} onClose={() => setConfirmation(null)} title="Confirm action">
-        <p className="text-text-secondary text-sm font-sans mb-6">
-          Are you sure you want to {confirmation?.action}?
-        </p>
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={() => setConfirmation(null)}>
-            No
-          </Button>
-          <Button
-            variant="gold"
-            onClick={() => {
-              confirmation?.onConfirm();
-              setConfirmation(null);
-            }}
-          >
-            Yes
-          </Button>
-        </div>
-      </Modal>
+      <ConfirmActionModal
+        isOpen={Boolean(confirmation)}
+        onClose={() => setConfirmation(null)}
+        action={confirmation?.action}
+        onConfirm={() => {
+          confirmation?.onConfirm();
+          setConfirmation(null);
+        }}
+        variant="primary"
+      />
 
       {/* Success Message Modal */}
-      <Modal isOpen={Boolean(successMessage)} onClose={() => setSuccessMessage("")} title="Success">
-        <p className="text-text-primary text-sm font-sans mb-6">{successMessage}</p>
-        <div className="flex justify-end">
-          <Button variant="gold" onClick={() => setSuccessMessage("")}>
-            OK
-          </Button>
-        </div>
-      </Modal>
+      {successMessage && (
+        <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
+      )}
     </div>
   );
 }
@@ -982,8 +956,20 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
         onSubmit={handleFormSubmit}
       />
 
-      <ConfirmationModal confirmation={confirmation} onClose={() => setConfirmation(null)} />
-      <MessageModal message={successMessage} onClose={() => setSuccessMessage("")} />
+      <ConfirmActionModal
+        isOpen={Boolean(confirmation)}
+        onClose={() => setConfirmation(null)}
+        action={confirmation?.action}
+        onConfirm={() => {
+          confirmation?.onConfirm();
+          setConfirmation(null);
+        }}
+        variant={confirmation?.variant || "primary"}
+      />
+
+      {successMessage && (
+        <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
+      )}
     </>
   );
 

@@ -129,3 +129,27 @@ export function ConfirmActionModal({ isOpen, action, onClose, onConfirm, variant
     </Modal>
   );
 }
+
+export function SuccessToast({ message, onClose }) {
+  if (!message) return null;
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[100] animate-in fade-in slide-in-from-bottom-5">
+      <div className="bg-bg-elevated border border-success/30 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]">
+        <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+          <span className="text-success text-sm">✓</span>
+        </div>
+        <p className="text-text-primary text-sm font-sans flex-1">{message}</p>
+        <button 
+          onClick={onClose}
+          className="text-text-secondary hover:text-text-primary transition-colors ml-2"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+

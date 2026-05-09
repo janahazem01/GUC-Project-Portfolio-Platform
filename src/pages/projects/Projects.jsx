@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Badge, Stars, Button, PageHeader, Modal, Input } from "../../components/ui";
+import { Card, Badge, Stars, Button, PageHeader, Modal, Input, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { projects } from "../../data/dummy";
 
@@ -104,9 +104,7 @@ export default function Projects() {
       />
 
       {successMessage && (
-        <Card className="mb-4 border-success/40 bg-success/10">
-          <p className="text-success text-sm font-sans">{successMessage}</p>
-        </Card>
+        <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
       )}
 
       <div className="flex flex-col gap-4">

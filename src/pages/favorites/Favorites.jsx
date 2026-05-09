@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Badge, Button, Card, ConfirmActionModal, PageHeader, Stars } from "../../components/ui";
+import { Badge, Button, Card, ConfirmActionModal, PageHeader, Stars, SuccessToast } from "../../components/ui";
 import { portfolios, projects } from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
 
@@ -23,6 +23,7 @@ export default function Favorites() {
     removePortfolio,
   } = useFavorites();
   const [confirmation, setConfirmation] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const projectById = useMemo(
     () => new Map(projects.map((project) => [project.id, project])),
@@ -49,15 +50,21 @@ export default function Favorites() {
     setConfirmation({
       action: `remove ${project.title} from your favorite projects`,
       variant: "danger",
-      onConfirm: () => removeProject(project.id),
+      onConfirm: () => {
+        removeProject(project.id);
+        setSuccessMessage("Project removed from favorites.");
+      },
     });
   };
 
   const requestRemovePortfolio = (portfolio) => {
     setConfirmation({
-      action: `remove ${portfolio.title} from your favorite portfolios`,
+      action: `remove ${portfolio.name}'s portfolio from your favorites`,
       variant: "danger",
-      onConfirm: () => removePortfolio(portfolio.id),
+      onConfirm: () => {
+        removePortfolio(portfolio.id);
+        setSuccessMessage("Portfolio removed from favorites.");
+      },
     });
   };
 
@@ -216,6 +223,7 @@ export default function Favorites() {
         onClose={() => setConfirmation(null)}
         onConfirm={confirmation?.onConfirm}
       />
+      <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
     </div>
   );
 }

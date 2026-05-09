@@ -1,11 +1,12 @@
 import { useState, useContext } from "react";
-import { Card, Badge, Stars, Button, PageHeader, Input, Modal, ConfirmActionModal } from "../../components/ui";
+import { Card, Badge, Stars, Button, PageHeader, Input, Modal, ConfirmActionModal, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { courses, instructorDirectory, projects, internships } from "../../data/dummy";
 
 function StudentProfile({ user, updateUser, myProjects }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState({
     major: user?.major || "",
     linkedIn: user?.linkedIn || "",
@@ -52,6 +53,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
           skills: formData.skills,
         });
         setIsEditModalOpen(false);
+        setSuccessMessage("Profile updated successfully!");
       },
     });
   };
@@ -252,6 +254,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
         onClose={() => setConfirmation(null)}
         onConfirm={confirmation?.onConfirm}
       />
+      <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
     </div>
   );
 }
@@ -259,6 +262,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
 function InstructorProfile({ user, updateUser, myCourses }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState({
     bio: user?.bio || "",
     researchInterests: user?.researchInterests || [],
@@ -330,6 +334,7 @@ function InstructorProfile({ user, updateUser, myCourses }) {
           officeHours: formData.officeHours,
         });
         setIsEditModalOpen(false);
+        setSuccessMessage("Profile updated successfully!");
       },
     });
   };
@@ -550,6 +555,7 @@ function InstructorDirectoryPreview() {
 function EmployerProfile({ user, updateUser }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const [formData, setFormData] = useState({
     companyName: user?.companyName || "",
     companyBio: user?.companyBio || "",
@@ -562,6 +568,7 @@ function EmployerProfile({ user, updateUser }) {
     logo: user?.logo || null,
   });
   const [pendingLocation, setPendingLocation] = useState(user?.location || "Cairo, Egypt");
+  const [viewingDoc, setViewingDoc] = useState(null);
 
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(formData.location || pendingLocation)}&output=embed`;
 
@@ -613,6 +620,10 @@ function EmployerProfile({ user, updateUser }) {
   };
 
   const handleSaveProfile = () => {
+    if (formData.uploadedDocs.length === 0) {
+      alert("A tax certificate is required to save profile changes.");
+      return;
+    }
     setConfirmation({
       action: "save these changes to your company profile",
       variant: "primary",
@@ -629,6 +640,7 @@ function EmployerProfile({ user, updateUser }) {
           logo: formData.logo,
         });
         setIsEditModalOpen(false);
+        setSuccessMessage("Company profile updated successfully!");
       },
     });
   };
@@ -638,13 +650,25 @@ function EmployerProfile({ user, updateUser }) {
       ...previous,
       location: pendingLocation,
     }));
+    updateUser({
+      ...user,
+      location: pendingLocation,
+    });
+    setSuccessMessage("Location updated successfully!");
   };
 
   const removeDoc = (docId) => {
-    setFormData((previous) => ({
-      ...previous,
-      uploadedDocs: previous.uploadedDocs.filter((doc) => doc.id !== docId),
-    }));
+    const doc = formData.uploadedDocs.find(d => d.id === docId);
+    setConfirmation({
+      action: `remove document "${doc?.name}"`,
+      variant: "danger",
+      onConfirm: () => {
+        setFormData((previous) => ({
+          ...previous,
+          uploadedDocs: previous.uploadedDocs.filter((doc) => doc.id !== docId),
+        }));
+      },
+    });
   };
 
   return (
@@ -700,15 +724,34 @@ function EmployerProfile({ user, updateUser }) {
           <h2 className="font-display text-lg text-text-primary mb-4">Verification Documents</h2>
           <div className="flex flex-col gap-2">
             {user?.uploadedDocs?.length ? user.uploadedDocs.map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm">
-                <div>
-                  <p className="text-text-primary">{doc.name}</p>
+              <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm group">
+                <div 
+                  className="cursor-pointer flex-1"
+                  onClick={() => setViewingDoc(doc)}
+                >
+                  <p className="text-text-primary group-hover:text-accent-gold transition-colors">{doc.name}</p>
                   <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
                 </div>
-                <Badge variant="gold">PDF</Badge>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setViewingDoc(doc)}
+                    className="text-accent-gold hover:text-accent-gold/80 transition-colors"
+                    title="View Document"
+                  >
+                    👁
+                  </button>
+                  <button 
+                    onClick={() => removeDoc(doc.id)}
+                    className="text-danger hover:text-danger/80 transition-colors"
+                    title="Delete Document"
+                  >
+                    🗑
+                  </button>
+                  <Badge variant="gold">PDF</Badge>
+                </div>
               </div>
             )) : (
-              <p className="text-text-secondary text-sm">No verification documents uploaded.</p>
+              <p className="text-danger text-sm font-medium">⚠️ Tax certificate required. Please upload one.</p>
             )}
           </div>
         </Card>
@@ -809,8 +852,11 @@ function EmployerProfile({ user, updateUser }) {
             <div className="flex flex-col gap-2 mt-3">
               {formData.uploadedDocs.map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm">
-                  <div>
-                    <p className="text-text-primary">{doc.name}</p>
+                  <div 
+                    className="cursor-pointer flex-1"
+                    onClick={() => setViewingDoc(doc)}
+                  >
+                    <p className="text-text-primary hover:text-accent-gold transition-colors">{doc.name}</p>
                     <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
                   </div>
                   <button type="button" className="text-danger text-xs font-semibold" onClick={() => removeDoc(doc.id)}>Remove</button>
@@ -826,6 +872,46 @@ function EmployerProfile({ user, updateUser }) {
         </div>
       </Modal>
 
+      <Modal isOpen={Boolean(viewingDoc)} onClose={() => setViewingDoc(null)} title={`Viewing: ${viewingDoc?.name}`}>
+        <div className="flex flex-col gap-4">
+          <div className="aspect-[3/4] w-full bg-white rounded-lg overflow-hidden border border-border shadow-inner flex items-center justify-center p-4">
+            <div className="text-center">
+              <div className="w-full max-w-[400px] border-2 border-dashed border-gray-300 rounded p-8 bg-gray-50 flex flex-col items-center gap-4">
+                <div className="text-4xl">📄</div>
+                <h3 className="font-display text-xl text-gray-800">SARS TAX COMPLIANCE STATUS</h3>
+                <div className="w-full flex flex-col gap-2 text-left text-xs font-mono text-gray-600">
+                  <div className="flex justify-between border-b border-gray-200 pb-1">
+                    <span>Taxpayer Name:</span>
+                    <span>TechCompany Egypt</span>
+                  </div>
+                  <div className="flex justify-between border-b border-gray-200 pb-1">
+                    <span>Tax Reference Number:</span>
+                    <span>1234567890</span>
+                  </div>
+                  <div className="flex justify-between border-b border-gray-200 pb-1">
+                    <span>Date of Issue:</span>
+                    <span>2026-03-15</span>
+                  </div>
+                  <div className="flex justify-between border-b border-gray-200 pb-1 font-bold text-green-600">
+                    <span>Status:</span>
+                    <span>COMPLIANT</span>
+                  </div>
+                </div>
+                <div className="mt-4 p-2 bg-red-100 text-red-600 font-bold border-2 border-red-600 rotate-[-15deg] uppercase">
+                  Example Certificate
+                </div>
+              </div>
+              <p className="text-sm text-text-secondary mt-4 font-sans italic">
+                (Note: External image resources are currently blocked by browser security. This is a local rendering of the certificate structure.)
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="secondary" onClick={() => setViewingDoc(null)}>Close</Button>
+          </div>
+        </div>
+      </Modal>
+
       <ConfirmActionModal
         isOpen={Boolean(confirmation)}
         action={confirmation?.action}
@@ -833,6 +919,7 @@ function EmployerProfile({ user, updateUser }) {
         onClose={() => setConfirmation(null)}
         onConfirm={confirmation?.onConfirm}
       />
+      <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
     </div>
   );
 }

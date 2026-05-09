@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Input } from "../../components/ui";
+import { Button, Input, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 
 export default function ForgotPassword() {
@@ -25,7 +25,7 @@ export default function ForgotPassword() {
     if (result.success) {
       setDisplayOtp(result.otp);
       setSuccess("OTP sent! Check the display below or your email.");
-      setStep("otp");
+      setTimeout(() => setStep("otp"), 1000); // Small delay to show success
     } else {
       setError(result.error);
     }
@@ -64,7 +64,6 @@ export default function ForgotPassword() {
             <p className="text-text-secondary text-sm mb-6">Enter your email to receive an OTP.</p>
 
             {error && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded mb-4">{error}</div>}
-            {success && <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm p-3 rounded mb-4">{success}</div>}
 
             <form onSubmit={handleRequestOtp} className="flex flex-col gap-3">
               <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -77,7 +76,6 @@ export default function ForgotPassword() {
             <p className="text-text-secondary text-sm mb-4">OTP displayed: <span className="font-mono font-bold text-accent-gold">{displayOtp}</span></p>
 
             {error && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded mb-4">{error}</div>}
-            {success && <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm p-3 rounded mb-4">{success}</div>}
 
             <form onSubmit={handleResetPassword} className="flex flex-col gap-3">
               <Input label="OTP" value={otp} onChange={(e) => setOtp(e.target.value)} required />
@@ -94,6 +92,7 @@ export default function ForgotPassword() {
           </p>
         </div>
       </div>
+      <SuccessToast message={success} onClose={() => setSuccess("")} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { Badge, Button, Card, Modal, PageHeader } from "../../components/ui";
+import { Badge, Button, Card, PageHeader, SuccessToast, ConfirmActionModal, Modal } from "../../components/ui";
 import { courses, dummyUsers, employerApplications, projects } from "../../data/dummy";
 
 const roleLabels = {
@@ -370,36 +370,25 @@ export default function AdminDataPage() {
             </form>
           </Modal>
 
-          <Modal isOpen={courseConfirmOpen} onClose={() => setCourseConfirmOpen(false)} title="Confirm action">
-            <p className="text-text-secondary text-sm mb-6">
-              Are you sure you want to {courseAction === "edit" ? "save changes to" : "create"} this course?
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setCourseConfirmOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={applyCourseSave}>Yes</Button>
-            </div>
-          </Modal>
+          <ConfirmActionModal
+            isOpen={courseConfirmOpen}
+            onClose={() => setCourseConfirmOpen(false)}
+            action={courseAction === "edit" ? `save changes to ${editingCourse?.name}` : "create this new course"}
+            onConfirm={applyCourseSave}
+            variant="primary"
+          />
 
-          <Modal isOpen={courseDeleteOpen} onClose={() => setCourseDeleteOpen(false)} title="Delete course">
-            <p className="text-text-secondary text-sm mb-6">
-              Are you sure you want to delete {editingCourse?.name}?
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setCourseDeleteOpen(false)}>
-                Cancel
-              </Button>
-              <Button variant="danger" onClick={confirmCourseDelete}>Yes</Button>
-            </div>
-          </Modal>
+          <ConfirmActionModal
+            isOpen={courseDeleteOpen}
+            onClose={() => setCourseDeleteOpen(false)}
+            action={`delete ${editingCourse?.name}`}
+            onConfirm={confirmCourseDelete}
+            variant="danger"
+          />
 
-          <Modal isOpen={courseSuccessOpen} onClose={() => setCourseSuccessOpen(false)} title="Success">
-            <p className="text-text-secondary text-sm mb-6">{courseSuccessMessage}</p>
-            <div className="flex justify-end gap-3">
-              <Button onClick={() => setCourseSuccessOpen(false)}>Okay</Button>
-            </div>
-          </Modal>
+          {courseSuccessOpen && (
+            <SuccessToast message={courseSuccessMessage} onClose={() => setCourseSuccessOpen(false)} />
+          )}
         </>
       )}
 
