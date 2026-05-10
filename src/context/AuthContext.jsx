@@ -34,7 +34,14 @@ const mergeWithLatestDummyUser = (savedUser) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [resetOtp, setResetOtp] = useState(null);
   const loading = false;
 
@@ -146,6 +153,28 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
   };
 
+  const updateVerificationStatus = (userEmail, status) => {
+    // 1. Update localStorage "localUsers"
+    const localUsers = getLocalUsers();
+    const updatedLocal = localUsers.map(u => 
+      u.email === userEmail ? { ...u, verificationStatus: status } : u
+    );
+    saveLocalUsers(updatedLocal);
+
+    // 2. Update localStorage "gucUserOverrides" (for dummy users)
+    const overrides = getUserOverrides();
+    const currentOverride = overrides[userEmail] || {};
+    saveUserOverrides({
+      ...overrides,
+      [userEmail]: { ...currentOverride, verificationStatus: status }
+    });
+
+    // 3. Update current logged in user if they are the target
+    if (user?.email === userEmail) {
+      setUser(prev => ({ ...prev, verificationStatus: status }));
+    }
+  };
+
   const updateUser = (updatedData) => {
     if (!user) return;
     const newUser = { ...user, ...updatedData };
@@ -198,7 +227,9 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         updateUser,
+        updateVerificationStatus,
         register,
+        getLocalUsers,
         requestPasswordReset,
         verifyOtpAndReset,
         resetOtp,

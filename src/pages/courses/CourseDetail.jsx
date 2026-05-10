@@ -70,11 +70,20 @@ export default function CourseDetail() {
           {instructors.length === 0 ? (
             <p className="text-sm text-text-secondary font-sans">No instructors are linked in demo data for this course.</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-4">
               {instructors.map((inst) => (
-                <li key={inst.id} className="text-sm font-sans text-text-primary">
-                  <span className="font-medium">{inst.name}</span>
-                  <span className="text-text-secondary"> · {inst.email}</span>
+                <li 
+                  key={inst.id} 
+                  className="flex items-center justify-between p-3 rounded-lg border border-border bg-bg-elevated hover:border-accent-gold/40 transition-colors group cursor-pointer"
+                  onClick={() => navigate(`/profile/${inst.id + 100}`)}
+                >
+                  <div className="flex flex-col">
+                    <span className="font-display text-sm text-text-primary group-hover:text-accent-gold transition-colors">{inst.name}</span>
+                    <span className="text-text-secondary text-xs font-mono mt-0.5">{inst.email}</span>
+                  </div>
+                  <div className="text-text-secondary text-xs font-mono uppercase tracking-tighter self-end opacity-0 group-hover:opacity-100 transition-opacity">
+                    View Profile →
+                  </div>
                 </li>
               ))}
             </ul>

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useContext } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, PageHeader, ConfirmActionModal, Modal } from "../../components/ui";
+import { AuthContext } from "../../context/AuthContext";
 import {
   adminClearProjectFlag,
   adminHideFlaggedProject,
@@ -70,6 +71,7 @@ function isPlatformProjectActive(project) {
 export default function AdminDataPage() {
   const { section } = useParams();
   const navigate = useNavigate();
+  const { updateVerificationStatus, getLocalUsers } = useContext(AuthContext);
   const [selectedRole, setSelectedRole] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [filtersAddedOpen, setFiltersAddedOpen] = useState(false);
@@ -82,22 +84,80 @@ export default function AdminDataPage() {
   const [flaggedActionConfirm, setFlaggedActionConfirm] = useState(null);
   const [appealFilter, setAppealFilter] = useState("all");
   const [viewingCompanyDocs, setViewingCompanyDocs] = useState(null);
-  const page = pageTitles[section];
-  const handleDownload = (doc) => {
-    setActionFeedbackMessage(`Starting download for ${doc.name}...`);
-    setActionFeedbackOpen(true);
-    // Simulate download
-    setTimeout(() => setActionFeedbackOpen(false), 2000);
-  };
 
-  useEffect(() => {
-    const unsubscribe = subscribeDummyUpdates(() =>
-      bumpDummyRevision((revision) => revision + 1)
-    );
-    return unsubscribe;
-  }, []);
+  const localEmployers = useMemo(() => {
+    return getLocalUsers().filter(u => u.role === 'employer');
+  }, [getLocalUsers, bumpDummyRevision]);
 
-  const employerUsers = dummyUsers.filter((user) => user.role === "employer");
+  // Merge hardcoded ones + local ones
+  const allEmployerUsers = useMemo(() => {
+    const hardcoded = dummyUsers.filter((user) => user.role === "employer");
+    const local = localEmployers;
+    
+    // Create a map to unique by email
+    const map = new Map();
+    const overrides = JSON.parse(localStorage.getItem('gucUserOverrides') || '{}');
+
+    hardcoded.forEach(u => {
+      const override = overrides[u.email];
+      map.set(u.email, override ? { ...u, ...override } : u);
+    });
+
+    local.forEach(u => {
+      const email = u.companyEmail || u.email;
+      const override = overrides[email];
+      map.set(email, override ? { ...u, ...override } : { ...u, verificationStatus: u.verificationStatus || 'pending' });
+    });
+    
+    // Also include companies from "approvals" that might not have a full user record yet
+    employerApplications.forEach(app => {
+      const email = app.companyEmail || app.email;
+      const override = overrides[email];
+      if (!map.has(email)) {
+        map.set(email, override ? { ...app, ...override } : app);
+      }
+    });
+
+    return Array.from(map.values());
+  }, [localEmployers, bumpDummyRevision]);
+
+  const allEmployerApplications = useMemo(() => {
+    // Merge hardcoded apps with overrides
+    // Use the component's revision to force a fresh read from localStorage
+    const overrides = JSON.parse(localStorage.getItem('gucUserOverrides') || '{}');
+
+    // Map existing hardcoded ones to a common format if needed
+    // And add newly registered ones from localUsers
+    const localApps = localEmployers.map(u => {
+      // Check overrides even for local users to ensure consistency
+      const email = u.companyEmail || u.email;
+      const override = overrides[email];
+      return {
+        id: u.id,
+        name: u.companyName || u.name,
+        contact: u.email,
+        companyEmail: u.email,
+        location: u.location || u.address || "Unknown",
+        verificationStatus: (override && override.verificationStatus) || u.verificationStatus || "pending",
+        uploadedDocs: u.uploadedDocs || (u.taxCert ? [{ id: 'tax-cert', name: 'tax_certificate.pdf', data: u.taxCert }] : []),
+        isLocal: true,
+        email: u.email
+      };
+    });
+
+    const mergedHardcoded = employerApplications.map(app => {
+      // Priority 1: Check overrides by companyEmail
+      let override = overrides[app.companyEmail];
+      
+      // Priority 2: Check absolute overrides (like if we used a generic key by mistake)
+      if (!override) override = overrides[app.email];
+
+      return override ? { ...app, ...override } : app;
+    });
+
+    return [...mergedHardcoded, ...localApps];
+  }, [localEmployers, bumpDummyRevision]);
+
   const isFiltered = Boolean(selectedRole);
   const filteredUsers = useMemo(() => {
     const availableRoles = roleOptions.map((option) => option.value);
@@ -110,8 +170,7 @@ export default function AdminDataPage() {
       : []
   ), [selectedRole]);
 
-  if (!page) return <Navigate to="/" replace />;
-  if (section === "courses") return <Navigate to="/courses" replace />;
+  const page = pageTitles[section] || ["Admin Console", "Platform data and systems management."];
 
   return (
     <div className="mx-auto max-w-6xl px-4">
@@ -360,7 +419,7 @@ export default function AdminDataPage() {
             columns={["Company", "Email", "Location", "Status", "Actions"]} 
             style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}
           />
-          {employerUsers.map((user) => (
+          {allEmployerUsers.map((user) => (
             <DataRow key={user.id} columns={5} style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}>
               <p className="text-sm text-text-primary font-sans truncate">{user.companyName || user.name}</p>
               <p className="text-sm text-text-secondary font-sans truncate">{user.companyEmail || user.email}</p>
@@ -384,7 +443,7 @@ export default function AdminDataPage() {
             columns={["Employer", "Contact", "Location", "Status", "Actions"]} 
             style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}
           />
-          {employerApplications.map((application) => (
+          {allEmployerApplications.filter(app => app.verificationStatus === 'pending').map((application) => (
             <DataRow key={application.id} columns={5} style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}>
               <p className="text-sm text-text-primary font-sans truncate">{application.name}</p>
               <p className="text-sm text-text-secondary font-sans truncate">{application.companyEmail}</p>
@@ -728,8 +787,13 @@ export default function AdminDataPage() {
                           variant="ghost" 
                           className="hover:text-accent-blue"
                           onClick={() => {
-                            setActionFeedbackMessage(`Viewing document: ${doc.name}`);
-                            setActionFeedbackOpen(true);
+                            if (doc.data) {
+                              const win = window.open();
+                              win.document.write('<iframe src="' + doc.data  + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
+                            } else {
+                              setActionFeedbackMessage(`Viewing document: ${doc.name}`);
+                              setActionFeedbackOpen(true);
+                            }
                           }}
                         >
                           View
@@ -738,7 +802,18 @@ export default function AdminDataPage() {
                           size="sm"
                           variant="ghost"
                           className="hover:text-accent-gold"
-                          onClick={() => handleDownload(doc)}
+                          onClick={() => {
+                            if (doc.data) {
+                              const link = document.createElement('a');
+                              link.href = doc.data;
+                              link.download = doc.name;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            } else {
+                              handleDownload(doc);
+                            }
+                          }}
                         >
                           Download
                         </Button>
@@ -754,13 +829,31 @@ export default function AdminDataPage() {
                 Close
               </Button>
               {viewingCompanyDocs.verificationStatus === "pending" && (
-                <Button onClick={() => {
-                  setActionFeedbackMessage(`Verification process initialized for ${viewingCompanyDocs.name}`);
-                  setActionFeedbackOpen(true);
-                  setViewingCompanyDocs(null);
-                }}>
-                  Approve Verification
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="danger"
+                    onClick={async () => {
+                      const email = viewingCompanyDocs.companyEmail || viewingCompanyDocs.email;
+                      await updateVerificationStatus(email, "rejected");
+                      bumpDummyRevision(prev => prev + 1);
+                      setActionFeedbackMessage(`Application REJECTED for ${viewingCompanyDocs.name}`);
+                      setActionFeedbackOpen(true);
+                      setViewingCompanyDocs(null);
+                    }}
+                  >
+                    Reject
+                  </Button>
+                  <Button onClick={async () => {
+                    const email = viewingCompanyDocs.companyEmail || viewingCompanyDocs.email;
+                    await updateVerificationStatus(email, "approved");
+                    bumpDummyRevision(prev => prev + 1);
+                    setActionFeedbackMessage(`Application APPROVED for ${viewingCompanyDocs.name}`);
+                    setActionFeedbackOpen(true);
+                    setViewingCompanyDocs(null);
+                  }}>
+                    Approve Verification
+                  </Button>
+                </div>
               )}
             </div>
           </div>

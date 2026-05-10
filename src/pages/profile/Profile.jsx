@@ -1,5 +1,5 @@
 import { useState, useContext, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, Badge, Stars, Button, PageHeader, Input, Modal, ConfirmActionModal, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
@@ -554,14 +554,19 @@ function InstructorProfile({ user, updateUser, myCourses, isReadOnly }) {
 }
 
 function InstructorDirectoryPreview() {
+  const navigate = useNavigate();
   return (
     <Card>
       <h2 className="font-display text-lg text-text-primary mb-4">Instructor Directory Preview</h2>
       <div className="grid grid-cols-2 gap-4">
         {instructorDirectory.map((instructor) => (
-          <div key={instructor.id} className="p-4 rounded-lg border border-border bg-bg-elevated">
-            <p className="text-text-primary font-medium mb-1">{instructor.name}</p>
-            <p className="text-text-secondary text-xs mb-2">{instructor.bio}</p>
+          <div 
+            key={instructor.id} 
+            className="p-4 rounded-lg border border-border bg-bg-elevated hover:border-accent-gold/40 transition-colors cursor-pointer group"
+            onClick={() => navigate(`/profile/${instructor.id + 100}`)}
+          >
+            <p className="text-text-primary font-medium mb-1 group-hover:text-accent-gold transition-colors">{instructor.name}</p>
+            <p className="text-text-secondary text-xs mb-2 line-clamp-2">{instructor.bio}</p>
             <div className="flex flex-wrap gap-2">
               {instructor.coursesTaught.map((courseId) => {
                 const course = courses.find((item) => item.id === courseId);
@@ -986,6 +991,7 @@ export default function Profile() {
   const { user: authUser, updateUser } = useContext(AuthContext);
   const { portfolioId } = useParams();
   const { projectList } = useProjects();
+  const navigate = useNavigate();
 
   const isPublicView = Boolean(portfolioId);
 
