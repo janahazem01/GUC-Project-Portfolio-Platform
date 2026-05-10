@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
+import { ProjectsProvider } from "./context/ProjectsContext";
 import { AppLayout } from "./components/layout/AppLayout";
 import Login        from "./pages/auth/Login";
 import Register     from "./pages/auth/Register";
+import RegisterEmployer from "./pages/auth/RegisterEmployer";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import Dashboard    from "./pages/Dashboard";
 import Projects     from "./pages/projects/Projects";
@@ -18,6 +20,8 @@ import AdminDataPage from "./pages/admin/AdminDataPage";
 import AdminAccountManagement from "./pages/admin/AdminAccountManagement";
 import Internships  from "./pages/internships/Internships";
 import Notifications from "./pages/Notifications";
+import Requests from "./pages/Requests";
+import Tasks from "./pages/Tasks";
 import Messages     from "./pages/Messages";
 import CoursesDirectory from "./pages/courses/CoursesDirectory";
 import CourseDetail from "./pages/courses/CourseDetail";
@@ -54,6 +58,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/register/employer" element={<RegisterEmployer />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
       <Route 
@@ -200,6 +205,24 @@ function AppRoutes() {
         } 
       />
 
+      <Route
+        path="/requests"
+        element={
+          <ProtectedRoute allowedRoles={["student", "instructor", "admin"]}>
+            <AppLayout><Requests /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tasks"
+        element={
+          <ProtectedRoute allowedRoles={["student", "instructor"]}>
+            <AppLayout><Tasks /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route 
         path="/messages" 
         element={
@@ -215,9 +238,11 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <ProjectsProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </ProjectsProvider>
     </AuthProvider>
   );
 }
