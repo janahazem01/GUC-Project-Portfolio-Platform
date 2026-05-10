@@ -1,10 +1,16 @@
+<<<<<<< HEAD
 import { createContext, useState, useEffect } from "react";
+=======
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState } from "react";
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 import { dummyUsers } from "../data/dummy";
 
 export const AuthContext = createContext();
 
 // Simple OTP generator for demo
 const generateOtp = () => Math.random().toString().slice(2, 6);
+<<<<<<< HEAD
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -41,6 +47,39 @@ export const AuthProvider = ({ children }) => {
     }
     return "employer"; // Default to employer for external emails
   };
+=======
+const userOverridesStorageKey = "gucUserOverrides";
+
+const getUserOverrides = () => {
+  try {
+    const raw = localStorage.getItem(userOverridesStorageKey);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveUserOverrides = (overrides) => {
+  localStorage.setItem(userOverridesStorageKey, JSON.stringify(overrides));
+};
+
+const mergeWithLatestDummyUser = (savedUser) => {
+  if (!savedUser?.email) return savedUser;
+
+  const latestDummyUser = dummyUsers.find((dummyUser) => dummyUser.email === savedUser.email);
+  const savedOverrides = getUserOverrides()[savedUser.email] || {};
+  const mergedUser = latestDummyUser
+    ? { ...latestDummyUser, ...savedUser, ...savedOverrides }
+    : { ...savedUser, ...savedOverrides };
+  delete mergedUser.password;
+  return mergedUser;
+};
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [resetOtp, setResetOtp] = useState(null);
+  const loading = false;
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
   const login = (email, password) => {
     const localUsers = getLocalUsers();
@@ -58,7 +97,10 @@ export const AuthProvider = ({ children }) => {
     delete loggedInUser.password; // Don't store password
     
     setUser(loggedInUser);
+<<<<<<< HEAD
     localStorage.setItem("user", JSON.stringify(loggedInUser));
+=======
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     return { success: true, user: loggedInUser };
   };
 
@@ -66,7 +108,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const raw = localStorage.getItem("localUsers");
       return raw ? JSON.parse(raw) : [];
+<<<<<<< HEAD
     } catch (e) {
+=======
+    } catch {
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       return [];
     }
   };
@@ -75,6 +121,38 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("localUsers", JSON.stringify(arr));
   };
 
+<<<<<<< HEAD
+=======
+  const persistUserProfile = (nextUser) => {
+    if (!nextUser?.email) return;
+
+    const cleanUser = { ...nextUser };
+    delete cleanUser.password;
+
+    const localUsers = getLocalUsers();
+    const hasLocalUser = localUsers.some((localUser) => localUser.email === cleanUser.email);
+
+    if (hasLocalUser) {
+      saveLocalUsers(
+        localUsers.map((localUser) =>
+          localUser.email === cleanUser.email
+            ? { ...localUser, ...cleanUser, password: localUser.password }
+            : localUser
+        )
+      );
+    }
+
+    const overrides = getUserOverrides();
+    saveUserOverrides({
+      ...overrides,
+      [cleanUser.email]: {
+        ...(overrides[cleanUser.email] || {}),
+        ...cleanUser,
+      },
+    });
+  };
+
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const register = (payload) => {
     // payload can be { name, email, password, role } or employer fields like { companyName, companyEmail }
     const email = payload.email || payload.companyEmail;
@@ -88,11 +166,20 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: "Email already registered" };
     }
 
+<<<<<<< HEAD
     const role = payload.role || (email.includes("@student.guc.edu.eg") ? "student" : email.includes("@guc.edu.eg") ? "instructor" : "employer");
+=======
+    const role = payload.role || "student";
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
     const newUser = {
       id: Date.now(),
       role,
+<<<<<<< HEAD
+=======
+      favoriteProjectIds: [],
+      favoritePortfolioIds: [],
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       ...payload,
       email,
     };
@@ -103,13 +190,17 @@ export const AuthProvider = ({ children }) => {
     const loggedInUser = { ...newUser };
     delete loggedInUser.password;
     setUser(loggedInUser);
+<<<<<<< HEAD
     localStorage.setItem("user", JSON.stringify(loggedInUser));
+=======
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
     return { success: true, user: loggedInUser };
   };
 
   const logout = () => {
     setUser(null);
+<<<<<<< HEAD
     localStorage.removeItem("user");
   };
 
@@ -117,6 +208,15 @@ export const AuthProvider = ({ children }) => {
     const newUser = { ...user, ...updatedData };
     setUser(newUser);
     localStorage.setItem("user", JSON.stringify(newUser));
+=======
+  };
+
+  const updateUser = (updatedData) => {
+    if (!user) return;
+    const newUser = { ...user, ...updatedData };
+    setUser(newUser);
+    persistUserProfile(newUser);
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   };
 
   const requestPasswordReset = (email) => {

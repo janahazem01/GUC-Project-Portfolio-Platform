@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, PageHeader } from "../../components/ui";
 import { useProjects } from "../../context/ProjectsContext";
+import { projects } from "../../data/dummy";
 
 function CampusPreview({ project }) {
   return (
@@ -96,7 +97,7 @@ function PortfolioPreview({ project, projectList }) {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        {[project, ...projectList.filter((item) => item.id !== project.id)].slice(0, 3).map((item) => (
+        {[project, ...projects.filter((item) => item.id !== project.id)].map((item) => (
           <div key={item.id} className="bg-bg-elevated border border-border rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <Badge variant="blue">{item.courseCode}</Badge>

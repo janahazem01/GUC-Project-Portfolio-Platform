@@ -14,7 +14,11 @@ export function Card({ children, className = "", hover = false, ...props }) {
 }
 
 export function Button({ children, variant = "primary", size = "md", className = "", ...props }) {
+<<<<<<< HEAD
   const base = "font-sans font-medium rounded-lg transition-all duration-150 cursor-pointer";
+=======
+  const base = "font-sans font-medium rounded-lg transition-all duration-150 cursor-pointer disabled:opacity-45 disabled:pointer-events-none disabled:cursor-not-allowed";
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const sizes = { sm: "px-3 py-1.5 text-sm", md: "px-5 py-2.5 text-sm", lg: "px-6 py-3 text-base" };
   const variants = {
     primary: "bg-accent-blue text-white hover:bg-accent-blue/80",
@@ -30,7 +34,11 @@ export function Button({ children, variant = "primary", size = "md", className =
   );
 }
 
+<<<<<<< HEAD
 export function Badge({ children, variant = "default" }) {
+=======
+export function Badge({ children, variant = "default", className = "" }) {
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const variants = {
     default: "bg-bg-elevated text-text-secondary",
     gold: "bg-accent-gold/10 text-accent-gold border border-accent-gold/30",
@@ -40,28 +48,47 @@ export function Badge({ children, variant = "default" }) {
     danger: "bg-danger/10 text-danger border border-danger/30",
   };
   return (
+<<<<<<< HEAD
     <span className={`font-mono text-xs px-2 py-0.5 rounded-full ${variants[variant]}`}>
+=======
+    <span className={`inline-flex items-center justify-center font-mono text-xs px-2.5 py-0.5 rounded-full whitespace-nowrap ${variants[variant]} ${className}`}>
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       {children}
     </span>
   );
 }
 
+<<<<<<< HEAD
 export function Input({ label, className = "", ...props }) {
+=======
+export function Input({ label, error, className = "", ...props }) {
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   return (
     <div className="flex flex-col gap-1.5">
       {label && <label className="text-sm text-text-secondary font-sans">{label}</label>}
       <input
+<<<<<<< HEAD
         className={`bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans
           placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors ${className}`}
         {...props}
       />
+=======
+        className={`bg-bg-elevated border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors ${error ? "border-danger text-danger" : "border-border"} ${className}`}
+        {...props}
+      />
+      {error && <p className="text-danger text-sm">{error}</p>}
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }
 
 export function PageHeader({ title, subtitle, action }) {
   return (
+<<<<<<< HEAD
     <div className="flex items-start justify-between mb-8">
+=======
+    <div className="flex items-center justify-between mb-8 gap-6">
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       <div>
         <h1 className="font-display text-2xl text-text-primary mb-1">{title}</h1>
         {subtitle && <p className="text-text-secondary text-sm font-sans">{subtitle}</p>}
@@ -81,13 +108,18 @@ export function Stars({ rating, max = 5 }) {
   );
 }
 
+<<<<<<< HEAD
 export function Modal({ isOpen, onClose, title, children }) {
+=======
+export function Modal({ isOpen, onClose, title, children, backdropClassName = "", contentClassName = "" }) {
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   if (!isOpen) return null;
 
   return (
     <>
       {/* Backdrop */}
       <div
+<<<<<<< HEAD
         className="fixed inset-0 bg-black/50 z-40"
         onClick={onClose}
       />
@@ -109,8 +141,75 @@ export function Modal({ isOpen, onClose, title, children }) {
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
             {children}
           </div>
+=======
+        className={`fixed inset-0 bg-black/50 z-40 ${backdropClassName}`}
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
+        <Card className={`max-h-[90vh] overflow-y-auto ${contentClassName}`}>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-xl text-text-primary">{title}</h2>
+            <button
+              type="button"
+              aria-label="Close dialog"
+              onClick={onClose}
+              className="text-text-secondary hover:text-text-primary text-xl leading-none px-2 py-1 rounded-md hover:bg-bg-elevated transition-colors"
+            >
+              ×
+            </button>
+          </div>
+          {children}
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
         </Card>
       </div>
     </>
   );
 }
+<<<<<<< HEAD
+=======
+
+export function ConfirmActionModal({ isOpen, action, onClose, onConfirm, variant = "gold" }) {
+  const handleConfirm = () => {
+    onConfirm?.();
+    onClose?.();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Confirm action">
+      <p className="text-text-secondary text-sm font-sans mb-6">
+        Are you sure you want to {action}?
+      </p>
+      <div className="flex justify-end gap-3">
+        <Button variant="secondary" onClick={onClose}>No</Button>
+        <Button variant={variant} onClick={handleConfirm}>Yes</Button>
+      </div>
+    </Modal>
+  );
+}
+
+export function SuccessToast({ message, onClose }) {
+  if (!message) return null;
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[100] animate-in fade-in slide-in-from-bottom-5">
+      <div className="bg-bg-elevated border border-success/30 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]">
+        <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+          <span className="text-success text-sm">✓</span>
+        </div>
+        <p className="text-text-primary text-sm font-sans flex-1">{message}</p>
+        <button 
+          onClick={onClose}
+          className="text-text-secondary hover:text-text-primary transition-colors ml-2"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+>>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687

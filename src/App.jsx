@@ -1,139 +1,26 @@
-// import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-// import { useContext } from "react";
-// import { AuthProvider, AuthContext } from "./context/AuthContext";
-// import { AppLayout } from "./components/layout/AppLayout";
-// import Login        from "./pages/auth/Login";
-// import Register     from "./pages/auth/Register";
-// import RegisterEmployer from "./pages/auth/RegisterEmployer";
-// import ForgotPassword from "./pages/auth/ForgotPassword";
-// import Dashboard    from "./pages/Dashboard";
-// import Projects     from "./pages/projects/Projects";
-// import Explore      from "./pages/discovery/Explore";
-// import Profile      from "./pages/profile/Profile";
-// import Admin        from "./pages/admin/Admin";
-// import Internships  from "./pages/internships/Internships";
-// import Notifications from "./pages/Notifications";
-// import Messages     from "./pages/Messages";
-
-// // Protected route wrapper
-// const ProtectedRoute = ({ children }) => {
-//   const { user, loading } = useContext(AuthContext);
-  
-//   if (loading) return <div className="min-h-screen bg-bg-base flex items-center justify-center">Loading...</div>;
-  
-//   if (!user) return <Navigate to="/login" replace />;
-  
-//   return children;
-// };
-
-// function AppRoutes() {
-//   return (
-//     <Routes>
-//       <Route path="/login" element={<Login />} />
-//       <Route path="/register" element={<Register />} />
-//       <Route path="/register/employer" element={<RegisterEmployer />} />
-//       <Route path="/forgot-password" element={<ForgotPassword />} />
-//       <Route 
-//         path="/" 
-//         element={
-//           <ProtectedRoute>
-//             <AppLayout><Dashboard /></AppLayout>
-//           </ProtectedRoute>
-//         } 
-//       />
-//       <Route 
-//         path="/projects" 
-//         element={
-//           <ProtectedRoute>
-//             <AppLayout><Projects /></AppLayout>
-//           </ProtectedRoute>
-//         } 
-//       />
-//       <Route 
-//         path="/explore" 
-//         element={
-//           <ProtectedRoute>
-//             <AppLayout><Explore /></AppLayout>
-//           </ProtectedRoute>
-//         } 
-//       />
-//       <Route 
-//         path="/profile" 
-//         element={
-//           <ProtectedRoute>
-//             <AppLayout><Profile /></AppLayout>
-//           </ProtectedRoute>
-//         } 
-//       />
-//       <Route 
-//         path="/admin" 
-//         element={
-//           <ProtectedRoute>
-//             <AppLayout><Admin /></AppLayout>
-//           </ProtectedRoute>
-//         } 
-//       />
-//       <Route 
-//         path="/internships" 
-//         element={
-//           <ProtectedRoute>
-//             <AppLayout><Internships /></AppLayout>
-//           </ProtectedRoute>
-//         } 
-//       />
-//       <Route 
-//         path="/notifications" 
-//         element={
-//           <ProtectedRoute>
-//             <AppLayout><Notifications /></AppLayout>
-//           </ProtectedRoute>
-//         } 
-//       />
-//       <Route 
-//         path="/messages" 
-//         element={
-//           <ProtectedRoute>
-//             <AppLayout><Messages /></AppLayout>
-//           </ProtectedRoute>
-//         } 
-//       />
-//     </Routes>
-//   );
-// }
-
-// function App() {
-//   return (
-//     <AuthProvider>
-//       <BrowserRouter>
-//         <AppRoutes />
-//       </BrowserRouter>
-//     </AuthProvider>
-//   );
-// }
-
-// export default App;
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
-import { ProjectsProvider } from "./context/ProjectsContext";
 import { AppLayout } from "./components/layout/AppLayout";
 import Login        from "./pages/auth/Login";
 import Register     from "./pages/auth/Register";
-import RegisterEmployer from "./pages/auth/RegisterEmployer";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import Dashboard    from "./pages/Dashboard";
 import Projects     from "./pages/projects/Projects";
 import ProjectDetails from "./pages/projects/ProjectDetails";
 import ProjectPreview from "./pages/projects/ProjectPreview";
 import Explore      from "./pages/discovery/Explore";
+import PortfolioDetail from "./pages/discovery/PortfolioDetail";
+import Favorites    from "./pages/favorites/Favorites";
 import Profile      from "./pages/profile/Profile";
 import Admin        from "./pages/admin/Admin";
 import AdminDataPage from "./pages/admin/AdminDataPage";
+import AdminAccountManagement from "./pages/admin/AdminAccountManagement";
 import Internships  from "./pages/internships/Internships";
 import Notifications from "./pages/Notifications";
-import Requests from "./pages/Requests";
-import Tasks from "./pages/Tasks";
 import Messages     from "./pages/Messages";
+import CoursesDirectory from "./pages/courses/CoursesDirectory";
+import CourseDetail from "./pages/courses/CourseDetail";
 
 // ✅ Protected route wrapper (UPDATED LOGIC ONLY)
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -167,7 +54,6 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/register/employer" element={<RegisterEmployer />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
       <Route 
@@ -206,6 +92,15 @@ function AppRoutes() {
         }
       />
 
+      <Route
+        path="/explore/portfolio/:portfolioId"
+        element={
+          <ProtectedRoute allowedRoles={["student", "instructor", "employer", "admin"]}>
+            <AppLayout><PortfolioDetail /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route 
         path="/explore" 
         element={
@@ -213,6 +108,24 @@ function AppRoutes() {
             <AppLayout><Explore /></AppLayout>
           </ProtectedRoute>
         } 
+      />
+
+      <Route
+        path="/courses/:courseId"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "instructor"]}>
+            <AppLayout><CourseDetail /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/courses"
+        element={
+          <ProtectedRoute allowedRoles={["admin", "instructor"]}>
+            <AppLayout><CoursesDirectory /></AppLayout>
+          </ProtectedRoute>
+        }
       />
 
       <Route 
@@ -224,13 +137,22 @@ function AppRoutes() {
         } 
       />
 
-      <Route 
-        path="/admin" 
+      <Route
+        path="/favorites"
+        element={
+          <ProtectedRoute allowedRoles={["student", "employer"]}>
+            <AppLayout><Favorites /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
-            <Navigate to="/" replace />
+            <AppLayout><Admin /></AppLayout>
           </ProtectedRoute>
-        } 
+        }
       />
 
       <Route
@@ -238,6 +160,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <AppLayout><AdminDataPage /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/account-management"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <AppLayout><AdminAccountManagement /></AppLayout>
           </ProtectedRoute>
         }
       />
@@ -251,6 +182,15 @@ function AppRoutes() {
         } 
       />
 
+      <Route
+        path="/internships/:internshipId"
+        element={
+          <ProtectedRoute>
+            <AppLayout><Internships /></AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
       <Route 
         path="/notifications" 
         element={
@@ -260,28 +200,10 @@ function AppRoutes() {
         } 
       />
 
-      <Route
-        path="/requests"
-        element={
-          <ProtectedRoute allowedRoles={["student", "instructor"]}>
-            <AppLayout><Requests /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/tasks"
-        element={
-          <ProtectedRoute allowedRoles={["student", "instructor"]}>
-            <AppLayout><Tasks /></AppLayout>
-          </ProtectedRoute>
-        }
-      />
-
       <Route 
         path="/messages" 
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["student", "instructor", "employer"]}>
             <AppLayout><Messages /></AppLayout>
           </ProtectedRoute>
         } 
@@ -293,11 +215,9 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <ProjectsProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </ProjectsProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </AuthProvider>
   );
 }
