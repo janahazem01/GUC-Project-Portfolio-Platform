@@ -112,7 +112,7 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: "Email already registered" };
     }
 
-    const role = payload.role || (email.includes("@student.guc.edu.eg") ? "student" : email.includes("@guc.edu.eg") ? "instructor" : "employer");
+    const role = payload.role || "student";
 
     const newUser = {
       id: Date.now(),

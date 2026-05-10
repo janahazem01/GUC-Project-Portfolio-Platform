@@ -9,7 +9,7 @@ export const dummyUsers = [
   {
     id: 1,
     name: "Ahmed El-Sayed",
-    email: "ahmed.elsayed@student.guc.edu.eg",
+    email: "ahmed.elsayed@gmail.com",
     password: "password",
     role: "student",
     major: "Media Engineering & Technology",
@@ -52,7 +52,7 @@ export const dummyUsers = [
   {
     id: 2,
     name: "Admin User",
-    email: "admin@guc.edu.eg",
+    email: "admin@gmail.com",
     password: "password",
     role: "admin",
     bio: "Platform administrator",
@@ -63,7 +63,7 @@ export const dummyUsers = [
   {
     id: 3,
     name: "Dr. Sara Abdelhamid",
-    email: "dr.sara@guc.edu.eg",
+    email: "dr.sara@gmail.com",
     password: "password",
     role: "instructor",
     bio: "Associate Professor in Software Engineering",
@@ -99,7 +99,7 @@ export const dummyUsers = [
   {
     id: 5,
     name: "Dr. Aya Salama",
-    email: "dr.aya@guc.edu.eg",
+    email: "dr.aya@gmail.com",
     password: "password",
     role: "instructor",
     bio: "Lecturer in Human-Computer Interaction",
@@ -116,7 +116,7 @@ export const dummyUsers = [
 export const currentUser = {
   id: 1,
   name: "Ahmed El-Sayed",
-  email: "ahmed.elsayed@student.guc.edu.eg",
+  email: "ahmed.elsayed@gmail.com",
   role: "student",
   major: "Media Engineering & Technology",
   skills: ["React", "Node.js", "Python", "Figma"],
@@ -127,7 +127,7 @@ export const instructorDirectory = [
   {
     id: 1,
     name: "Dr. Sara Abdelhamid",
-    email: "dr.sara@guc.edu.eg",
+    email: "dr.sara@gmail.com",
     bio: "Associate Professor in Software Engineering",
     researchInterests: ["Software Architecture", "Design Patterns", "Agile Methods"],
     education: ["PhD in Computer Science - Cairo University", "BSc in Computer Science"],
@@ -136,7 +136,7 @@ export const instructorDirectory = [
   {
     id: 2,
     name: "Dr. Aya Salama",
-    email: "dr.aya@guc.edu.eg",
+    email: "dr.aya@gmail.com",
     bio: "Lecturer in Human-Computer Interaction",
     researchInterests: ["UX Research", "Usability Testing", "Interaction Design"],
     education: ["PhD in HCI - University of Warwick"],

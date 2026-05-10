@@ -103,7 +103,13 @@ function UserMenu({ collapsed }) {
   return (
     <div className={`shrink-0 border-t border-border flex flex-col gap-1.5 ${collapsed ? "p-2" : "p-2.5"}`}>
       <div className={`group relative flex min-h-10 items-center rounded-lg text-text-primary text-sm w-full ${collapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-1.5"}`}>
-        <span className="flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">{roleEmoji[user?.role] || "👤"}</span>
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-blue/10 border border-accent-blue/20 overflow-hidden">
+          {(user?.avatar || user?.logo) ? (
+            <img src={user.avatar || user.logo} alt="Avatar" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-base leading-none">{roleEmoji[user?.role] || "👤"}</span>
+          )}
+        </div>
         {!collapsed && (
           <div className="flex-1 text-left truncate">
             <div className="text-sm font-medium truncate">{user?.name}</div>

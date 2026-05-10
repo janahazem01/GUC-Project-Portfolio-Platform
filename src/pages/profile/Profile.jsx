@@ -11,6 +11,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
     major: user?.major || "",
     linkedIn: user?.linkedIn || "",
     skills: user?.skills || [],
+    avatar: user?.avatar || null,
   });
   const [newSkill, setNewSkill] = useState("");
 
@@ -19,9 +20,21 @@ function StudentProfile({ user, updateUser, myProjects }) {
       major: user?.major || "",
       linkedIn: user?.linkedIn || "",
       skills: user?.skills || [],
+      avatar: user?.avatar || null,
     });
     setNewSkill("");
     setIsEditModalOpen(true);
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, avatar: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleAddSkill = () => {
@@ -51,6 +64,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
           major: formData.major,
           linkedIn: formData.linkedIn,
           skills: formData.skills,
+          avatar: formData.avatar,
         });
         setIsEditModalOpen(false);
         setSuccessMessage("Profile updated successfully!");
@@ -61,10 +75,14 @@ function StudentProfile({ user, updateUser, myProjects }) {
   return (
     <div>
       <div className="bg-bg-surface border border-border rounded-lg p-8 mb-6 flex items-start gap-6">
-        <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center shrink-0">
-          <span className="font-display text-2xl text-accent-gold">
-            {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
-          </span>
+        <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center shrink-0 overflow-hidden">
+          {user?.avatar ? (
+            <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="font-display text-2xl text-accent-gold">
+              {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
+            </span>
+          )}
         </div>
         <div className="flex-1">
           <h1 className="font-display text-3xl text-text-primary mb-1">{user?.name}</h1>
@@ -151,6 +169,24 @@ function StudentProfile({ user, updateUser, myProjects }) {
 
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Portfolio">
         <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4 py-2">
+            <div className="w-16 h-16 rounded-full bg-accent-gold/10 border border-accent-gold/30 flex items-center justify-center overflow-hidden shrink-0">
+              {formData.avatar ? (
+                <img src={formData.avatar} alt="Avatar preview" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl text-accent-gold">👤</span>
+              )}
+            </div>
+            <div className="flex-1">
+              <label className="text-sm text-text-secondary font-sans mb-1.5 block">Profile Picture</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="text-xs text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-accent-blue/10 file:text-accent-blue hover:file:bg-accent-blue/20 cursor-pointer"
+              />
+            </div>
+          </div>
           <Input
             label="Major"
             type="text"
@@ -217,6 +253,7 @@ function InstructorProfile({ user, updateUser, myCourses }) {
     coursesTaught: user?.coursesTaught || [],
     linkedin: user?.linkedin || "",
     officeHours: user?.officeHours || "",
+    avatar: user?.avatar || null,
   });
   const [newResearchInterest, setNewResearchInterest] = useState("");
   const [newEducationItem, setNewEducationItem] = useState("");
@@ -229,10 +266,22 @@ function InstructorProfile({ user, updateUser, myCourses }) {
       coursesTaught: user?.coursesTaught || [],
       linkedin: user?.linkedin || "",
       officeHours: user?.officeHours || "",
+      avatar: user?.avatar || null,
     });
     setNewResearchInterest("");
     setNewEducationItem("");
     setIsEditModalOpen(true);
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, avatar: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const toggleCourse = (courseId) => {
@@ -279,6 +328,7 @@ function InstructorProfile({ user, updateUser, myCourses }) {
             : [...formData.coursesTaught, 4],
           linkedin: formData.linkedin,
           officeHours: formData.officeHours,
+          avatar: formData.avatar,
         });
         setIsEditModalOpen(false);
         setSuccessMessage("Profile updated successfully!");
@@ -289,10 +339,14 @@ function InstructorProfile({ user, updateUser, myCourses }) {
   return (
     <div>
       <div className="bg-bg-surface border border-border rounded-lg p-8 mb-6 flex items-start gap-6">
-        <div className="w-20 h-20 rounded-full bg-accent-blue/20 border-2 border-accent-blue flex items-center justify-center shrink-0">
-          <span className="font-display text-2xl text-accent-blue">
-            {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
-          </span>
+        <div className="w-20 h-20 rounded-full bg-accent-blue/20 border-2 border-accent-blue flex items-center justify-center shrink-0 overflow-hidden">
+          {user?.avatar ? (
+            <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="font-display text-2xl text-accent-blue">
+              {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
+            </span>
+          )}
         </div>
         <div className="flex-1">
           <h1 className="font-display text-3xl text-text-primary mb-1">{user?.name}</h1>
@@ -367,6 +421,24 @@ function InstructorProfile({ user, updateUser, myCourses }) {
 
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Instructor Profile">
         <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4 py-2">
+            <div className="w-16 h-16 rounded-full bg-accent-blue/10 border border-accent-blue/30 flex items-center justify-center overflow-hidden shrink-0">
+              {formData.avatar ? (
+                <img src={formData.avatar} alt="Avatar preview" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl text-accent-blue">👤</span>
+              )}
+            </div>
+            <div className="flex-1">
+              <label className="text-sm text-text-secondary font-sans mb-1.5 block">Profile Picture</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="text-xs text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-accent-blue/10 file:text-accent-blue hover:file:bg-accent-blue/20 cursor-pointer"
+              />
+            </div>
+          </div>
           <div>
             <label className="text-sm text-text-secondary font-sans mb-1.5 block">Bio</label>
             <textarea
@@ -559,13 +631,13 @@ function EmployerProfile({ user, updateUser }) {
 
   const handleLogoUpload = (event) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-
-    setFormData((previous) => ({
-      ...previous,
-      logo: file.name,
-    }));
-    event.target.value = "";
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, logo: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSaveProfile = () => {
@@ -635,7 +707,7 @@ function EmployerProfile({ user, updateUser }) {
       <div className="bg-bg-surface border border-border rounded-lg p-8 mb-6 flex items-start gap-6">
         <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center shrink-0 overflow-hidden">
           {user?.logo ? (
-            <span className="text-xs text-accent-gold font-mono px-2 text-center">{user.logo}</span>
+            <img src={user.logo} alt={user.companyName} className="w-full h-full object-cover" />
           ) : (
             <span className="font-display text-2xl text-accent-gold">
               {user?.companyName?.split(" ").map((name) => name[0]).join("") || "E"}
@@ -644,7 +716,7 @@ function EmployerProfile({ user, updateUser }) {
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <h1 className="font-display text-3xl text-text-primary">{user?.companyName}</h1>
+            <h1 className="font-display text-3xl text-text-primary">{user?.name}</h1>
             <Badge variant={user?.verificationStatus === "approved" ? "success" : user?.verificationStatus === "rejected" ? "danger" : "warning"}>
               {user?.verificationStatus || "pending"}
             </Badge>
@@ -660,6 +732,10 @@ function EmployerProfile({ user, updateUser }) {
         <Card>
           <h2 className="font-display text-lg text-text-primary mb-4">Company Information</h2>
           <div className="flex flex-col gap-3 text-sm">
+            <div>
+              <p className="text-text-secondary text-xs uppercase tracking-widest mb-1">Company Name</p>
+              <p className="text-text-primary">{user?.companyName}</p>
+            </div>
             <div>
               <p className="text-text-secondary text-xs uppercase tracking-widest mb-1">Email</p>
               <p className="text-text-primary">{user?.companyEmail}</p>
@@ -698,13 +774,6 @@ function EmployerProfile({ user, updateUser }) {
                     title="View Document"
                   >
                     👁
-                  </button>
-                  <button 
-                    onClick={() => removeDoc(doc.id)}
-                    className="text-danger hover:text-danger/80 transition-colors"
-                    title="Delete Document"
-                  >
-                    🗑
                   </button>
                   <Badge variant="gold">PDF</Badge>
                 </div>
@@ -766,6 +835,24 @@ function EmployerProfile({ user, updateUser }) {
 
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Employer Profile">
         <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4 py-2">
+            <div className="w-16 h-16 rounded-full bg-accent-gold/10 border border-accent-gold/30 flex items-center justify-center overflow-hidden shrink-0">
+              {formData.logo ? (
+                <img src={formData.logo} alt="Company logo preview" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl text-accent-gold">🏢</span>
+              )}
+            </div>
+            <div className="flex-1">
+              <label className="text-sm text-text-secondary font-sans mb-1.5 block">Company Logo</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="text-xs text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-accent-gold/10 file:text-accent-gold hover:file:bg-accent-gold/20 cursor-pointer"
+              />
+            </div>
+          </div>
           <Input
             label="Company Name"
             value={formData.companyName}
@@ -820,7 +907,6 @@ function EmployerProfile({ user, updateUser }) {
                     <p className="text-text-primary hover:text-accent-gold transition-colors">{doc.name}</p>
                     <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
                   </div>
-                  <button type="button" className="text-danger text-xs font-semibold" onClick={() => removeDoc(doc.id)}>Remove</button>
                 </div>
               ))}
             </div>

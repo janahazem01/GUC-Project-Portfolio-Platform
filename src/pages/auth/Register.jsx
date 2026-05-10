@@ -23,7 +23,7 @@ export default function Register() {
     if (!email.trim()) {
       errors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      errors.email = "Please enter a valid email address with @";
+      errors.email = "Please enter a valid email address";
     }
     if (!password) {
       errors.password = "Password is required";
@@ -52,7 +52,15 @@ export default function Register() {
       email,
       password,
       role,
-      ...(role === "employer" && { companyName, taxCertificateName: taxCertificate?.name })
+      ...(role === "employer" && { 
+        companyName, 
+        companyEmail: email, // Set initial company email
+        uploadedDocs: taxCertificate ? [{
+          id: Date.now(),
+          name: taxCertificate.name,
+          uploadedAt: new Date().toISOString().slice(0, 10),
+        }] : []
+      })
     };
 
     const result = register(payload);
