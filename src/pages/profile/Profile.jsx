@@ -16,8 +16,10 @@ function StudentProfile({ user, updateUser, myProjects }) {
     avatar: user?.avatar || null,
   });
   const [newSkill, setNewSkill] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const handleOpenEdit = () => {
+    setFieldErrors({});
     setFormData({
       major: user?.major || "",
       linkedIn: user?.linkedIn || "",
@@ -58,6 +60,16 @@ function StudentProfile({ user, updateUser, myProjects }) {
   };
 
   const handleSaveProfile = () => {
+    const errors = {};
+    if (!formData.major.trim()) errors.major = "Major is required to save your profile";
+    if (!formData.linkedIn.trim()) errors.linkedIn = "LinkedIn profile is required to save your profile";
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setFieldErrors({});
     setConfirmation({
       action: "save these changes to your portfolio",
       variant: "primary",
@@ -195,6 +207,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
             placeholder="e.g., Media Engineering & Technology"
             value={formData.major}
             onChange={(e) => setFormData({ ...formData, major: e.target.value })}
+            error={fieldErrors.major}
           />
           <Input
             label="LinkedIn Profile URL"
@@ -202,6 +215,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
             placeholder="https://linkedin.com/in/yourprofile"
             value={formData.linkedIn}
             onChange={(e) => setFormData({ ...formData, linkedIn: e.target.value })}
+            error={fieldErrors.linkedIn}
           />
           <div>
             <label className="text-sm text-text-secondary font-sans mb-1.5 block">Skills</label>

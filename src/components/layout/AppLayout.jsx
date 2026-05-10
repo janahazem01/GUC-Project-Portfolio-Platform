@@ -63,7 +63,7 @@ const allNavItems = [
   { label: "Tasks",       icon: "T", path: "/tasks", roles: ["student", "instructor"] },
   { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
   { label: "Instructors", icon: "👨‍🏫", path: "/instructors", roles: ["student", "instructor", "employer", "admin"] },
-  { label: "Portfolio",   icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
+  { label: (role) => role === "instructor" ? "Profile" : "Portfolio", icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
   { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor","employer"] },
   { label: "Requests",    icon: "◧", path: "/requests", roles: ["student", "instructor","admin"] },
   { label: "Courses",    icon: "▤", path: "/courses", roles: ["admin", "instructor"] },
@@ -103,17 +103,17 @@ function UserMenu({ collapsed }) {
   };
 
   return (
-    <div className={`shrink-0 border-t border-border flex flex-col gap-1.5 ${collapsed ? "p-2" : "p-2.5"}`}>
+    <div className={`shrink-0 border-t border-border flex flex-col gap-1.5 overflow-hidden ${collapsed ? "p-2" : "p-2.5"}`}>
       <div className={`group relative flex min-h-10 items-center rounded-lg text-text-primary text-sm w-full ${collapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-1.5"}`}>
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-blue/10 border border-accent-blue/20 overflow-hidden">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-blue/10 border border-accent-blue/20 overflow-hidden text-lg">
           {(user?.avatar || user?.logo) ? (
             <img src={user.avatar || user.logo} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
-            <span className="text-base leading-none">{roleEmoji[user?.role] || "👤"}</span>
+            <span className="leading-none">{roleEmoji[user?.role] || "👤"}</span>
           )}
         </div>
         {!collapsed && (
-          <div className="flex-1 text-left truncate">
+          <div className="flex-1 text-left truncate min-w-0">
             <div className="text-sm font-medium truncate">{user?.name}</div>
             <div className="text-xs text-text-secondary capitalize">{user?.role}</div>
           </div>
@@ -121,15 +121,15 @@ function UserMenu({ collapsed }) {
         <SidebarTooltip collapsed={collapsed} label={user?.name || "Profile"} />
       </div>
       
-      {!collapsed && (
-        <button
-          onClick={() => setShowLogoutConfirm(true)}
-          className="flex min-h-9 items-center gap-3 px-3 py-1.5 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors w-full text-left font-sans"
-        >
-          <span>⎋</span>
-          <span>Logout</span>
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setShowLogoutConfirm(true)}
+        className={`group relative flex items-center rounded-lg text-xs transition-colors w-full text-left font-sans ${collapsed ? "justify-center px-0 py-2.5 text-text-secondary hover:text-danger hover:bg-danger/10" : "gap-3 px-3 py-1.5 text-danger hover:bg-danger/10"}`}
+      >
+        <span className="flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">⎋</span>
+        {!collapsed && <span className="truncate">Logout</span>}
+        <SidebarTooltip collapsed={collapsed} label="Logout" />
+      </button>
 
       <ConfirmActionModal
         isOpen={showLogoutConfirm}
@@ -273,24 +273,25 @@ export function AppLayout({ children }) {
   return (
     <div className="flex min-h-screen bg-bg-base">
       <aside
-        className={`fixed inset-y-0 left-0 h-screen overflow-hidden bg-bg-surface border-r border-border flex flex-col z-40
+        className={`fixed inset-y-0 left-0 h-screen overflow-hidden bg-bg-surface border-r border-border flex flex-col z-40 select-none
           transition-all duration-300 ${collapsed ? "w-16" : "w-56"}`}
       >
         {/* Logo */}
-        <div className="shrink-0 flex items-center gap-3 px-4 py-5 border-b border-border">
+        <div className="shrink-0 flex items-center gap-3 px-4 py-5 border-b border-border overflow-hidden">
           <span className="text-accent-gold font-mono text-lg font-medium shrink-0">GP</span>
           {!collapsed && (
-            <span className="font-display text-sm text-text-primary truncate">GUC Portfolio</span>
+            <span className="font-display text-sm text-text-primary truncate min-w-0">GUC Portfolio</span>
           )}
         </div>
 
         {/* Nav */}
-        <nav className="min-h-0 flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-2">
+        <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto py-4 flex flex-col gap-1 px-2">
           {navItems.map((item) => {
             const active = activeNavPath === item.path ||
               (item.path !== "/" && activeNavPath.startsWith(item.path));
             const showUnreadDmCue =
               item.path === "/messages" && unreadDmTotal > 0 && !(canUseDoNotDisturb && doNotDisturb);
+            const labelText = typeof item.label === "function" ? item.label(user?.role) : item.label;
             return (
               <Link
                 key={item.path}
@@ -313,15 +314,15 @@ export function AppLayout({ children }) {
                     </abbr>
                   )}
                 </span>
-                {!collapsed && <span className="truncate">{item.label}</span>}
-                <SidebarTooltip collapsed={collapsed} label={item.label} />
+                {!collapsed && <span className="truncate">{labelText}</span>}
+                <SidebarTooltip collapsed={collapsed} label={labelText} />
               </Link>
             );
           })}
         </nav>
 
         {/* Do not disturb + Notifications + Collapse */}
-        <div className="shrink-0 border-t border-border p-2 flex flex-col gap-1">
+        <div className="shrink-0 border-t border-border p-2 flex flex-col gap-1 overflow-hidden">
           {canUseDoNotDisturb && (
             <button
               type="button"

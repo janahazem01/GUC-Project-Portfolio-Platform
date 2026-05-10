@@ -20,7 +20,18 @@ export default function Register() {
 
   const validate = () => {
     const errors = {};
-    if (!name.trim()) errors.name = "Full name is required";
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      errors.name = "Full name is required";
+    } else {
+      const words = trimmedName.split(/\s+/).filter(Boolean);
+      if (words.length < 2) {
+        errors.name = "Please enter both your first and last name";
+      } else if (words.length > 2) {
+        errors.name = "Please enter exactly two words (First and Last name only)";
+      }
+    }
+
     if (!email.trim()) {
       errors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
@@ -36,7 +47,7 @@ export default function Register() {
       if (!companyName.trim()) errors.companyName = "Company name is required";
       if (!taxCertificate) errors.taxCertificate = "Tax certificate is required";
     }
-
+    console.log(errors);
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -89,9 +100,9 @@ export default function Register() {
 
     const result = register(payload);
     if (result.success) {
-      setSuccess("Account registered successfully! Redirecting...");
+      setSuccess("Account registered successfully! Redirecting to login...");
       setTimeout(() => {
-        navigate("/");
+        navigate("/login");
       }, 1500);
     } else {
       setError(result.error);
@@ -120,7 +131,7 @@ export default function Register() {
             </select>
             {fieldErrors.role && <p className="text-danger text-sm">{fieldErrors.role}</p>}
           </div>
-          
+
           <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} error={fieldErrors.name} />
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={fieldErrors.email} placeholder = {(role == "student") ? "student@student.guc.edu.eg" : (role == "instructor") ? "instructor@guc.edu.eg" : "employer@company.com"} />
           <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={fieldErrors.password} />

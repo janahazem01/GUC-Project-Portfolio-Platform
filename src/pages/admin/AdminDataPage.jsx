@@ -750,7 +750,7 @@ export default function AdminDataPage() {
               </div>
               <div>
                 <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">Email</p>
-                <p className="text-sm text-text-secondary truncate">{viewingCompanyDocs.companyEmail || viewingCompanyDocs.email}</p>
+                <p className="text-sm text-text-secondary break-all">{viewingCompanyDocs.companyEmail || viewingCompanyDocs.email}</p>
               </div>
               <div className="col-span-2">
                 <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">Location</p>

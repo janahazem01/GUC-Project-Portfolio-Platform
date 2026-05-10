@@ -10,6 +10,7 @@ export default function ForgotPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState("");
   const [displayOtp, setDisplayOtp] = useState("");
 
@@ -19,7 +20,13 @@ export default function ForgotPassword() {
   const handleRequestOtp = (e) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
     setSuccess("");
+
+    if (!email.trim()) {
+      setFieldErrors({ email: "Email is required" });
+      return;
+    }
 
     const result = requestPasswordReset(email);
     if (result.success) {
@@ -65,8 +72,14 @@ export default function ForgotPassword() {
 
             {error && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded mb-4">{error}</div>}
 
-            <form onSubmit={handleRequestOtp} className="flex flex-col gap-3">
-              <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <form onSubmit={handleRequestOtp} className="flex flex-col gap-3" noValidate>
+              <Input 
+                label="Email" 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                error={fieldErrors.email}
+              />
               <Button type="submit" variant="gold">Send OTP</Button>
             </form>
           </>
