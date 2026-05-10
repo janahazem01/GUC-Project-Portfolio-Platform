@@ -61,9 +61,9 @@ export default function Login() {
         {/* Demo credentials */}
         <div className="bg-bg-base p-4 rounded border border-border text-text-secondary text-xs font-mono">
           <p className="font-bold text-accent-gold mb-2">Demo Credentials:</p>
-          <p>📚 Student: ahmed.elsayed@gmail.com</p>
-          <p>👨‍💼 Admin: admin@gmail.com</p>
-          <p>🎓 Instructor: dr.sara@gmail.com</p>
+          <p>📚 Student: ahmed.elsayed@student.guc.edu.eg</p>
+          <p>👨‍💼 Admin: admin@guc.edu.eg</p>
+          <p>🎓 Instructor: dr.sara@guc.edu.eg</p>
           <p>🏢 Employer: recruiter@techcompany.com</p>
           <p className="mt-2">Password: <span className="text-accent-blue">password</span></p>
         </div>
