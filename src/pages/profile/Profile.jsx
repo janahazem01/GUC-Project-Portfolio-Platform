@@ -483,6 +483,7 @@ function EmployerProfile({ user, updateUser }) {
       ...files.map((file, index) => ({
         id: Date.now() + index,
         name: file.name,
+        url: URL.createObjectURL(file),
         uploadedAt: new Date().toISOString().slice(0, 10),
       })),
     ];
@@ -589,7 +590,14 @@ function EmployerProfile({ user, updateUser }) {
             {user?.uploadedDocs?.length ? user.uploadedDocs.map((doc) => (
               <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm">
                 <div>
-                  <p className="text-text-primary">{doc.name}</p>
+                  <a
+                    href={doc.url || "about:blank"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent-blue text-base font-sans hover:underline"
+                  >
+                    {doc.name}
+                  </a>
                   <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
                 </div>
                 <Badge variant="gold">PDF</Badge>
@@ -697,7 +705,14 @@ function EmployerProfile({ user, updateUser }) {
               {formData.uploadedDocs.map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm">
                   <div>
-                    <p className="text-text-primary">{doc.name}</p>
+                    <a
+                      href={doc.url || "about:blank"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent-blue text-base font-sans hover:underline"
+                    >
+                      {doc.name}
+                    </a>
                     <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
                   </div>
                   <button type="button" className="text-danger text-xs font-semibold" onClick={() => removeDoc(doc.id)}>Remove</button>

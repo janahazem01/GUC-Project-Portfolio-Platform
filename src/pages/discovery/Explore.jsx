@@ -192,11 +192,12 @@
 //   );
 // }
 
-import { useState, useContext } from "react";
+import { useState, useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Badge, Stars, Button, Input, PageHeader } from "../../components/ui";
-import { projects, courses } from "../../data/dummy";
+import { courses } from "../../data/dummy";
 import { AuthContext } from "../../context/AuthContext";
+import { useProjects } from "../../context/ProjectsContext";
 
 export default function Explore() {
   const [search, setSearch] = useState("");
@@ -210,11 +211,17 @@ export default function Explore() {
   const [sortBy, setSortBy] = useState("");
 
   const { user } = useContext(AuthContext);
+  const { projectList } = useProjects();
   const navigate = useNavigate();
   const viewProject = (projectId) => navigate(`/projects/${projectId}`, { state: { activeNav: "/explore" } });
 
-  // 🔹 FILTERING (unchanged)
-  const filtered = projects.filter((p) => {
+  // Req 41 — searchable catalog from live projects (admins see all titles; others see public)
+  const catalog = useMemo(() => {
+    if (user?.role === "admin") return projectList;
+    return projectList.filter((p) => p.visibility === "public");
+  }, [projectList, user?.role]);
+
+  const filtered = catalog.filter((p) => {
     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase());
     const matchCourse = filterCourse ? p.courseCode === filterCourse : true;
 
@@ -249,7 +256,7 @@ export default function Explore() {
       {/* 🔥 FILTER BAR */}
       <div className="flex gap-4 mb-8 flex-wrap">
         <Input
-          placeholder="Search by project title..."
+          placeholder="Search by project title…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1"
@@ -274,7 +281,7 @@ export default function Explore() {
           className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans"
         >
           <option value="">All Instructors</option>
-          {[...new Set(projects.map(p => p.owner))].map((owner) => (
+          {[...new Set(catalog.map((p) => p.owner))].map((owner) => (
             <option key={owner} value={owner}>{owner}</option>
           ))}
         </select>
@@ -328,7 +335,7 @@ export default function Explore() {
             </p>
 
             <div className="flex items-center gap-2 flex-wrap mb-4">
-              {p.languages.map((l) => <Badge key={l}>{l}</Badge>)}
+              {(p.languages || []).map((l) => <Badge key={l}>{l}</Badge>)}
             </div>
 
             <div className="flex items-center justify-between">

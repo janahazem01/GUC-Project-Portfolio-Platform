@@ -92,19 +92,23 @@ export function Modal({ isOpen, onClose, title, children }) {
         onClick={onClose}
       />
       
-      {/* Modal */}
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
-        <Card className="max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-6">
+      {/* Modal: header stays fixed; body scrolls — avoids content showing above the title bar */}
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md max-h-[90vh] flex flex-col">
+        <Card className="flex max-h-[90vh] flex-col overflow-hidden p-0">
+          <div className="flex shrink-0 items-center justify-between border-b border-border bg-bg-surface px-6 py-4">
             <h2 className="font-display text-xl text-text-primary">{title}</h2>
             <button
+              type="button"
               onClick={onClose}
-              className="text-text-secondary hover:text-text-primary text-xl"
+              className="text-text-secondary hover:text-text-primary text-xl leading-none"
+              aria-label="Close"
             >
               ✕
             </button>
           </div>
-          {children}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+            {children}
+          </div>
         </Card>
       </div>
     </>

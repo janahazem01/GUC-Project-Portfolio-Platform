@@ -84,7 +84,7 @@ function SentimentPreview() {
   );
 }
 
-function PortfolioPreview({ project }) {
+function PortfolioPreview({ project, projectList }) {
   return (
     <Card>
       <div className="flex items-center justify-between mb-6">
@@ -96,7 +96,7 @@ function PortfolioPreview({ project }) {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        {[project, ...projects.filter((item) => item.id !== project.id)].map((item) => (
+        {[project, ...projectList.filter((item) => item.id !== project.id)].slice(0, 3).map((item) => (
           <div key={item.id} className="bg-bg-elevated border border-border rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <Badge variant="blue">{item.courseCode}</Badge>
@@ -137,7 +137,7 @@ export default function ProjectPreview() {
   const preview =
     project.id === 1 ? <CampusPreview project={project} /> :
     project.id === 2 ? <SentimentPreview project={project} /> :
-    <PortfolioPreview project={project} />;
+    <PortfolioPreview project={project} projectList={projectList} />;
 
   return (
     <div>

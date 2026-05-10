@@ -1,6 +1,6 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Badge, Button, Card, PageHeader, Stars } from "../../components/ui";
+import { Badge, Button, Card, Modal, PageHeader, Stars } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
 
@@ -48,6 +48,36 @@ function ReadmeSection({ title, children }) {
   );
 }
 
+function getDocumentUrl(fileName) {
+  return fileName ? `/documents/${encodeURIComponent(fileName)}` : "#";
+}
+
+function InteractiveStarRating({ value, onRate }) {
+  const rating = Math.max(0, Math.min(5, Math.round(Number(value) || 0)));
+
+  return (
+    <div className="min-w-64 rounded-lg border border-border bg-bg-elevated px-3 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-0.5">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => onRate(star)}
+              className={`text-2xl leading-none transition-colors ${star <= rating ? "text-accent-gold" : "text-border hover:text-text-secondary"}`}
+              aria-label={`Rate ${star} of 5 stars`}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+        <Badge variant="gold">{rating}/5</Badge>
+      </div>
+      <p className="text-text-secondary text-xs font-sans mt-2">Click a star to set and save the public rating.</p>
+    </div>
+  );
+}
+
 function buildFeedback(user, text) {
   return {
     id: Date.now(),
@@ -58,20 +88,7 @@ function buildFeedback(user, text) {
   };
 }
 
-function upsertOwnFeedback(list, user, text) {
-  const nextFeedback = buildFeedback(user, text);
-  const existing = (list || []).find((feedback) => feedback.authorEmail === user?.email);
-
-  if (!existing) return [...(list || []), nextFeedback];
-
-  return (list || []).map((feedback) =>
-    feedback.authorEmail === user?.email
-      ? { ...feedback, text: nextFeedback.text, createdAt: nextFeedback.createdAt }
-      : feedback
-  );
-}
-
-function FeedbackList({ feedback = [], onEdit, onRemove, currentUser }) {
+function FeedbackList({ feedback = [], onRemove, currentUser }) {
   if (!feedback.length) {
     return <p className="text-text-secondary text-sm font-sans">No feedback yet.</p>;
   }
@@ -89,7 +106,6 @@ function FeedbackList({ feedback = [], onEdit, onRemove, currentUser }) {
             </div>
             {item.authorEmail === currentUser?.email && (
               <div className="flex items-center gap-2 shrink-0">
-                <Button size="sm" variant="ghost" onClick={() => onEdit(item)}>Edit</Button>
                 <Button size="sm" variant="danger" onClick={() => onRemove(item.id)}>Remove</Button>
               </div>
             )}
@@ -110,11 +126,21 @@ export default function ProjectDetails() {
   const [taskFeedbackText, setTaskFeedbackText] = useState({});
   const [thesisFeedbackText, setThesisFeedbackText] = useState({});
   const [ratingValue, setRatingValue] = useState("");
+  const [toast, setToast] = useState("");
+  const [confirmFeedback, setConfirmFeedback] = useState(null);
   const project = projectList.find((item) => item.id === Number(projectId));
   const openExternal = (url) => window.open(url, "_blank", "noopener,noreferrer");
   const activeNav = location.state?.activeNav || "/projects";
   const openPreview = () => navigate(`/projects/${project.id}/preview`, { state: { activeNav } });
-  const canViewFeedback = canViewInstructorFeedback(project, user);
+  const openTasks = () => navigate(`/tasks?projectId=${project.id}`);
+  const showToast = (message) => setToast(message);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = window.setTimeout(() => setToast(""), 3500);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
   const updateTaskStatus = (taskId, status) => {
     updateProject(project.id, {
       tasks: (project.tasks || []).map((task) =>
@@ -124,24 +150,28 @@ export default function ProjectDetails() {
   };
   const isInstructor = user?.role === "instructor";
 
-  const saveRating = () => {
-    const rating = Math.max(0, Math.min(5, Number(ratingValue || project.rating || 0)));
+  const applyRating = (stars) => {
+    const rating = Math.max(1, Math.min(5, Math.round(Number(stars) || 1)));
     updateProject(project.id, { rating });
     setRatingValue(String(rating));
+    showToast("Rating saved successfully.");
   };
 
   const saveProjectFeedback = () => {
     if (!projectFeedbackText.trim()) return;
     updateProject(project.id, {
-      feedback: upsertOwnFeedback(project.feedback, user, projectFeedbackText),
+      feedback: [...(project.feedback || []), buildFeedback(user, projectFeedbackText)],
     });
     setProjectFeedbackText("");
+    showToast("Project feedback submitted successfully.");
   };
 
   const removeProjectFeedback = (feedbackId) => {
     updateProject(project.id, {
       feedback: (project.feedback || []).filter((feedback) => feedback.id !== feedbackId),
     });
+    setConfirmFeedback(null);
+    showToast("Feedback removed successfully.");
   };
 
   const saveTaskFeedback = (taskId) => {
@@ -150,11 +180,12 @@ export default function ProjectDetails() {
     updateProject(project.id, {
       tasks: (project.tasks || []).map((task) =>
         task.id === taskId
-          ? { ...task, feedback: upsertOwnFeedback(task.feedback, user, text) }
+          ? { ...task, feedback: [...(task.feedback || []), buildFeedback(user, text)] }
           : task
       ),
     });
     setTaskFeedbackText((previous) => ({ ...previous, [taskId]: "" }));
+    showToast("Task feedback submitted successfully.");
   };
 
   const removeTaskFeedback = (taskId, feedbackId) => {
@@ -165,6 +196,8 @@ export default function ProjectDetails() {
           : task
       ),
     });
+    setConfirmFeedback(null);
+    showToast("Feedback removed successfully.");
   };
 
   const saveThesisFeedback = (draftId) => {
@@ -173,11 +206,12 @@ export default function ProjectDetails() {
     updateProject(project.id, {
       thesisDrafts: (project.thesisDrafts || []).map((draft) =>
         draft.id === draftId
-          ? { ...draft, feedback: upsertOwnFeedback(draft.feedback, user, text) }
+          ? { ...draft, feedback: [...(draft.feedback || []), buildFeedback(user, text)] }
           : draft
       ),
     });
     setThesisFeedbackText((previous) => ({ ...previous, [draftId]: "" }));
+    showToast("Draft feedback submitted successfully.");
   };
 
   const removeThesisFeedback = (draftId, feedbackId) => {
@@ -188,6 +222,23 @@ export default function ProjectDetails() {
           : draft
       ),
     });
+    setConfirmFeedback(null);
+    showToast("Feedback removed successfully.");
+  };
+
+  const requestRemoveFeedback = (type, ids = {}) => {
+    setConfirmFeedback({
+      type,
+      ...ids,
+      message: "Are you sure you want to remove this feedback?",
+    });
+  };
+
+  const confirmRemoveFeedback = () => {
+    if (!confirmFeedback) return;
+    if (confirmFeedback.type === "project") removeProjectFeedback(confirmFeedback.feedbackId);
+    if (confirmFeedback.type === "task") removeTaskFeedback(confirmFeedback.taskId, confirmFeedback.feedbackId);
+    if (confirmFeedback.type === "thesis") removeThesisFeedback(confirmFeedback.draftId, confirmFeedback.feedbackId);
   };
 
   if (!project) {
@@ -205,12 +256,19 @@ export default function ProjectDetails() {
     );
   }
 
+  const canViewFeedback = canViewInstructorFeedback(project, user);
+
   return (
     <div>
       <PageHeader
         title={project.title}
         subtitle={`${project.course} - ${project.owner}`}
-        action={<Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>}
+        action={
+          <div className="flex items-center gap-3">
+            <Button variant="gold" onClick={openTasks}>Tasks</Button>
+            <Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>
+          </div>
+        }
       />
 
       <div className="flex flex-col gap-4">
@@ -227,18 +285,10 @@ export default function ProjectDetails() {
               <Stars rating={project.rating} />
               <Badge variant="gold">{project.status}</Badge>
               {isInstructor && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="0"
-                    max="5"
-                    step="0.5"
-                    value={ratingValue || String(project.rating || 0)}
-                    onChange={(e) => setRatingValue(e.target.value)}
-                    className="w-20 bg-bg-elevated border border-border rounded-lg px-3 py-1.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
-                  />
-                  <Button size="sm" variant="secondary" onClick={saveRating}>Rate</Button>
-                </div>
+                <InteractiveStarRating
+                  value={ratingValue || String(Math.round(project.rating || 0))}
+                  onRate={applyRating}
+                />
               )}
             </div>
           </div>
@@ -282,8 +332,7 @@ export default function ProjectDetails() {
           <FeedbackList
             feedback={project.feedback}
             currentUser={user}
-            onEdit={(feedback) => setProjectFeedbackText(feedback.text)}
-            onRemove={removeProjectFeedback}
+            onRemove={(feedbackId) => requestRemoveFeedback("project", { feedbackId })}
           />
           {isInstructor && (
             <div className="mt-4 flex flex-col gap-3">
@@ -341,8 +390,7 @@ export default function ProjectDetails() {
                       <FeedbackList
                         feedback={task.feedback}
                         currentUser={user}
-                        onEdit={(feedback) => setTaskFeedbackText((previous) => ({ ...previous, [task.id]: feedback.text }))}
-                        onRemove={(feedbackId) => removeTaskFeedback(task.id, feedbackId)}
+                        onRemove={(feedbackId) => requestRemoveFeedback("task", { taskId: task.id, feedbackId })}
                       />
                       {isInstructor && (
                         <div className="mt-3 flex flex-col gap-2">
@@ -382,12 +430,18 @@ export default function ProjectDetails() {
                     <p className="text-text-primary text-sm font-sans">{draft.title || draft.fileName}</p>
                     <Badge variant={draft.visibility === "public" ? "blue" : "default"}>{draft.visibility}</Badge>
                   </div>
-                  <p className="text-text-secondary text-xs font-mono mb-3">{draft.fileName}</p>
+                  <a
+                    href={getDocumentUrl(draft.fileName)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mb-3 inline-block text-accent-blue text-sm font-mono hover:underline"
+                  >
+                    {draft.fileName}
+                  </a>
                   <FeedbackList
                     feedback={draft.feedback}
                     currentUser={user}
-                    onEdit={(feedback) => setThesisFeedbackText((previous) => ({ ...previous, [draft.id]: feedback.text }))}
-                    onRemove={(feedbackId) => removeThesisFeedback(draft.id, feedbackId)}
+                    onRemove={(feedbackId) => requestRemoveFeedback("thesis", { draftId: draft.id, feedbackId })}
                   />
                   {isInstructor && (
                     <div className="mt-3 flex flex-col gap-2">
@@ -438,6 +492,19 @@ export default function ProjectDetails() {
               <ul className="list-disc pl-6 text-text-secondary text-sm font-sans leading-7">
                 {project.demo && <li>Visual preview: available from the View Project button.</li>}
                 <li>Repository: available from the GitHub button.</li>
+                {project.report && (
+                  <li>
+                    Report:{" "}
+                    <a
+                      href={getDocumentUrl(project.report)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent-blue text-sm font-mono hover:underline"
+                    >
+                      {project.report}
+                    </a>
+                  </li>
+                )}
               </ul>
             </ReadmeSection>
 
@@ -467,6 +534,29 @@ export default function ProjectDetails() {
           </div>
         </Card>
       </div>
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-success text-sm font-sans">{toast}</p>
+            <button type="button" className="text-success text-xs font-semibold" onClick={() => setToast("")}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+      <Modal
+        isOpen={Boolean(confirmFeedback)}
+        onClose={() => setConfirmFeedback(null)}
+        title="Remove Feedback"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-text-secondary text-sm font-sans">{confirmFeedback?.message}</p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setConfirmFeedback(null)}>Cancel</Button>
+            <Button variant="danger" onClick={confirmRemoveFeedback}>Remove Feedback</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { useProjects } from "../../context/ProjectsContext";
 const allNavItems = [
   { label: "Dashboard",   icon: "⊞", path: "/", roles: ["student", "instructor", "employer", "admin"] },
   { label: "Projects",    icon: "◈", path: "/projects", roles: ["student", "instructor"] },
+  { label: "Tasks",       icon: "T", path: "/tasks", roles: ["student", "instructor"] },
   { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
   { label: "Portfolio",   icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
   { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor"] },

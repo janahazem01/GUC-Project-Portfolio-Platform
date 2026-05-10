@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, Badge, Stars, Button, PageHeader, Modal, Input } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
@@ -77,11 +77,14 @@ function getCourseIdByCode(courseCode) {
   return courses.find((course) => course.code === courseCode)?.id;
 }
 
+function getDocumentUrl(fileName) {
+  return fileName ? `/documents/${encodeURIComponent(fileName)}` : "#";
+}
+
 // ─── ProjectForm lives OUTSIDE the page component so it never remounts ───────
 function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }) {
   return (
     <div className="flex flex-col gap-4">
-
       {/* Title */}
       <div>
         <Input
@@ -205,7 +208,10 @@ export default function Projects() {
   const [form,          setForm]          = useState(blankForm());
   const [errors,        setErrors]        = useState({});
   const [successMsg,    setSuccessMsg]    = useState("");
+  const [modalNotice,   setModalNotice]   = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [editConfirm,   setEditConfirm]   = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
   const [thesisModal,   setThesisModal]   = useState(null);
   const [thesisForm,    setThesisForm]    = useState(blankThesisDraftForm());
   const [thesisError,   setThesisError]   = useState("");
@@ -214,23 +220,60 @@ export default function Projects() {
   const [selectedInstructor, setSelectedInstructor] = useState({});
   const [selectedCollaborator, setSelectedCollaborator] = useState({});
   const [optionsProjectId, setOptionsProjectId] = useState(null);
+  const [tasksProjectId, setTasksProjectId] = useState(null);
+  const [thesisEditProjectId, setThesisEditProjectId] = useState(null);
+  const [thesisEditAdd, setThesisEditAdd] = useState({ title: "", fileName: "" });
+  const [thesisEditError, setThesisEditError] = useState("");
+  const [myProjectsSearch, setMyProjectsSearch] = useState("");
 
   // Req 21 - view projects I own, joined, or supervise
   const myProjects = projectList.filter((project) => canAccessProject(project, user));
+  const thesisEditProject = projectList.find((project) => project.id === thesisEditProjectId);
+  const myProjectsFiltered = myProjects.filter((project) => {
+    const q = myProjectsSearch.trim().toLowerCase();
+    if (!q) return true;
+    return project.title.toLowerCase().includes(q);
+  });
   const optionsProject = projectList.find((project) => project.id === optionsProjectId);
+  const tasksProject = projectList.find((project) => project.id === tasksProjectId);
 
   const viewProject = (id) => navigate(`/projects/${id}`);
+  const openProjectTasks = (id) => navigate(`/tasks?projectId=${id}`);
+  const showModalNotice = (message, area = "general") => {
+    setModalNotice({ message, area });
+  };
+
+  useEffect(() => {
+    if (!modalNotice) return undefined;
+    const timer = window.setTimeout(() => setModalNotice(null), 3500);
+    return () => window.clearTimeout(timer);
+  }, [modalNotice]);
+
+  useEffect(() => {
+    if (!successMsg) return undefined;
+    const timer = window.setTimeout(() => setSuccessMsg(""), 3500);
+    return () => window.clearTimeout(timer);
+  }, [successMsg]);
 
   // ── open modals ────────────────────────────────────────────────────
   const openCreate = () => {
     setForm(blankForm());
     setErrors({});
     setSuccessMsg("");
+    setModalNotice(null);
     setModal({ mode: "create" });
   };
 
-  const openEdit = (e, project) => {
-    e.stopPropagation();
+  const openEdit = (project, event) => {
+    event?.stopPropagation?.();
+    setOptionsProjectId(null);
+    setModalNotice(null);
+    if (project.courseCode === "BP") {
+      setThesisEditAdd({ title: "", fileName: "" });
+      setThesisEditError("");
+      setThesisEditProjectId(project.id);
+      return;
+    }
     const courseObj = courses.find((c) => c.name === project.course);
     setForm({
       title:      project.title,
@@ -246,7 +289,57 @@ export default function Projects() {
     setModal({ mode: "edit", project });
   };
 
-  const closeModal = () => { setModal(null); setErrors({}); };
+  const closeThesisEditModal = () => {
+    setThesisEditProjectId(null);
+    setThesisEditAdd({ title: "", fileName: "" });
+    setThesisEditError("");
+  };
+
+  const addThesisDraftInEditor = () => {
+    if (!thesisEditProject) return;
+    if (!thesisEditAdd.title.trim() || !thesisEditAdd.fileName.trim()) {
+      setThesisEditError("Add a draft title and choose a PDF file.");
+      return;
+    }
+    const nextDraft = {
+      id: Date.now(),
+      title: thesisEditAdd.title.trim(),
+      fileName: thesisEditAdd.fileName.trim(),
+      uploadedAt: new Date().toISOString().slice(0, 10),
+      isFinal: false,
+      visibility: "private",
+    };
+    updateProject(thesisEditProject.id, {
+      thesisDrafts: [...(thesisEditProject.thesisDrafts || []), nextDraft],
+    });
+    setThesisEditAdd({ title: "", fileName: "" });
+    setThesisEditError("");
+    showModalNotice("Thesis PDF added.");
+  };
+
+  const requestRemoveThesisDraft = (project, draft) => {
+    setConfirmAction({
+      title: "Remove thesis PDF",
+      message: `Remove "${draft.title || draft.fileName}" from this thesis?`,
+      confirmLabel: "Remove",
+      variant: "danger",
+      onConfirm: () => {
+        const nextDrafts = (project.thesisDrafts || []).filter((d) => d.id !== draft.id);
+        const removedFinal = project.finalDraftId === draft.id;
+        updateProject(project.id, {
+          thesisDrafts: nextDrafts.map((d) => ({
+            ...d,
+            isFinal: removedFinal ? false : d.isFinal,
+            visibility: removedFinal ? "private" : d.visibility,
+          })),
+          finalDraftId: removedFinal ? null : project.finalDraftId,
+        });
+        showModalNotice(removedFinal ? "Draft removed. Final selection cleared." : "Thesis PDF removed.", "thesis");
+      },
+    });
+  };
+
+  const closeModal = () => { setModal(null); setErrors({}); setModalNotice(null); };
 
   // ── field change ───────────────────────────────────────────────────
   const handleChange = (field, value) => {
@@ -285,14 +378,18 @@ export default function Projects() {
       resources:   [{ label: "Project Repository", url: form.github.trim() }],
       tasks:       [],
     });
-    closeModal();
-    setSuccessMsg("Project created successfully.");
+    setForm(blankForm());
+    setErrors({});
+    showModalNotice("Project created successfully.");
+  };
+
+  const requestUpdateConfirmation = () => {
+    const errs = validate(form);
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setEditConfirm(true);
   };
 
   const handleUpdate = () => {
-    const errs = validate(form);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
     const course = courses.find((c) => c.id === Number(form.courseId));
     updateProject(modal.project.id, {
       title:      form.title.trim(),
@@ -305,8 +402,9 @@ export default function Projects() {
       languages:  form.languages.split(",").map((l) => l.trim()).filter(Boolean),
       visibility: form.visibility,
     });
-    closeModal();
-    setSuccessMsg("Project updated successfully.");
+    setEditConfirm(false);
+    setErrors({});
+    showModalNotice("Project updated successfully.");
   };
 
   const handleDelete = () => {
@@ -318,12 +416,14 @@ export default function Projects() {
   const openThesisUpload = () => {
     setThesisForm(blankThesisDraftForm());
     setThesisError("");
+    setModalNotice(null);
     setThesisModal({ mode: "upload" });
   };
 
   const closeThesisModal = () => {
     setThesisModal(null);
     setThesisError("");
+    setModalNotice(null);
   };
 
   const getBachelorProject = () =>
@@ -381,8 +481,9 @@ export default function Projects() {
       });
     }
 
-    closeThesisModal();
-    setSuccessMsg("Thesis draft uploaded under Bachelor Project.");
+    setThesisForm(blankThesisDraftForm());
+    setThesisError("");
+    showModalNotice("Thesis draft uploaded under Bachelor Project.");
   };
 
   const markFinalDraft = (e, project, draftId) => {
@@ -396,7 +497,7 @@ export default function Projects() {
         visibility: draft.id === draftId ? "public" : "private",
       })),
     });
-    setSuccessMsg("Final thesis draft selected. Other drafts are now private.");
+    showModalNotice("Final thesis draft selected. Other drafts are now private.", "thesis");
   };
 
   const cancelFinalDraft = (e, project) => {
@@ -409,7 +510,7 @@ export default function Projects() {
         visibility: "private",
       })),
     });
-    setSuccessMsg("Final thesis draft selection cancelled.");
+    showModalNotice("Final thesis draft selection cancelled.", "thesis");
   };
 
   const getEligibleCollaborators = (project) => {
@@ -444,11 +545,13 @@ export default function Projects() {
       return;
     }
 
+    const nextTaskId = Math.max(0, ...(project.tasks || []).map((task) => Number(task.id) || 0)) + 1;
+
     updateProject(project.id, {
       tasks: [
         ...(project.tasks || []),
         {
-          id: Date.now(),
+          id: nextTaskId,
           title: taskForm.title.trim(),
           description: taskForm.description.trim(),
           assignee: project.courseCode === "BP" ? project.owner : taskForm.assignee,
@@ -460,7 +563,7 @@ export default function Projects() {
     });
     setTaskForm(blankTaskForm());
     setTaskError("");
-    setSuccessMsg("Task created.");
+    showModalNotice("Task created.", "tasks");
   };
 
   const updateTaskStatus = (project, taskId, status) => {
@@ -480,27 +583,50 @@ export default function Projects() {
     });
   };
 
-  const deleteTask = (e, project, taskId) => {
-    e.stopPropagation();
+  const deleteTask = (project, taskId) => {
     if (project.owner !== user?.name) return;
     updateProject(project.id, {
       tasks: (project.tasks || []).filter((task) => task.id !== taskId),
     });
+    showModalNotice("Task removed.", "tasks");
   };
 
-  const moveTask = (e, project, taskId, direction) => {
+  const requestDeleteTask = (e, project, task) => {
     e.stopPropagation();
     if (project.owner !== user?.name) return;
-    const tasks = [...(project.tasks || [])];
-    const index = tasks.findIndex((task) => task.id === taskId);
-    const nextIndex = index + direction;
-    if (index < 0 || nextIndex < 0 || nextIndex >= tasks.length) return;
-    [tasks[index], tasks[nextIndex]] = [tasks[nextIndex], tasks[index]];
-    updateProject(project.id, { tasks });
+    setConfirmAction({
+      title: "Remove Task",
+      message: `Are you sure you want to remove "${task.title}"?`,
+      confirmLabel: "Remove Task",
+      variant: "danger",
+      onConfirm: () => deleteTask(project, task.id),
+    });
   };
 
-  const removeCollaborator = (e, project, collaboratorName) => {
+  const requestRemoveCollaborator = (e, project, collaboratorName) => {
     e.stopPropagation();
+    if (project.owner !== user?.name || project.courseCode === "BP") return;
+    setConfirmAction({
+      title: "Remove Collaborator",
+      message: `Are you sure you want to remove ${collaboratorName} from this project? Their assigned tasks will become unassigned.`,
+      confirmLabel: "Remove Collaborator",
+      variant: "danger",
+      onConfirm: () => removeCollaborator(project, collaboratorName),
+    });
+  };
+
+  const requestCancelInvitation = (e, project, invitationId, type) => {
+    e.stopPropagation();
+    setConfirmAction({
+      title: "Cancel Invitation",
+      message: "Are you sure you want to cancel this invitation?",
+      confirmLabel: "Cancel Invitation",
+      variant: "danger",
+      onConfirm: () => cancelInvitation(project, invitationId, type),
+    });
+  };
+
+  const removeCollaborator = (project, collaboratorName) => {
     if (project.owner !== user?.name || project.courseCode === "BP") return;
     updateProject(project.id, {
       team: (project.team || []).filter((member) => member !== collaboratorName),
@@ -511,7 +637,7 @@ export default function Projects() {
         task.assignee === collaboratorName ? { ...task, assignee: "" } : task
       ),
     });
-    setSuccessMsg(`${collaboratorName} removed from the project.`);
+    showModalNotice(`${collaboratorName} removed from the project.`, "collaborators");
   };
 
   const getEligibleInstructors = (project) => {
@@ -542,7 +668,7 @@ export default function Projects() {
       ],
     });
     setSelectedCollaborator((previous) => ({ ...previous, [project.id]: "" }));
-    setSuccessMsg(`Invitation sent to ${collaborator.name}.`);
+    showModalNotice(`Invitation sent to ${collaborator.name}.`, "collaborators");
   };
 
   const inviteInstructor = (e, project) => {
@@ -565,21 +691,20 @@ export default function Projects() {
       ],
     });
     setSelectedInstructor((previous) => ({ ...previous, [project.id]: "" }));
-    setSuccessMsg(`Invitation sent to ${instructor.name}.`);
+    showModalNotice(`Invitation sent to ${instructor.name}.`, "instructors");
   };
 
-  const cancelInvitation = (e, project, invitationId, type) => {
-    e.stopPropagation();
+  const cancelInvitation = (project, invitationId, type) => {
     const key = type === "collaborator" ? "collaboratorInvitations" : "instructorInvitations";
     updateProject(project.id, {
       [key]: (project[key] || []).filter((invite) => invite.id !== invitationId),
     });
-    setSuccessMsg("Invitation cancelled.");
+    showModalNotice("Invitation cancelled.", type === "collaborator" ? "collaborators" : "instructors");
   };
 
   const toggleProjectPortfolio = (project) => {
     toggleVisibility(project.id);
-    setSuccessMsg(
+    showModalNotice(
       project.visibility === "public"
         ? "Project hidden from your portfolio."
         : "Project shown on your portfolio."
@@ -593,25 +718,30 @@ export default function Projects() {
         title="My Projects"
         subtitle="Manage and track your submitted projects"
         action={
-          user?.role === "student" && (
-            <div className="flex gap-3">
-              <Button variant="secondary" onClick={openThesisUpload}>Upload Thesis Draft</Button>
-              <Button variant="gold" onClick={openCreate}>+ New Project</Button>
-            </div>
-          )
+          <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:flex-wrap">
+            {myProjects.length > 0 && (
+              <Input
+                placeholder="Search by project title…"
+                value={myProjectsSearch}
+                onChange={(e) => setMyProjectsSearch(e.target.value)}
+                className="w-full min-w-[12rem] sm:w-56"
+              />
+            )}
+            {user?.role === "student" && (
+              <div className="flex gap-3">
+                <Button variant="secondary" onClick={openThesisUpload}>Upload Thesis Draft</Button>
+                <Button variant="gold" onClick={openCreate}>+ New Project</Button>
+              </div>
+            )}
+          </div>
         }
       />
-
-      {successMsg && (
-        <div className="mb-4 px-4 py-3 rounded-lg border border-success/40 bg-success/10">
-          <p className="text-success text-sm font-sans">{successMsg}</p>
-        </div>
-      )}
 
       {/* Req 21 — list of all my projects */}
       <div className="flex flex-col gap-4">
         {myProjects.length > 0 ? (
-          myProjects.map((project) => (
+          myProjectsFiltered.length > 0 ? (
+          myProjectsFiltered.map((project) => (
             <Card
               key={project.id}
               hover
@@ -659,9 +789,15 @@ export default function Projects() {
                                   {draft.isFinal && <Badge variant="success">Final</Badge>}
                                   <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
                                 </div>
-                                <p className="text-text-secondary text-xs font-mono truncate">
+                                <a
+                                  href={getDocumentUrl(draft.fileName)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-accent-blue text-sm font-mono truncate hover:underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
                                   {draft.fileName}
-                                </p>
+                                </a>
                               </div>
                               <div className="mt-2 flex items-center gap-2">
                                 <Badge variant={draft.visibility === "public" ? "blue" : "default"}>
@@ -702,9 +838,15 @@ export default function Projects() {
                       </a>
                     )}
                     {project.report && (
-                      <span className="text-text-secondary text-xs font-mono">
-                        📄 {project.report}
-                      </span>
+                      <a
+                        href={getDocumentUrl(project.report)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent-blue text-sm font-mono hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View PDF: {project.report}
+                      </a>
                     )}
                   </div>
                 </div>
@@ -716,33 +858,20 @@ export default function Projects() {
                     Created {project.createdAt}
                   </p>
                   {user?.role === "student" && project.owner === user?.name && (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                       <Button
-                        variant="secondary"
+                        variant="gold"
                         size="sm"
-                        onClick={(e) => openEdit(e, project)}
+                        className="rounded-md border border-accent-gold/50 bg-accent-gold/15 text-accent-gold hover:bg-accent-gold/25"
+                        onClick={(e) => { e.stopPropagation(); openProjectTasks(project.id); }}
                       >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(project); }}
-                      >
-                        Delete
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); viewProject(project.id); }}
-                      >
-                        View
+                        Tasks
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-9 w-10 px-0 text-xl leading-none"
-                        onClick={(e) => { e.stopPropagation(); setOptionsProjectId(project.id); }}
+                        onClick={(e) => { e.stopPropagation(); setModalNotice(null); setOptionsProjectId(project.id); }}
                         aria-label="Project options"
                       >
                         ⋮
@@ -753,6 +882,13 @@ export default function Projects() {
               </div>
             </Card>
           ))
+          ) : (
+            <Card>
+              <p className="text-text-secondary font-sans">
+                No projects match that title. Try a different search.
+              </p>
+            </Card>
+          )
         ) : (
           <Card>
             <p className="text-text-secondary font-sans">
@@ -780,46 +916,32 @@ export default function Projects() {
           form={form}
           errors={errors}
           onChange={handleChange}
-          onSubmit={handleUpdate}
+          onSubmit={requestUpdateConfirmation}
           onCancel={closeModal}
           submitLabel="Save Changes"
         />
       </Modal>
 
-      {/* Req 23 — thesis draft upload */}
-      <Modal isOpen={Boolean(optionsProject)} onClose={() => setOptionsProjectId(null)} title="Project Options">
-        {optionsProject && (() => {
-          const invitations = optionsProject.instructorInvitations || [];
-          const collaboratorInvitations = optionsProject.collaboratorInvitations || [];
-          const eligibleCollaborators = getEligibleCollaborators(optionsProject);
-          const eligibleInstructors = getEligibleInstructors(optionsProject);
-          const projectCollaborators = getProjectCollaborators(optionsProject);
-          const tasks = optionsProject.tasks || [];
+      <Modal isOpen={Boolean(tasksProject)} onClose={() => { setTasksProjectId(null); setTaskError(""); }} title="Project Tasks">
+        {tasksProject && (() => {
+          const projectCollaborators = getProjectCollaborators(tasksProject);
+          const tasks = tasksProject.tasks || [];
 
           return (
             <div className="flex flex-col gap-5">
-              <div>
-                <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="rounded-lg border border-border bg-bg-elevated px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-text-primary font-sans text-sm">{optionsProject.title}</p>
-                    <p className="text-text-secondary font-mono text-xs">{optionsProject.course}</p>
+                    <p className="text-text-primary text-sm font-sans">{tasksProject.title}</p>
+                    <p className="text-text-secondary text-xs font-mono">{tasks.length} task{tasks.length === 1 ? "" : "s"}</p>
                   </div>
-                  <Badge variant={optionsProject.visibility === "public" ? "success" : "default"}>
-                    {optionsProject.visibility}
-                  </Badge>
+                  <Badge variant="blue">Tasks</Badge>
                 </div>
-                <Button
-                  variant={optionsProject.visibility === "public" ? "danger" : "secondary"}
-                  onClick={() => toggleProjectPortfolio(optionsProject)}
-                  className="w-full"
-                >
-                  {optionsProject.visibility === "public" ? "Hide from portfolio" : "Show on portfolio"}
-                </Button>
               </div>
 
-              <div className="border-t border-border pt-4">
-                <h3 className="font-display text-base text-text-primary mb-3">Tasks</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div className="rounded-lg border border-border bg-bg-surface px-4 py-4">
+                <h3 className="font-display text-base text-text-primary mb-3">Create Task</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
                     label="Task Name"
                     value={taskForm.title}
@@ -839,7 +961,7 @@ export default function Projects() {
                     placeholder="One-line task description"
                     className="sm:col-span-2"
                   />
-                  {optionsProject.courseCode !== "BP" && (
+                  {tasksProject.courseCode !== "BP" && (
                     <div className="flex flex-col gap-1.5">
                       <label className="text-sm text-text-secondary font-sans">Assigned Collaborator</label>
                       <select
@@ -867,81 +989,113 @@ export default function Projects() {
                     </select>
                   </div>
                 </div>
-                {taskError && <p className="text-danger text-xs font-sans mb-3">{taskError}</p>}
-                <Button size="sm" variant="secondary" onClick={(e) => createTask(e, optionsProject)}>
-                  Create Task
-                </Button>
+                {taskError && <p className="text-danger text-xs font-sans mt-3">{taskError}</p>}
+                <div className="mt-4 flex items-center gap-3">
+                  <Button size="sm" variant="gold" onClick={(e) => createTask(e, tasksProject)}>
+                    Create Task
+                  </Button>
+                </div>
+              </div>
 
-                {tasks.length > 0 ? (
-                  <div className="mt-4 flex flex-col gap-3">
-                    {tasks.map((task, index) => (
-                      <div key={task.id} className="rounded-md border border-border bg-bg-elevated px-3 py-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            <Input
-                              label="Name"
-                              value={task.title}
-                              onChange={(e) => updateTaskField(optionsProject, task.id, "title", e.target.value)}
-                            />
-                            <Input
-                              label="Deadline"
-                              type="date"
-                              value={task.deadline}
-                              onChange={(e) => updateTaskField(optionsProject, task.id, "deadline", e.target.value)}
-                            />
-                            <Input
-                              label="Description"
-                              value={task.description}
-                              onChange={(e) => updateTaskField(optionsProject, task.id, "description", e.target.value)}
-                              className="sm:col-span-2"
-                            />
-                            {optionsProject.courseCode !== "BP" && (
-                              <div className="flex flex-col gap-1.5">
-                                <label className="text-sm text-text-secondary font-sans">Assignee</label>
-                                <select
-                                  value={task.assignee}
-                                  onChange={(e) => updateTaskField(optionsProject, task.id, "assignee", e.target.value)}
-                                  className="bg-bg-surface border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
-                                >
-                                  <option value="">Unassigned</option>
-                                  {projectCollaborators.map((collaborator) => (
-                                    <option key={collaborator} value={collaborator}>{collaborator}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-sm text-text-secondary font-sans">Status</label>
-                              <select
-                                value={task.status}
-                                onChange={(e) => updateTaskStatus(optionsProject, task.id, e.target.value)}
-                                className="bg-bg-surface border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
-                              >
-                                <option value="pending">pending</option>
-                                <option value="postponed">postponed</option>
-                                <option value="completed">completed</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-2 shrink-0">
-                            <Badge variant={taskStatusVariant[task.status] || "default"}>{task.status}</Badge>
-                            <Button size="sm" variant="ghost" disabled={index === 0} onClick={(e) => moveTask(e, optionsProject, task.id, -1)}>
-                              Up
-                            </Button>
-                            <Button size="sm" variant="ghost" disabled={index === tasks.length - 1} onClick={(e) => moveTask(e, optionsProject, task.id, 1)}>
-                              Down
-                            </Button>
-                            <Button size="sm" variant="danger" onClick={(e) => deleteTask(e, optionsProject, task.id)}>
-                              Delete
-                            </Button>
-                          </div>
-                        </div>
+              <div className="flex flex-col gap-3">
+                {tasks.length > 0 ? tasks.map((task) => (
+                  <div key={task.id} className="rounded-lg border border-border bg-bg-elevated px-4 py-4">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <p className="text-text-primary text-sm font-sans">{task.title}</p>
+                        <p className="text-text-secondary text-xs font-mono">Deadline {task.deadline || "not set"}</p>
                       </div>
-                    ))}
+                      <Badge variant={taskStatusVariant[task.status] || "default"}>{task.status}</Badge>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Input
+                        label="Name"
+                        value={task.title}
+                        onChange={(e) => updateTaskField(tasksProject, task.id, "title", e.target.value)}
+                      />
+                      <Input
+                        label="Deadline"
+                        type="date"
+                        value={task.deadline}
+                        onChange={(e) => updateTaskField(tasksProject, task.id, "deadline", e.target.value)}
+                      />
+                      <Input
+                        label="Description"
+                        value={task.description}
+                        onChange={(e) => updateTaskField(tasksProject, task.id, "description", e.target.value)}
+                        className="sm:col-span-2"
+                      />
+                      {tasksProject.courseCode !== "BP" && (
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-sm text-text-secondary font-sans">Assignee</label>
+                          <select
+                            value={task.assignee}
+                            onChange={(e) => updateTaskField(tasksProject, task.id, "assignee", e.target.value)}
+                            className="bg-bg-surface border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                          >
+                            <option value="">Unassigned</option>
+                            {projectCollaborators.map((collaborator) => (
+                              <option key={collaborator} value={collaborator}>{collaborator}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-sm text-text-secondary font-sans">Status</label>
+                        <select
+                          value={task.status}
+                          onChange={(e) => updateTaskStatus(tasksProject, task.id, e.target.value)}
+                          className="bg-bg-surface border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                        >
+                          <option value="pending">pending</option>
+                          <option value="postponed">postponed</option>
+                          <option value="completed">completed</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <Button size="sm" variant="danger" onClick={(e) => requestDeleteTask(e, tasksProject, task)}>
+                        Remove Task
+                      </Button>
+                    </div>
                   </div>
-                ) : (
-                  <p className="mt-3 text-text-secondary text-sm font-sans">No tasks created yet.</p>
+                )) : (
+                  <p className="text-text-secondary text-sm font-sans">No tasks created yet.</p>
                 )}
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
+
+      {/* Req 23 — thesis draft upload */}
+      <Modal isOpen={Boolean(optionsProject)} onClose={() => setOptionsProjectId(null)} title="Project Options">
+        {optionsProject && (() => {
+          const invitations = optionsProject.instructorInvitations || [];
+          const collaboratorInvitations = optionsProject.collaboratorInvitations || [];
+          const eligibleCollaborators = getEligibleCollaborators(optionsProject);
+          const eligibleInstructors = getEligibleInstructors(optionsProject);
+          const projectCollaborators = getProjectCollaborators(optionsProject);
+
+          return (
+            <div className="flex flex-col gap-5">
+              <div>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-text-primary font-sans text-sm">{optionsProject.title}</p>
+                    <p className="text-text-secondary font-mono text-xs">{optionsProject.course}</p>
+                  </div>
+                  <Badge variant={optionsProject.visibility === "public" ? "success" : "default"}>
+                    {optionsProject.visibility}
+                  </Badge>
+                </div>
+                <Button
+                  variant={optionsProject.visibility === "public" ? "danger" : "secondary"}
+                  onClick={() => toggleProjectPortfolio(optionsProject)}
+                  className="w-full"
+                >
+                  {optionsProject.visibility === "public" ? "Hide from portfolio" : "Show on portfolio"}
+                </Button>
               </div>
 
               {optionsProject.courseCode === "BP" && (
@@ -953,9 +1107,14 @@ export default function Projects() {
                         <div key={draft.id} className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
-                            <p className="text-text-secondary text-xs font-mono truncate">
+                            <a
+                              href={getDocumentUrl(draft.fileName)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent-blue text-sm font-mono truncate hover:underline"
+                            >
                               {draft.fileName} - {draft.visibility === "public" ? "public" : "private"}
-                            </p>
+                            </a>
                           </div>
                           {draft.isFinal ? (
                             <div className="flex items-center gap-2 shrink-0">
@@ -987,7 +1146,7 @@ export default function Projects() {
                     {projectCollaborators.map((collaborator) => (
                       <div key={collaborator} className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-elevated px-3 py-2">
                         <p className="text-text-primary text-sm font-sans truncate">{collaborator}</p>
-                        <Button size="sm" variant="danger" onClick={(e) => removeCollaborator(e, optionsProject, collaborator)}>
+                        <Button size="sm" variant="danger" onClick={(e) => requestRemoveCollaborator(e, optionsProject, collaborator)}>
                           Remove
                         </Button>
                       </div>
@@ -1042,7 +1201,7 @@ export default function Projects() {
                             {invite.status}
                           </Badge>
                           {invite.status === "no reply" && (
-                            <Button size="sm" variant="danger" onClick={(e) => cancelInvitation(e, optionsProject, invite.id, "collaborator")}>
+                            <Button size="sm" variant="danger" onClick={(e) => requestCancelInvitation(e, optionsProject, invite.id, "collaborator")}>
                               Cancel
                             </Button>
                           )}
@@ -1106,7 +1265,7 @@ export default function Projects() {
                             {invite.status}
                           </Badge>
                           {invite.status === "no reply" && (
-                            <Button size="sm" variant="danger" onClick={(e) => cancelInvitation(e, optionsProject, invite.id, "instructor")}>
+                            <Button size="sm" variant="danger" onClick={(e) => requestCancelInvitation(e, optionsProject, invite.id, "instructor")}>
                               Cancel
                             </Button>
                           )}
@@ -1118,9 +1277,106 @@ export default function Projects() {
                   <p className="text-text-secondary text-sm font-sans">No instructor invitations sent yet.</p>
                 )}
               </div>
+
+              <div className="border-t border-border pt-4 flex flex-col gap-2">
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => openEdit(optionsProject)}
+                >
+                  {optionsProject.courseCode === "BP" ? "Edit thesis (PDFs)" : "Edit project"}
+                </Button>
+                <Button
+                  variant="danger"
+                  className="w-full"
+                  onClick={() => {
+                    setOptionsProjectId(null);
+                    setDeleteConfirm(optionsProject);
+                  }}
+                >
+                  Delete project
+                </Button>
+              </div>
             </div>
           );
         })()}
+      </Modal>
+
+      <Modal isOpen={Boolean(thesisEditProject)} onClose={closeThesisEditModal} title="Edit thesis (PDF drafts)">
+        {thesisEditProject && (
+          <div className="flex flex-col gap-5">
+            <p className="text-text-secondary text-sm font-sans">
+              Manage thesis PDFs for <span className="text-text-primary font-medium">{thesisEditProject.title}</span>. This is separate from editing a standard course project.
+            </p>
+
+            {(thesisEditProject.thesisDrafts || []).length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {(thesisEditProject.thesisDrafts || []).map((draft) => (
+                  <div
+                    key={draft.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg-elevated px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {draft.isFinal && <Badge variant="success">Final</Badge>}
+                        <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
+                      </div>
+                      <a
+                        href={getDocumentUrl(draft.fileName)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent-blue text-xs font-mono truncate hover:underline"
+                      >
+                        {draft.fileName}
+                      </a>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      className="shrink-0"
+                      onClick={() => requestRemoveThesisDraft(thesisEditProject, draft)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-text-secondary text-sm font-sans">No PDFs yet. Add one below.</p>
+            )}
+
+            <div className="rounded-lg border border-border bg-bg-surface px-4 py-4">
+              <h3 className="font-display text-base text-text-primary mb-3">Add PDF</h3>
+              <Input
+                label="Draft title"
+                value={thesisEditAdd.title}
+                onChange={(e) => setThesisEditAdd((prev) => ({ ...prev, title: e.target.value }))}
+                placeholder="e.g. Thesis Draft 2"
+              />
+              <div className="mt-3">
+                <Input
+                  label="PDF file"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setThesisEditAdd((prev) => ({ ...prev, fileName: file?.name || "" }));
+                  }}
+                />
+              </div>
+              {thesisEditError && <p className="text-danger text-xs font-sans mt-2">{thesisEditError}</p>}
+              <div className="mt-4">
+                <Button type="button" size="sm" variant="gold" onClick={addThesisDraftInEditor}>
+                  Add PDF to thesis
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="secondary" onClick={closeThesisEditModal}>Done</Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <Modal isOpen={thesisModal?.mode === "upload"} onClose={closeThesisModal} title="Upload Thesis Draft">
@@ -1141,7 +1397,7 @@ export default function Projects() {
           <Input
             label="Thesis File"
             type="file"
-            accept=".pdf,.doc,.docx"
+            accept=".pdf,application/pdf"
             onChange={(e) => {
               const file = e.target.files?.[0];
               setThesisForm((prev) => ({ ...prev, fileName: file?.name || "" }));
@@ -1149,7 +1405,7 @@ export default function Projects() {
           />
 
           {thesisForm.fileName && (
-            <p className="text-text-secondary text-xs font-mono">Selected: {thesisForm.fileName}</p>
+            <p className="text-text-secondary text-sm font-mono">Selected: {thesisForm.fileName}</p>
           )}
 
           {thesisError && <p className="text-danger text-xs font-sans">{thesisError}</p>}
@@ -1157,6 +1413,45 @@ export default function Projects() {
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" onClick={closeThesisModal}>Cancel</Button>
             <Button variant="gold" onClick={handleThesisUpload}>Upload Draft</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={editConfirm}
+        onClose={() => setEditConfirm(false)}
+        title="Confirm Project Edit"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-text-secondary font-sans text-sm">
+            Are you sure you want to save these edits to{" "}
+            <span className="text-text-primary font-semibold">{modal?.project?.title}</span>?
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setEditConfirm(false)}>Review Again</Button>
+            <Button variant="gold" onClick={handleUpdate}>Confirm Edit</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(confirmAction)}
+        onClose={() => setConfirmAction(null)}
+        title={confirmAction?.title || "Confirm Action"}
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-text-secondary font-sans text-sm">{confirmAction?.message}</p>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setConfirmAction(null)}>Cancel</Button>
+            <Button
+              variant={confirmAction?.variant || "danger"}
+              onClick={() => {
+                confirmAction?.onConfirm?.();
+                setConfirmAction(null);
+              }}
+            >
+              {confirmAction?.confirmLabel || "Confirm"}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -1179,6 +1474,26 @@ export default function Projects() {
           </div>
         </div>
       </Modal>
+      {modalNotice?.message && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-success text-sm font-sans">{modalNotice.message}</p>
+            <button type="button" className="text-success text-xs font-semibold" onClick={() => setModalNotice(null)}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+      {successMsg && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-success text-sm font-sans">{successMsg}</p>
+            <button type="button" className="text-success text-xs font-semibold" onClick={() => setSuccessMsg("")}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
