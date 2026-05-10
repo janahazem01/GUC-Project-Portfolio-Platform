@@ -5,7 +5,6 @@ import { ProjectsProvider } from "./context/ProjectsContext";
 import { AppLayout } from "./components/layout/AppLayout";
 import Login        from "./pages/auth/Login";
 import Register     from "./pages/auth/Register";
-import RegisterEmployer from "./pages/auth/RegisterEmployer";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import Dashboard    from "./pages/Dashboard";
 import Projects     from "./pages/projects/Projects";
@@ -59,7 +58,6 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/register/employer" element={<RegisterEmployer />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
       <Route 
