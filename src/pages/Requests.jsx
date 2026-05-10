@@ -119,7 +119,7 @@ export default function Requests() {
   return (
     <div>
       <PageHeader
-        title="Requests"
+        title="Invitations"
         subtitle="Review incoming invitations and track the requests you sent."
       />
 
@@ -173,7 +173,7 @@ export default function Requests() {
               ))}
             </div>
           ) : (
-            <p className="text-text-secondary text-sm font-sans">No incoming requests yet.</p>
+            <p className="text-text-secondary text-sm font-sans">No incoming invitations yet.</p>
           )}
         </Card>
 
@@ -201,7 +201,7 @@ export default function Requests() {
               ))}
             </div>
           ) : (
-            <p className="text-text-secondary text-sm font-sans">No sent requests yet.</p>
+            <p className="text-text-secondary text-sm font-sans">No sent invitations yet.</p>
           )}
         </Card>
       </div>

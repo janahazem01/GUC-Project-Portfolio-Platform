@@ -69,10 +69,7 @@ export default function Instructors() {
                 if (currentUser && currentUser.email === instructor.email) {
                   navigate("/profile");
                 } else {
-                  // Assuming portfolio detail uses the instructor's ID or email as a lookup
-                  // Looking at dummy data, portfolios have IDs 101, 102...
-                  // and PortfolioDetail.jsx exists.
-                  navigate(`/explore/portfolio/${instructor.id + 100}`); // Mapping instructor 1 -> portfolio 101
+                  navigate(`/explore/portfolio/instructor-${instructor.id}`);
                 }
               }}
             >

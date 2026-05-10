@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useContext } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useContext, useEffect } from "react";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 import { ProjectsProvider } from "./context/ProjectsContext";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -12,7 +12,6 @@ import ProjectDetails from "./pages/projects/ProjectDetails";
 import ProjectPreview from "./pages/projects/ProjectPreview";
 import Explore      from "./pages/discovery/Explore";
 import Instructors  from "./pages/discovery/Instructors";
-import PortfolioDetail from "./pages/discovery/PortfolioDetail";
 import Favorites    from "./pages/favorites/Favorites";
 import Profile      from "./pages/profile/Profile";
 import Admin        from "./pages/admin/Admin";
@@ -243,11 +242,22 @@ function AppRoutes() {
   );
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <ProjectsProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <AppRoutes />
         </BrowserRouter>
       </ProjectsProvider>

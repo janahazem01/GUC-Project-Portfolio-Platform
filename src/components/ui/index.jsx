@@ -81,7 +81,15 @@ export function Stars({ rating, max = 5 }) {
   );
 }
 
-export function Modal({ isOpen, onClose, title, children, backdropClassName = "", contentClassName = "" }) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  backdropClassName = "",
+  contentClassName = "",
+  panelClassName = "",
+}) {
   if (!isOpen) return null;
 
   return (
@@ -93,7 +101,9 @@ export function Modal({ isOpen, onClose, title, children, backdropClassName = ""
       />
       
       {/* Modal */}
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md">
+      <div
+        className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md ${panelClassName}`}
+      >
         <Card className={`max-h-[90vh] overflow-y-auto ${contentClassName}`}>
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-display text-xl text-text-primary">{title}</h2>
@@ -110,6 +120,43 @@ export function Modal({ isOpen, onClose, title, children, backdropClassName = ""
         </Card>
       </div>
     </>
+  );
+}
+
+export function DocumentPreviewModal({ document, onClose }) {
+  const title = document?.title || document?.name || "Document";
+  const src = document?.src || "";
+
+  return (
+    <Modal
+      isOpen={Boolean(document)}
+      onClose={onClose}
+      title={title}
+      panelClassName="max-w-3xl px-4"
+      contentClassName="p-5"
+    >
+      <div className="flex flex-col gap-4">
+        {src ? (
+          <iframe
+            title={title}
+            src={src}
+            className="h-[70vh] min-h-[28rem] w-full rounded-lg border border-border bg-white"
+          />
+        ) : (
+          <div className="rounded-lg border border-border bg-bg-elevated px-5 py-8 text-center">
+            <p className="font-display text-lg text-text-primary mb-2">{document?.name}</p>
+            <p className="text-text-secondary text-sm font-sans">
+              No preview file is attached for this demo document yet.
+            </p>
+          </div>
+        )}
+        <div className="flex justify-end">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

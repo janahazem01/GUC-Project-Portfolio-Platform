@@ -3,14 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Card, Badge, Stars, Button, Input, PageHeader, ConfirmActionModal } from "../../components/ui";
 import {
   dummyUsers,
-  exploreProjectsForUser,
   GUC_MAJORS,
   portfolios,
-  projects,
   courses,
+  isProjectListedPublicly,
   setProjectPlatformActive,
 } from "../../data/dummy";
 import { AuthContext } from "../../context/AuthContext";
+import { useProjects } from "../../context/ProjectsContext";
 import { useFavorites } from "../../hooks/useFavorites";
 
 const portfolioByOwner = new Map(portfolios.map((portfolio) => [portfolio.owner, portfolio]));
@@ -35,6 +35,7 @@ export default function Explore() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
 
   const { user } = useContext(AuthContext);
+  const { projectList, updateProject } = useProjects();
   const {
     canUseFavorites,
     isFavoriteProject,
@@ -87,7 +88,18 @@ export default function Explore() {
     });
   };
 
-  const visiblePool = exploreProjectsForUser(user);
+  const visiblePool = useMemo(
+    () => projectList.filter((project) => isProjectListedPublicly(project)),
+    [projectList]
+  );
+  const publicProjectsByOwner = useMemo(() => {
+    const grouped = new Map();
+    visiblePool.forEach((project) => {
+      const ownerProjects = grouped.get(project.owner) || [];
+      grouped.set(project.owner, [...ownerProjects, project]);
+    });
+    return grouped;
+  }, [visiblePool]);
   const q = searchQuery.trim().toLowerCase();
 
   const filteredProjects = useMemo(() => {
@@ -121,28 +133,42 @@ export default function Explore() {
       const ownerEmail = (ownerUser?.email || "").toLowerCase();
       const studentEmail = (p.studentEmail || "").toLowerCase();
       const emailLocal = studentEmail.split("@")[0] || "";
+      const publicProjectMatches = (publicProjectsByOwner.get(p.owner) || []).some(
+        (project) =>
+          project.title.toLowerCase().includes(q) ||
+          (project.course || "").toLowerCase().includes(q)
+      );
       const matchSearch =
         !q ||
         (p.studentName && p.studentName.toLowerCase().includes(q)) ||
         studentEmail.includes(q) ||
         ownerEmail.includes(q) ||
         emailLocal.includes(q) ||
-        (p.title && p.title.toLowerCase().includes(q));
+        (p.title && p.title.toLowerCase().includes(q)) ||
+        publicProjectMatches;
       const matchMajor = portfolioMajor ? p.headline === portfolioMajor : true;
       const matchSkill = portfolioSkill ? (p.skills || []).includes(portfolioSkill) : true;
       return matchSearch && matchMajor && matchSkill;
     });
-  }, [q, portfolioMajor, portfolioSkill]);
+  }, [publicProjectsByOwner, q, portfolioMajor, portfolioSkill]);
 
   const sortedPortfolios = useMemo(() => {
     const arr = [...filteredPortfolios];
     if (portfolioSort === "projects-desc") {
-      arr.sort((a, b) => (b.projectIds?.length || 0) - (a.projectIds?.length || 0));
+      arr.sort(
+        (a, b) =>
+          (publicProjectsByOwner.get(b.owner)?.length || 0) -
+          (publicProjectsByOwner.get(a.owner)?.length || 0)
+      );
     } else if (portfolioSort === "projects-asc") {
-      arr.sort((a, b) => (a.projectIds?.length || 0) - (b.projectIds?.length || 0));
+      arr.sort(
+        (a, b) =>
+          (publicProjectsByOwner.get(a.owner)?.length || 0) -
+          (publicProjectsByOwner.get(b.owner)?.length || 0)
+      );
     }
     return arr;
-  }, [filteredPortfolios, portfolioSort]);
+  }, [filteredPortfolios, portfolioSort, publicProjectsByOwner]);
 
   const hasSearch = searchQuery.trim().length > 0;
 
@@ -221,7 +247,7 @@ export default function Explore() {
             className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
           >
             <option value="">All owners</option>
-            {[...new Set(projects.map((p) => p.owner))].map((owner) => (
+            {[...new Set(visiblePool.map((p) => p.owner))].map((owner) => (
               <option key={owner} value={owner}>
                 {owner}
               </option>
@@ -293,6 +319,9 @@ export default function Explore() {
             const ownerPortfolio = portfolioByOwner.get(p.owner);
             const projectSaved = isFavoriteProject(p.id);
             const portfolioSaved = ownerPortfolio ? isFavoritePortfolio(ownerPortfolio.id) : false;
+            const isOwnerProject = p.owner === user?.name;
+            const canSaveThisProject = canUseFavorites && !isOwnerProject;
+            const canSaveOwnerPortfolio = ownerPortfolio && canUseFavorites && ownerPortfolio.owner !== user?.name;
 
             return (
               <Card
@@ -331,25 +360,23 @@ export default function Explore() {
                   </div>
 
                   <div className="flex flex-wrap justify-end gap-2">
-                    {canUseFavorites && (
-                      <>
-                        <Button
-                          variant={projectSaved ? "danger" : "gold"}
-                          size="sm"
-                          onClick={(event) => requestProjectFavorite(event, p)}
-                        >
-                          {projectSaved ? "Remove project" : "Save project"}
-                        </Button>
-                        {ownerPortfolio && (
-                          <Button
-                            variant={portfolioSaved ? "danger" : "gold"}
-                            size="sm"
-                            onClick={(event) => requestPortfolioFavorite(event, ownerPortfolio)}
-                          >
-                            {portfolioSaved ? "Remove portfolio" : "Save portfolio"}
-                          </Button>
-                        )}
-                      </>
+                    {canSaveThisProject && (
+                      <Button
+                        variant={projectSaved ? "danger" : "gold"}
+                        size="sm"
+                        onClick={(event) => requestProjectFavorite(event, p)}
+                      >
+                        {projectSaved ? "Remove project" : "Save project"}
+                      </Button>
+                    )}
+                    {canSaveOwnerPortfolio && (
+                      <Button
+                        variant={portfolioSaved ? "danger" : "gold"}
+                        size="sm"
+                        onClick={(event) => requestPortfolioFavorite(event, ownerPortfolio)}
+                      >
+                        {portfolioSaved ? "Remove portfolio" : "Save portfolio"}
+                      </Button>
                     )}
                     <Button
                       variant="ghost"
@@ -392,8 +419,9 @@ export default function Explore() {
       {exploreMode === "portfolios" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {sortedPortfolios.map((pf) => {
-            const nProjects = pf.projectIds?.length || 0;
+            const nProjects = publicProjectsByOwner.get(pf.owner)?.length || 0;
             const portfolioSaved = isFavoritePortfolio(pf.id);
+            const canSaveThisPortfolio = canUseFavorites && pf.owner !== user?.name;
 
             return (
               <Card
@@ -414,8 +442,8 @@ export default function Explore() {
                   <Badge variant="blue">{pf.headline}</Badge>
                   <span className="font-mono text-xs text-text-secondary whitespace-nowrap">{nProjects} projects</span>
                 </div>
-                <h3 className="font-display text-base text-text-primary mb-1 break-words">{pf.title}</h3>
-                <p className="text-sm text-text-secondary font-sans mb-1 break-all">{pf.studentName}</p>
+                <h3 className="font-display text-base text-text-primary mb-1 break-words">{pf.studentName}</h3>
+                <p className="text-sm text-text-secondary font-sans mb-1 break-all">{pf.title}</p>
                 <p className="text-xs font-mono text-text-secondary mb-3 break-all">{pf.studentEmail}</p>
                 <div className="flex flex-wrap gap-1.5 mb-4">
                   {(pf.skills || []).slice(0, 6).map((s) => (
@@ -472,6 +500,7 @@ export default function Explore() {
           if (!adminDeactivateTarget?.id) return;
           const title = adminDeactivateTarget.title;
           setProjectPlatformActive(adminDeactivateTarget.id, false);
+          updateProject(adminDeactivateTarget.id, { platformActive: false });
           setAdminDeactivateTarget(null);
           setFeedbackMessage(`“${title}” was deactivated.`);
         }}

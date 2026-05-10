@@ -59,15 +59,14 @@ function playNotificationChime() {
 
 const allNavItems = [
   { label: "Dashboard",   icon: "⊞", path: "/", roles: ["student", "instructor", "employer", "admin"] },
-  { label: "Projects",    icon: "◈", path: "/projects", roles: ["student", "instructor"] },
+  { label: (role) => (role === "student" ? "My Projects" : "Projects"), icon: "◈", path: "/projects", roles: ["student", "instructor"] },
   { label: "Tasks",       icon: "T", path: "/tasks", roles: ["student", "instructor"] },
   { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
   { label: "Instructors", icon: "👨‍🏫", path: "/instructors", roles: ["student", "instructor", "employer", "admin"] },
-  { label: (role) => role === "instructor" ? "Profile" : "Portfolio", icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
   { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor","employer"] },
-  { label: "Requests",    icon: "◧", path: "/requests", roles: ["student", "instructor","admin"] },
+  { label: "Invitations", icon: "✉", path: "/requests", roles: ["student", "instructor","admin"] },
   { label: "Courses",    icon: "▤", path: "/courses", roles: ["admin", "instructor"] },
-  { label: "Messages",    icon: "✉", path: "/messages", roles: ["student", "instructor", "employer"] },
+  { label: "Messages",    icon: "💬", path: "/messages", roles: ["student", "instructor", "employer"] },
   { label: "Favorites",   icon: "★", path: "/favorites", roles: ["student", "employer"] },
 ];
 
@@ -102,9 +101,15 @@ function UserMenu({ collapsed }) {
     admin: "👨‍💼"
   };
 
+  const profileLabel = user?.role === "employer" ? "Profile" : "Portfolio";
+
   return (
     <div className={`shrink-0 border-t border-border flex flex-col gap-1.5 overflow-hidden ${collapsed ? "p-2" : "p-2.5"}`}>
-      <div className={`group relative flex min-h-10 items-center rounded-lg text-text-primary text-sm w-full ${collapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-1.5"}`}>
+      <button
+        type="button"
+        onClick={() => navigate("/profile")}
+        className={`group relative flex min-h-10 items-center rounded-lg text-text-primary text-sm w-full hover:bg-bg-elevated transition-colors ${collapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-1.5 text-left"}`}
+      >
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-blue/10 border border-accent-blue/20 overflow-hidden text-lg">
           {(user?.avatar || user?.logo) ? (
             <img src={user.avatar || user.logo} alt="Avatar" className="w-full h-full object-cover" />
@@ -118,8 +123,8 @@ function UserMenu({ collapsed }) {
             <div className="text-xs text-text-secondary capitalize">{user?.role}</div>
           </div>
         )}
-        <SidebarTooltip collapsed={collapsed} label={user?.name || "Profile"} />
-      </div>
+        <SidebarTooltip collapsed={collapsed} label={profileLabel} />
+      </button>
       
       <button
         type="button"

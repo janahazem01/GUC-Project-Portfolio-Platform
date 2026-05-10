@@ -10,17 +10,20 @@ import {
   PageHeader,
   Stars,
   SuccessToast,
+  DocumentPreviewModal,
 } from "../../components/ui";
 import {
   portfolios,
-  projects,
   flagProjectModeration,
   getProjectAppeals,
   setProjectPlatformActive,
   subscribeDummyUpdates,
   submitProjectAppeal,
+  findStudentEmailByName,
+  pushStudentFeedbackNotification,
 } from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
+import { useProjects } from "../../context/ProjectsContext";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -64,10 +67,6 @@ function canViewInstructorFeedback(project, user) {
   return acceptedCollaborator || acceptedInstructor;
 }
 
-function getDocumentUrl(fileName) {
-  return fileName ? `/documents/${encodeURIComponent(fileName)}` : "#";
-}
-
 function buildFeedback(user, text) {
   return {
     id: Date.now(),
@@ -76,6 +75,49 @@ function buildFeedback(user, text) {
     text: text.trim(),
     createdAt: new Date().toISOString().slice(0, 10),
   };
+}
+
+function getDocumentName(document) {
+  if (!document) return "";
+  if (typeof document === "string") return document;
+  return document.fileName || document.name || document.title || "";
+}
+
+function buildDocumentPreview(document, title) {
+  const name = getDocumentName(document);
+  const src =
+    typeof document === "object" && document !== null
+      ? document.fileUrl || document.url || document.src || ""
+      : "";
+  return { title: title || name || "Document", name, src };
+}
+
+function canOpenProjectDetails(project, user) {
+  if (!project || !user) return false;
+  if (user.role === "admin") return true;
+  if (project.owner === user.name) return true;
+  if ((project.team || []).includes(user.name)) return true;
+  if (user.role === "instructor" && project.supervisor === user.name) return true;
+
+  const acceptedCollaborator = (project.collaboratorInvitations || []).some(
+    (invite) =>
+      invite.status === "accepted" &&
+      (invite.email === user.email || invite.collaboratorName === user.name)
+  );
+  const acceptedInstructor = (project.instructorInvitations || []).some(
+    (invite) =>
+      invite.status === "accepted" &&
+      (invite.email === user.email || invite.instructorName === user.name)
+  );
+
+  if (acceptedCollaborator || acceptedInstructor) return true;
+
+  return (
+    project.visibility === "public" &&
+    project.platformActive !== false &&
+    project.hiddenFromPublic !== true &&
+    !project.flagged
+  );
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -119,7 +161,7 @@ function InteractiveStarRating({ value, onRate }) {
   );
 }
 
-function FeedbackList({ feedback = [], onRemove, currentUser }) {
+function FeedbackList({ feedback = [], onRemove, onEdit, currentUser }) {
   if (!feedback.length) {
     return <p className="text-text-secondary text-sm font-sans">No feedback yet.</p>;
   }
@@ -137,6 +179,14 @@ function FeedbackList({ feedback = [], onRemove, currentUser }) {
             </div>
             {item.authorEmail === currentUser?.email && (
               <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onEdit?.(item.id, item.text)}
+                  title="Edit feedback"
+                >
+                  ✎
+                </Button>
                 <Button size="sm" variant="danger" onClick={() => onRemove(item.id)}>
                   Remove
                 </Button>
@@ -156,6 +206,7 @@ export default function ProjectDetails() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useContext(AuthContext);
+  const { projectList, updateProject } = useProjects();
 
   const activeNav = location.state?.activeNav || "/projects";
   const numericId = Number(projectId);
@@ -170,14 +221,18 @@ export default function ProjectDetails() {
   }, []);
 
   const project = useMemo(
-    () => projects.find((item) => item.id === numericId),
-    [numericId, moderationRevision]
+    () => projectList.find((item) => item.id === numericId),
+    [projectList, numericId]
   );
 
   const appealsForProject = useMemo(() => {
     if (!project) return [];
     return getProjectAppeals().filter((appeal) => appeal.projectId === project.id);
-  }, [project?.id, moderationRevision]);
+  }, [project, moderationRevision]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [projectId]);
 
   // Feedback state
   const [projectFeedbackText, setProjectFeedbackText] = useState("");
@@ -185,10 +240,13 @@ export default function ProjectDetails() {
   const [thesisFeedbackText, setThesisFeedbackText] = useState({});
   const [ratingValue, setRatingValue] = useState("");
   const [confirmFeedback, setConfirmFeedback] = useState(null);
+  const [editingFeedback, setEditingFeedback] = useState(null);
+  const [editingFeedbackText, setEditingFeedbackText] = useState("");
 
   // General UI state
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [confirmation, setConfirmation] = useState(null);
+  const [documentPreview, setDocumentPreview] = useState(null);
 
   // Flag modal state
   const [flagModalOpen, setFlagModalOpen] = useState(false);
@@ -214,7 +272,11 @@ export default function ProjectDetails() {
     removePortfolio,
   } = useFavorites();
 
-  if (!project) {
+  const openDocumentPreview = (document, title) => {
+    setDocumentPreview(buildDocumentPreview(document, title));
+  };
+
+  if (!project || !canOpenProjectDetails(project, user)) {
     return (
       <div>
         <PageHeader
@@ -246,6 +308,8 @@ export default function ProjectDetails() {
   const pendingAppeal = appealsForProject.find((appeal) => appeal.status === "pending");
   const projectSaved = isFavoriteProject(project.id);
   const portfolioSaved = ownerPortfolio ? isFavoritePortfolio(ownerPortfolio.id) : false;
+  const canSaveThisProject = canUseFavorites && project.owner !== user?.name;
+  const canSaveThisPortfolio = ownerPortfolio && canUseFavorites && ownerPortfolio.owner !== user?.name;
 
   const openExternal = (url) => window.open(url, "_blank", "noopener,noreferrer");
   const openPreview = () =>
@@ -254,23 +318,18 @@ export default function ProjectDetails() {
   // ── Task status ────────────────────────────────────────────────────────────
 
   const updateTaskStatus = (taskId, status) => {
-    // NOTE: projects from dummy data are mutated in-place via setProjectPlatformActive etc.
-    // Adapt this call to your actual project-update mechanism if needed.
-    const updated = projects.find((p) => p.id === project.id);
-    if (updated) {
-      updated.tasks = (updated.tasks || []).map((task) =>
+    updateProject(project.id, {
+      tasks: (project.tasks || []).map((task) =>
         task.id === taskId ? { ...task, status } : task
-      );
-      setModerationRevision((r) => r + 1);
-    }
+      ),
+    });
   };
 
   // ── Rating ─────────────────────────────────────────────────────────────────
 
   const applyRating = (stars) => {
     const rating = Math.max(1, Math.min(5, Math.round(Number(stars) || 1)));
-    const updated = projects.find((p) => p.id === project.id);
-    if (updated) updated.rating = rating;
+    updateProject(project.id, { rating });
     setRatingValue(String(rating));
     setFeedbackMessage("Rating saved successfully.");
   };
@@ -279,23 +338,29 @@ export default function ProjectDetails() {
 
   const saveProjectFeedback = () => {
     if (!projectFeedbackText.trim()) return;
-    const updated = projects.find((p) => p.id === project.id);
-    if (updated) {
-      updated.feedback = [...(updated.feedback || []), buildFeedback(user, projectFeedbackText)];
-    }
+    updateProject(project.id, {
+      feedback: [...(project.feedback || []), buildFeedback(user, projectFeedbackText)],
+    });
     setProjectFeedbackText("");
     setFeedbackMessage("Project feedback submitted successfully.");
-    setModerationRevision((r) => r + 1);
+
+    if (user?.role === "instructor") {
+      const studentEmail = findStudentEmailByName(project.owner);
+      pushStudentFeedbackNotification({
+        targetStudentEmail: studentEmail,
+        targetProjectId: project.id,
+        instructorName: user.name,
+        projectTitle: project.title,
+      });
+    }
   };
 
   const removeProjectFeedback = (feedbackId) => {
-    const updated = projects.find((p) => p.id === project.id);
-    if (updated) {
-      updated.feedback = (updated.feedback || []).filter((f) => f.id !== feedbackId);
-    }
+    updateProject(project.id, {
+      feedback: (project.feedback || []).filter((f) => f.id !== feedbackId),
+    });
     setConfirmFeedback(null);
     setFeedbackMessage("Feedback removed successfully.");
-    setModerationRevision((r) => r + 1);
   };
 
   // ── Task feedback ──────────────────────────────────────────────────────────
@@ -303,31 +368,39 @@ export default function ProjectDetails() {
   const saveTaskFeedback = (taskId) => {
     const text = taskFeedbackText[taskId] || "";
     if (!text.trim()) return;
-    const updated = projects.find((p) => p.id === project.id);
-    if (updated) {
-      updated.tasks = (updated.tasks || []).map((task) =>
+    updateProject(project.id, {
+      tasks: (project.tasks || []).map((task) =>
         task.id === taskId
           ? { ...task, feedback: [...(task.feedback || []), buildFeedback(user, text)] }
           : task
-      );
-    }
+      ),
+    });
     setTaskFeedbackText((prev) => ({ ...prev, [taskId]: "" }));
     setFeedbackMessage("Task feedback submitted successfully.");
-    setModerationRevision((r) => r + 1);
+
+    if (user?.role === "instructor") {
+      const studentEmail = findStudentEmailByName(project.owner);
+      const task = (project.tasks || []).find((taskItem) => taskItem.id === taskId);
+      pushStudentFeedbackNotification({
+        targetStudentEmail: studentEmail,
+        targetProjectId: project.id,
+        instructorName: user.name,
+        projectTitle: project.title,
+        taskTitle: task?.title,
+      });
+    }
   };
 
   const removeTaskFeedback = (taskId, feedbackId) => {
-    const updated = projects.find((p) => p.id === project.id);
-    if (updated) {
-      updated.tasks = (updated.tasks || []).map((task) =>
+    updateProject(project.id, {
+      tasks: (project.tasks || []).map((task) =>
         task.id === taskId
           ? { ...task, feedback: (task.feedback || []).filter((f) => f.id !== feedbackId) }
           : task
-      );
-    }
+      ),
+    });
     setConfirmFeedback(null);
     setFeedbackMessage("Feedback removed successfully.");
-    setModerationRevision((r) => r + 1);
   };
 
   // ── Thesis feedback ────────────────────────────────────────────────────────
@@ -335,31 +408,27 @@ export default function ProjectDetails() {
   const saveThesisFeedback = (draftId) => {
     const text = thesisFeedbackText[draftId] || "";
     if (!text.trim()) return;
-    const updated = projects.find((p) => p.id === project.id);
-    if (updated) {
-      updated.thesisDrafts = (updated.thesisDrafts || []).map((draft) =>
+    updateProject(project.id, {
+      thesisDrafts: (project.thesisDrafts || []).map((draft) =>
         draft.id === draftId
           ? { ...draft, feedback: [...(draft.feedback || []), buildFeedback(user, text)] }
           : draft
-      );
-    }
+      ),
+    });
     setThesisFeedbackText((prev) => ({ ...prev, [draftId]: "" }));
     setFeedbackMessage("Draft feedback submitted successfully.");
-    setModerationRevision((r) => r + 1);
   };
 
   const removeThesisFeedback = (draftId, feedbackId) => {
-    const updated = projects.find((p) => p.id === project.id);
-    if (updated) {
-      updated.thesisDrafts = (updated.thesisDrafts || []).map((draft) =>
+    updateProject(project.id, {
+      thesisDrafts: (project.thesisDrafts || []).map((draft) =>
         draft.id === draftId
           ? { ...draft, feedback: (draft.feedback || []).filter((f) => f.id !== feedbackId) }
           : draft
-      );
-    }
+      ),
+    });
     setConfirmFeedback(null);
     setFeedbackMessage("Feedback removed successfully.");
-    setModerationRevision((r) => r + 1);
   };
 
   // ── Confirm-remove dispatcher ──────────────────────────────────────────────
@@ -370,6 +439,68 @@ export default function ProjectDetails() {
       ...ids,
       message: "Are you sure you want to remove this feedback?",
     });
+  };
+
+  const requestEditFeedback = (type, ids = {}, currentText = "") => {
+    setEditingFeedback({ type, ...ids, originalText: currentText });
+    setEditingFeedbackText(currentText);
+  };
+
+  const saveEditedFeedback = () => {
+    if (!editingFeedback) return;
+    const trimmedText = editingFeedbackText.trim();
+    if (!trimmedText) return;
+
+    if (trimmedText === editingFeedback.originalText) {
+      setEditingFeedback(null);
+      setFeedbackMessage("No changes were applied.");
+      return;
+    }
+
+    const updatedText = trimmedText;
+    const { type } = editingFeedback;
+
+    if (type === "project") {
+      updateProject(project.id, {
+        feedback: (project.feedback || []).map((item) =>
+          item.id === editingFeedback.feedbackId ? { ...item, text: updatedText } : item
+        ),
+      });
+    }
+
+    if (type === "task") {
+      updateProject(project.id, {
+        tasks: (project.tasks || []).map((task) =>
+          task.id === editingFeedback.taskId
+            ? {
+                ...task,
+                feedback: (task.feedback || []).map((item) =>
+                  item.id === editingFeedback.feedbackId ? { ...item, text: updatedText } : item
+                ),
+              }
+            : task
+        ),
+      });
+    }
+
+    if (type === "thesis") {
+      updateProject(project.id, {
+        thesisDrafts: (project.thesisDrafts || []).map((draft) =>
+          draft.id === editingFeedback.draftId
+            ? {
+                ...draft,
+                feedback: (draft.feedback || []).map((item) =>
+                  item.id === editingFeedback.feedbackId ? { ...item, text: updatedText } : item
+                ),
+              }
+            : draft
+        ),
+      });
+    }
+
+    setEditingFeedback(null);
+    setEditingFeedbackText("");
+    setFeedbackMessage("Feedback updated successfully.");
   };
 
   const confirmRemoveFeedback = () => {
@@ -446,23 +577,21 @@ export default function ProjectDetails() {
           Deactivate
         </Button>
       )}
-      {canUseFavorites && (
-        <>
-          <Button
-            variant={projectSaved ? "gold" : "secondary"}
-            onClick={requestProjectFavorite}
-          >
-            {projectSaved ? "Remove Project" : "Save Project"}
-          </Button>
-          {ownerPortfolio && (
-            <Button
-              variant={portfolioSaved ? "gold" : "secondary"}
-              onClick={requestPortfolioFavorite}
-            >
-              {portfolioSaved ? "Remove Portfolio" : "Save Portfolio"}
-            </Button>
-          )}
-        </>
+      {canSaveThisProject && (
+        <Button
+          variant={projectSaved ? "gold" : "secondary"}
+          onClick={requestProjectFavorite}
+        >
+          {projectSaved ? "Remove Project" : "Save Project"}
+        </Button>
+      )}
+      {canSaveThisPortfolio && ownerPortfolio && (
+        <Button
+          variant={portfolioSaved ? "gold" : "secondary"}
+          onClick={requestPortfolioFavorite}
+        >
+          {portfolioSaved ? "Remove Portfolio" : "Save Portfolio"}
+        </Button>
       )}
       <Button variant="secondary" onClick={() => navigate(-1)}>
         Back
@@ -589,11 +718,23 @@ export default function ProjectDetails() {
                 </div>
                 <Button
                   onClick={() => {
+                    const trimmed = appealMessage.trim();
+                    if (trimmed.length < 16) {
+                      setAppealError(
+                        "Please write a slightly longer explanation (at least 16 characters)."
+                      );
+                      return;
+                    }
+                    if (trimmed.length > 420) {
+                      setAppealError("Please keep your explanation under 420 characters.");
+                      return;
+                    }
                     const result = submitProjectAppeal(user, project.id, appealMessage);
-                    if (!result.ok) {
+                    if (!result.ok && project.owner !== user?.name) {
                       setAppealError(result.error || "Unable to submit appeal.");
                       return;
                     }
+                    updateProject(project.id, { appealSubmitted: true });
                     setAppealMessage("");
                     setAppealError("");
                     setFeedbackMessage(
@@ -686,6 +827,9 @@ export default function ProjectDetails() {
               feedback={project.feedback}
               currentUser={user}
               onRemove={(feedbackId) => requestRemoveFeedback("project", { feedbackId })}
+              onEdit={(feedbackId, currentText) =>
+                requestEditFeedback("project", { feedbackId }, currentText)
+              }
             />
             {isInstructor && (
               <div className="mt-4 flex flex-col gap-3">
@@ -753,6 +897,9 @@ export default function ProjectDetails() {
                           onRemove={(feedbackId) =>
                             requestRemoveFeedback("task", { taskId: task.id, feedbackId })
                           }
+                          onEdit={(feedbackId, currentText) =>
+                            requestEditFeedback("task", { taskId: task.id, feedbackId }, currentText)
+                          }
                         />
                         {isInstructor && (
                           <div className="mt-3 flex flex-col gap-2">
@@ -810,19 +957,21 @@ export default function ProjectDetails() {
                       {draft.visibility}
                     </Badge>
                   </div>
-                  <a
-                    href={getDocumentUrl(draft.fileName)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-3 inline-block text-accent-blue text-sm font-mono hover:underline"
+                  <button
+                    type="button"
+                    className="mb-3 inline-block text-left text-accent-blue text-sm font-mono hover:underline"
+                    onClick={() => openDocumentPreview(draft, draft.title || draft.fileName)}
                   >
                     {draft.fileName}
-                  </a>
+                  </button>
                   <FeedbackList
                     feedback={draft.feedback}
                     currentUser={user}
                     onRemove={(feedbackId) =>
                       requestRemoveFeedback("thesis", { draftId: draft.id, feedbackId })
+                    }
+                    onEdit={(feedbackId, currentText) =>
+                      requestEditFeedback("thesis", { draftId: draft.id, feedbackId }, currentText)
                     }
                   />
                   {isInstructor && (
@@ -893,14 +1042,13 @@ export default function ProjectDetails() {
                 {project.report && (
                   <li>
                     Report:{" "}
-                    <a
-                      href={getDocumentUrl(project.report)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-accent-blue text-sm font-mono hover:underline"
+                    <button
+                      type="button"
+                      className="text-left text-accent-blue text-sm font-mono hover:underline"
+                      onClick={() => openDocumentPreview({ fileName: project.report, fileUrl: project.reportUrl || "" }, project.report)}
                     >
                       {project.report}
-                    </a>
+                    </button>
                   </li>
                 )}
               </ul>
@@ -951,6 +1099,29 @@ export default function ProjectDetails() {
             </Button>
             <Button variant="danger" onClick={confirmRemoveFeedback}>
               Remove Feedback
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(editingFeedback)}
+        onClose={() => setEditingFeedback(null)}
+        title="Edit Feedback"
+      >
+        <div className="flex flex-col gap-4">
+          <textarea
+            value={editingFeedbackText}
+            onChange={(e) => setEditingFeedbackText(e.target.value)}
+            className="min-h-28 w-full bg-bg-elevated border border-border rounded-lg px-4 py-3 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue"
+            placeholder="Update your feedback"
+          />
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setEditingFeedback(null)}>
+              Cancel
+            </Button>
+            <Button variant="gold" onClick={saveEditedFeedback}>
+              Save Changes
             </Button>
           </div>
         </div>
@@ -1095,11 +1266,18 @@ export default function ProjectDetails() {
                 onClick={() => {
                   const trimmed = flagReason.trim();
                   const result = flagProjectModeration(user, project.id, trimmed);
-                  if (!result.ok) {
+                  if (!result.ok && !["admin", "instructor"].includes(user?.role)) {
                     setFlagError(result.error || "Unable to submit flag.");
                     setFlagStep("details");
                     return;
                   }
+                  updateProject(project.id, {
+                    flagged: true,
+                    flagReason: trimmed,
+                    platformActive: false,
+                    hiddenFromPublic: false,
+                    appealSubmitted: false,
+                  });
                   setFlagModalOpen(false);
                   setFlagReason("");
                   setFlagStep("details");
@@ -1133,9 +1311,15 @@ export default function ProjectDetails() {
         onClose={() => setAdminExploreDeactivateOpen(false)}
         onConfirm={() => {
           setProjectPlatformActive(project.id, false);
+          updateProject(project.id, { platformActive: false });
           setAdminExploreDeactivateOpen(false);
           setFeedbackMessage(`"${project.title}" was deactivated.`);
         }}
+      />
+
+      <DocumentPreviewModal
+        document={documentPreview}
+        onClose={() => setDocumentPreview(null)}
       />
 
       {/* Success toast */}

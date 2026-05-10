@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, Badge, Stars, Button, PageHeader, Input, Modal, ConfirmActionModal, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
-import { courses, instructorDirectory, projects, portfolios } from "../../data/dummy";
+import { courses, dummyUsers, instructorDirectory, portfolios } from "../../data/dummy";
 
-function StudentProfile({ user, updateUser, myProjects }) {
+function StudentProfile({ user, updateUser, myProjects, isReadOnly }) {
+  const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -19,6 +20,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
   const [fieldErrors, setFieldErrors] = useState({});
 
   const handleOpenEdit = () => {
+    if (isReadOnly) return;
     setFieldErrors({});
     setFormData({
       major: user?.major || "",
@@ -112,7 +114,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
             )}
           </div>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleOpenEdit}>Edit Profile</Button>
+        {!isReadOnly && <Button variant="secondary" size="sm" onClick={handleOpenEdit}>Edit Profile</Button>}
       </div>
 
       {user?.linkedIn && (
@@ -130,7 +132,13 @@ function StudentProfile({ user, updateUser, myProjects }) {
       <PageHeader
         title="Portfolio"
         subtitle={`${myProjects.length} public project${myProjects.length !== 1 ? "s" : ""}`}
-        action={<Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>Manage visibility</Button>}
+        action={
+          !isReadOnly && (
+            <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>
+              Manage visibility
+            </Button>
+          )
+        }
       />
 
       {myProjects.length > 0 ? (
@@ -1005,13 +1013,42 @@ export default function Profile() {
   const { user: authUser, updateUser } = useContext(AuthContext);
   const { portfolioId } = useParams();
   const { projectList } = useProjects();
-  const navigate = useNavigate();
 
   const isPublicView = Boolean(portfolioId);
 
   // If we have a portfolioId, find that user. Otherwise use authed user.
   const user = useMemo(() => {
     if (portfolioId) {
+      if (String(portfolioId).startsWith("instructor-")) {
+        const instructorId = String(portfolioId).replace("instructor-", "");
+        const instructor = instructorDirectory.find(i => String(i.id) === instructorId);
+        if (instructor) {
+          return {
+            ...instructor,
+            role: "instructor"
+          };
+        }
+      }
+
+      const portfolio = portfolios.find((p) => String(p.id) === String(portfolioId));
+      if (portfolio) {
+        const portfolioUser = dummyUsers.find(
+          (candidate) =>
+            candidate.email === portfolio.studentEmail || candidate.name === portfolio.owner
+        );
+        return {
+          ...(portfolioUser || {}),
+          id: portfolioUser?.id || portfolio.id,
+          role: "student",
+          name: portfolio.studentName || portfolio.owner,
+          email: portfolio.studentEmail,
+          major: portfolioUser?.major || portfolio.headline,
+          skills: portfolioUser?.skills || portfolio.skills || [],
+          linkedIn: portfolioUser?.linkedIn || "",
+          avatar: portfolioUser?.avatar || null,
+        };
+      }
+
       const instructor = instructorDirectory.find(i => String(i.id + 100) === String(portfolioId));
       if (instructor) {
         return {
@@ -1056,5 +1093,12 @@ export default function Profile() {
     );
   }
 
-  return <StudentProfile user={user} updateUser={updateUser} myProjects={myProjects} />;
+  return (
+    <StudentProfile
+      user={user}
+      updateUser={updateUser}
+      myProjects={myProjects}
+      isReadOnly={isReadOnly}
+    />
+  );
 }

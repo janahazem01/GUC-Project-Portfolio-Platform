@@ -223,6 +223,7 @@ export const projects = [
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
     demo: "https://smart-campus-navigator.example.com",
     report: "Smart_Campus_Navigator_Report.pdf",
+    reportUrl: "https://example.com/reports/Smart_Campus_Navigator_Report.pdf",
     languages: ["React", "Node.js", "MongoDB"],
     team: ["Ahmed El-Sayed", "Youssef Ahmed", "Mariam Hassan"],
     rating: 4.5,
@@ -298,6 +299,7 @@ export const projects = [
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
     demo: "https://arabic-sentiment.example.com",
     report: "Arabic_NLP_Sentiment_Report.pdf",
+    reportUrl: "https://example.com/reports/Arabic_NLP_Sentiment_Report.pdf",
     demoVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     languages: ["Python", "TensorFlow", "Flask"],
     team: ["Ahmed El-Sayed"],
@@ -354,6 +356,7 @@ export const projects = [
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
     demo: "https://guc-portfolio-platform.example.com",
     report: "GUC_Portfolio_Platform_Report.pdf",
+    reportUrl: "https://example.com/reports/GUC_Portfolio_Platform_Report.pdf",
     demoVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     languages: ["React", "FastAPI", "PostgreSQL"],
     team: ["Sara Mahmoud", "Omar Tarek", "Laila Mostafa"],
@@ -1189,6 +1192,41 @@ export function exploreProjectsForUser(user) {
 function studentPortfolioEmailForOwner(ownerName) {
   const portfolioEntry = portfolios.find((portfolio) => portfolio.owner === ownerName);
   return portfolioEntry?.studentEmail || null;
+}
+
+export function findStudentEmailByName(ownerName) {
+  const studentUser = dummyUsers.find(
+    (student) => student.role === "student" && student.name === ownerName
+  );
+  return studentUser?.email || studentPortfolioEmailForOwner(ownerName) || null;
+}
+
+export function pushStudentFeedbackNotification({
+  targetStudentEmail,
+  targetProjectId,
+  instructorName,
+  projectTitle,
+  taskTitle,
+}) {
+  if (!targetStudentEmail || !targetProjectId) return;
+  const nid = notifications.length ? Math.max(...notifications.map((notification) => notification.id)) + 1 : 1;
+  notifications.push({
+    id: nid,
+    kind: "feedback",
+    title: taskTitle
+      ? `New task feedback from ${instructorName}`
+      : `New project feedback from ${instructorName}`,
+    text: taskTitle
+      ? `${instructorName} left new feedback on task "${taskTitle}" in project "${projectTitle}".`
+      : `${instructorName} left new feedback on your project "${projectTitle}".`,
+    read: false,
+    time: "Just now",
+    audience: ["student"],
+    targetStudentEmail,
+    targetProjectId,
+    actionPath: `/projects/${targetProjectId}`,
+  });
+  emitDummyUpdate();
 }
 
 export function getProjectAppeals() {

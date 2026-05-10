@@ -10,6 +10,7 @@ import {
   Input,
   SuccessToast,
   ConfirmActionModal,
+  DocumentPreviewModal,
 } from "../../components/ui";
 import { MiniDonutChart } from "../../components/viz/Charts.jsx";
 import { CHART_COLORS } from "../../components/viz/chartColors.js";
@@ -39,13 +40,15 @@ const blankForm = () => ({
   title: "",
   courseId: "",
   github: "",
+  description: "",
   report: "",
+  reportFileUrl: "",
   languages: "",
   demoVideo: "",
   visibility: "public",
 });
 
-const blankThesisDraftForm = () => ({ title: "", fileName: "" });
+const blankThesisDraftForm = () => ({ title: "", fileName: "", fileUrl: "" });
 
 const blankTaskForm = () => ({
   title: "",
@@ -89,8 +92,31 @@ function getCourseIdByCode(courseCode) {
   return courses.find((c) => c.code === courseCode)?.id;
 }
 
-function getDocumentUrl(fileName) {
-  return fileName ? `/documents/${encodeURIComponent(fileName)}` : "#";
+function getDocumentName(document) {
+  if (!document) return "";
+  if (typeof document === "string") return document;
+  return document.fileName || document.name || document.title || "";
+}
+
+function buildDocumentPreview(document, title) {
+  const name = getDocumentName(document);
+  const src =
+    typeof document === "object" && document !== null
+      ? document.fileUrl || document.url || document.src || ""
+      : "";
+  return { title: title || name || "Document", name, src };
+}
+
+function readPdfFile(file, onLoaded) {
+  if (!file) {
+    onLoaded({ fileName: "", fileUrl: "" });
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => onLoaded({ fileName: file.name, fileUrl: reader.result || "" });
+  reader.onerror = () => onLoaded({ fileName: file.name, fileUrl: "" });
+  reader.readAsDataURL(file);
 }
 
 // ─── ProjectForm (outside page so it never remounts) ─────────────────────────
@@ -147,6 +173,18 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
       </div>
 
       <div>
+        <label className="text-sm text-text-secondary font-sans">Project Description</label>
+        <textarea
+          value={form.description}
+          onChange={(e) => onChange("description", e.target.value)}
+          placeholder="Summarize the project in 2-3 sentences"
+          className="mt-1.5 min-h-24 w-full bg-bg-elevated border border-border rounded-lg px-4 py-2.5
+                     text-text-primary text-sm font-sans placeholder:text-text-secondary/50
+                     focus:outline-none focus:border-accent-blue transition-colors resize-none"
+        />
+      </div>
+
+      <div>
         <Input
           label="Demo Video URL"
           value={form.demoVideo}
@@ -157,13 +195,34 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
       </div>
 
       <div>
+        <label className="text-sm text-text-secondary font-sans">Project Report PDF</label>
         <Input
-          label="Project Report Name"
-          value={form.report}
-          onChange={(e) => onChange("report", e.target.value)}
-          placeholder="e.g. MyProject_Report.pdf"
+          type="file"
+          accept=".pdf,application/pdf"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            readPdfFile(file, (nextFile) => {
+              onChange("report", nextFile.fileName);
+              onChange("reportFileUrl", nextFile.fileUrl);
+            });
+          }}
         />
-        <p className="text-text-secondary text-xs font-sans mt-1">Optional — not uploaded, just labeled</p>
+        {form.report && (
+          <div className="mt-2 flex items-center gap-3">
+            <span className="text-text-secondary text-xs font-mono">Attached: {form.report}</span>
+            <button
+              type="button"
+              className="text-accent-blue text-xs font-semibold hover:underline"
+              onClick={() => {
+                onChange("report", "");
+                onChange("reportFileUrl", "");
+              }}
+            >
+              Remove file
+            </button>
+          </div>
+        )}
+        <p className="text-text-secondary text-xs font-sans mt-1">Optional PDF attachment for the project report.</p>
       </div>
 
       <div>
@@ -246,8 +305,9 @@ export default function Projects() {
   const [thesisForm, setThesisForm] = useState(blankThesisDraftForm());
   const [thesisError, setThesisError] = useState("");
   const [thesisEditProjectId, setThesisEditProjectId] = useState(null);
-  const [thesisEditAdd, setThesisEditAdd] = useState({ title: "", fileName: "" });
+  const [thesisEditAdd, setThesisEditAdd] = useState({ title: "", fileName: "", fileUrl: "" });
   const [thesisEditError, setThesisEditError] = useState("");
+  const [documentPreview, setDocumentPreview] = useState(null);
 
   // tasks
   const [taskForm, setTaskForm] = useState(blankTaskForm());
@@ -257,6 +317,8 @@ export default function Projects() {
   // invitations
   const [selectedInstructor, setSelectedInstructor] = useState({});
   const [selectedCollaborator, setSelectedCollaborator] = useState({});
+  const [collaboratorSearch, setCollaboratorSearch] = useState("");
+  const [instructorSearch, setInstructorSearch] = useState("");
 
   // options panel
   const [optionsProjectId, setOptionsProjectId] = useState(null);
@@ -315,6 +377,10 @@ export default function Projects() {
   }, [successMsg]);
 
   const showModalNotice = (message, area = "general") => setModalNotice({ message, area });
+  const openDocumentPreview = (event, document, title) => {
+    event?.stopPropagation?.();
+    setDocumentPreview(buildDocumentPreview(document, title));
+  };
 
   // ── navigation helpers ────────────────────────────────────────────
   const viewProject = (id) => navigate(`/projects/${id}`);
@@ -334,7 +400,7 @@ export default function Projects() {
     setOptionsProjectId(null);
     setModalNotice(null);
     if (project.courseCode === "BP") {
-      setThesisEditAdd({ title: "", fileName: "" });
+      setThesisEditAdd({ title: "", fileName: "", fileUrl: "" });
       setThesisEditError("");
       setThesisEditProjectId(project.id);
       return;
@@ -344,7 +410,9 @@ export default function Projects() {
       title: project.title,
       courseId: courseObj ? String(courseObj.id) : "",
       github: project.github || "",
+      description: project.description || "",
       report: project.report || "",
+      reportFileUrl: project.reportUrl || "",
       languages: project.languages.join(", "),
       demoVideo: project.demoVideo || "",
       visibility: project.visibility || "public",
@@ -427,10 +495,18 @@ export default function Projects() {
   };
 
   // ── CRUD ──────────────────────────────────────────────────────────
-  const handleCreate = () => {
+  const requestCreateConfirmation = () => {
     const errs = validateProjectForm(form);
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    setConfirmAction({
+      action: "create this project",
+      confirmLabel: "Yes",
+      variant: "gold",
+      onConfirm: handleCreate,
+    });
+  };
 
+  const handleCreate = () => {
     const course = courses.find((c) => c.id === Number(form.courseId));
     addProject({
       id: Date.now(),
@@ -443,13 +519,14 @@ export default function Projects() {
       github: form.github.trim(),
       demo: form.demoVideo.trim() || null,
       report: form.report.trim() || null,
+      reportUrl: form.reportFileUrl || null,
       demoVideo: form.demoVideo.trim() || null,
       languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean),
       team: [user?.name],
       rating: 0,
       visibility: form.visibility,
       createdAt: new Date().toISOString().slice(0, 10),
-      description: "",
+      description: form.description.trim(),
       problem: "",
       solution: "",
       features: [],
@@ -459,7 +536,8 @@ export default function Projects() {
     });
     setForm(blankForm());
     setErrors({});
-    showModalNotice("Project created successfully.");
+    setModal(null);
+    setSuccessMsg("Project created successfully.");
   };
 
   const requestUpdateConfirmation = () => {
@@ -475,15 +553,18 @@ export default function Projects() {
       course: course?.name || modal.project.course,
       courseCode: course?.code || modal.project.courseCode,
       github: form.github.trim(),
+      description: form.description.trim(),
       report: form.report.trim() || modal.project.report,
+      reportUrl: form.reportFileUrl || modal.project.reportUrl || null,
       demoVideo: form.demoVideo.trim() || modal.project.demoVideo,
       demo: form.demoVideo.trim() || modal.project.demo,
       languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean),
       visibility: form.visibility,
     });
     setEditConfirm(false);
+    setModal(null);
     setErrors({});
-    showModalNotice("Project updated successfully.");
+    setSuccessMsg("Project updated successfully.");
   };
 
   const handleDelete = () => {
@@ -493,11 +574,12 @@ export default function Projects() {
   };
 
   // ── thesis ────────────────────────────────────────────────────────
-  const openThesisUpload = () => {
+  const openThesisUpload = (project) => {
     setThesisForm(blankThesisDraftForm());
     setThesisError("");
     setModalNotice(null);
-    setThesisModal({ mode: "upload" });
+    setThesisEditProjectId(project?.id || null);
+    setThesisModal({ mode: "upload", projectId: project?.id || null });
   };
 
   const closeThesisModal = () => {
@@ -508,7 +590,7 @@ export default function Projects() {
 
   const closeThesisEditModal = () => {
     setThesisEditProjectId(null);
-    setThesisEditAdd({ title: "", fileName: "" });
+    setThesisEditAdd({ title: "", fileName: "", fileUrl: "" });
     setThesisEditError("");
   };
 
@@ -524,59 +606,74 @@ export default function Projects() {
       id: Date.now(),
       title: thesisForm.title.trim(),
       fileName: thesisForm.fileName.trim(),
+      fileUrl: thesisForm.fileUrl || "",
       uploadedAt: new Date().toISOString().slice(0, 10),
       isFinal: false,
       visibility: "private",
     };
-    const bachelorProject = getBachelorProject();
-    if (bachelorProject) {
-      updateProject(bachelorProject.id, {
-        thesisDrafts: [...(bachelorProject.thesisDrafts || []), nextDraft],
+    const targetProject = projectList.find((p) => p.id === thesisModal?.projectId);
+    if (targetProject && targetProject.courseCode === "BP") {
+      updateProject(targetProject.id, {
+        thesisDrafts: [...(targetProject.thesisDrafts || []), nextDraft],
       });
     } else {
-      addProject({
-        id: Date.now() + 1,
-        title: "Bachelor Project Thesis",
-        course: bachelorProjectCourse?.name || "Bachelor Project",
-        courseCode: bachelorProjectCourse?.code || "BP",
-        owner: user?.name,
-        supervisor: "",
-        status: "Drafting",
-        github: "#",
-        demo: null,
-        report: null,
-        demoVideo: null,
-        languages: [],
-        team: [user?.name],
-        rating: 0,
-        visibility: "public",
-        createdAt: new Date().toISOString().slice(0, 10),
-        description: "Bachelor Project thesis draft workspace.",
-        problem: "",
-        solution: "",
-        features: [],
-        outcomes: [],
-        resources: [],
-        thesisDrafts: [nextDraft],
-        finalDraftId: null,
-        tasks: [],
-      });
+      const bachelorProject = getBachelorProject();
+      if (bachelorProject) {
+        updateProject(bachelorProject.id, {
+          thesisDrafts: [...(bachelorProject.thesisDrafts || []), nextDraft],
+        });
+      } else {
+        addProject({
+          id: Date.now() + 1,
+          title: "Bachelor Project Thesis",
+          course: bachelorProjectCourse?.name || "Bachelor Project",
+          courseCode: bachelorProjectCourse?.code || "BP",
+          owner: user?.name,
+          supervisor: "",
+          status: "Drafting",
+          github: "#",
+          demo: null,
+          report: null,
+          reportUrl: null,
+          demoVideo: null,
+          languages: [],
+          team: [user?.name],
+          rating: 0,
+          visibility: "public",
+          createdAt: new Date().toISOString().slice(0, 10),
+          description: "Bachelor Project thesis draft workspace.",
+          problem: "",
+          solution: "",
+          features: [],
+          outcomes: [],
+          resources: [],
+          thesisDrafts: [nextDraft],
+          finalDraftId: null,
+          tasks: [],
+        });
+      }
     }
     setThesisForm(blankThesisDraftForm());
     setThesisError("");
+    setThesisModal(null);
     showModalNotice("Thesis draft uploaded under Bachelor Project.");
   };
 
-  const addThesisDraftInEditor = () => {
+  const handleAddThesisDraftInEditor = () => {
     if (!thesisEditProject) return;
     if (!thesisEditAdd.title.trim() || !thesisEditAdd.fileName.trim()) {
       setThesisEditError("Add a draft title and choose a PDF file.");
       return;
     }
     const nextDraft = {
-      id: Date.now(),
+      id:
+        Math.max(
+          0,
+          ...(thesisEditProject.thesisDrafts || []).map((draft) => Number(draft.id) || 0)
+        ) + 1,
       title: thesisEditAdd.title.trim(),
       fileName: thesisEditAdd.fileName.trim(),
+      fileUrl: thesisEditAdd.fileUrl || "",
       uploadedAt: new Date().toISOString().slice(0, 10),
       isFinal: false,
       visibility: "private",
@@ -584,7 +681,7 @@ export default function Projects() {
     updateProject(thesisEditProject.id, {
       thesisDrafts: [...(thesisEditProject.thesisDrafts || []), nextDraft],
     });
-    setThesisEditAdd({ title: "", fileName: "" });
+    setThesisEditAdd({ title: "", fileName: "", fileUrl: "" });
     setThesisEditError("");
     showModalNotice("Thesis PDF added.");
   };
@@ -682,6 +779,7 @@ export default function Projects() {
     updateProject(project.id, {
       tasks: (project.tasks || []).map((t) => (t.id === taskId ? { ...t, status } : t)),
     });
+    showModalNotice("Task status updated successfully.", "tasks");
   };
 
   const updateTaskField = (project, taskId, field, value) => {
@@ -689,6 +787,7 @@ export default function Projects() {
     updateProject(project.id, {
       tasks: (project.tasks || []).map((t) => (t.id === taskId ? { ...t, [field]: value } : t)),
     });
+    showModalNotice("Task edited successfully.", "tasks");
   };
 
   const deleteTask = (project, taskId) => {
@@ -749,6 +848,7 @@ export default function Projects() {
       ],
     });
     setSelectedCollaborator((prev) => ({ ...prev, [project.id]: "" }));
+    setCollaboratorSearch("");
     showModalNotice(`Invitation sent to ${collaborator.name}.`, "collaborators");
   };
 
@@ -806,6 +906,7 @@ export default function Projects() {
       ],
     });
     setSelectedInstructor((prev) => ({ ...prev, [project.id]: "" }));
+    setInstructorSearch("");
     showModalNotice(`Invitation sent to ${instructor.name}.`, "instructors");
   };
 
@@ -845,8 +946,12 @@ export default function Projects() {
   return (
     <div>
       <PageHeader
-        title="My Projects"
-        subtitle="Manage and track your submitted projects"
+        title={user?.role === "instructor" ? "Projects" : "My Projects"}
+        subtitle={
+          user?.role === "instructor"
+            ? "Projects I am assigned to"
+            : "Manage and track your submitted projects"
+        }
         action={
           <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:flex-wrap">
             {myProjects.length > 0 && (
@@ -859,9 +964,6 @@ export default function Projects() {
             )}
             {user?.role === "student" && (
               <div className="flex gap-3">
-                <Button variant="secondary" onClick={openThesisUpload}>
-                  Upload Thesis Draft
-                </Button>
                 <Button variant="gold" onClick={openCreate}>
                   + New Project
                 </Button>
@@ -1007,15 +1109,15 @@ export default function Projects() {
                                       {draft.title || draft.fileName}
                                     </p>
                                   </div>
-                                  <a
-                                    href={getDocumentUrl(draft.fileName)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-accent-blue text-sm font-mono truncate hover:underline"
-                                    onClick={(e) => e.stopPropagation()}
+                                  <button
+                                    type="button"
+                                    className="block max-w-full truncate text-left text-accent-blue text-sm font-mono hover:underline"
+                                    onClick={(e) =>
+                                      openDocumentPreview(e, draft, draft.title || draft.fileName)
+                                    }
                                   >
                                     {draft.fileName}
-                                  </a>
+                                  </button>
                                 </div>
                                 <div className="mt-2 flex items-center gap-2">
                                   <Badge variant={draft.visibility === "public" ? "blue" : "default"}>
@@ -1060,15 +1162,19 @@ export default function Projects() {
                         </a>
                       )}
                       {project.report && (
-                        <a
-                          href={getDocumentUrl(project.report)}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
                           className="text-accent-blue text-sm font-mono hover:underline"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) =>
+                            openDocumentPreview(
+                              e,
+                              { fileName: project.report, fileUrl: project.reportUrl || "" },
+                              project.report
+                            )
+                          }
                         >
                           View PDF: {project.report}
-                        </a>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1089,6 +1195,29 @@ export default function Projects() {
                           }}
                         >
                           Tasks
+                        </Button>
+                        {project.courseCode === "BP" && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openThesisUpload(project);
+                            }}
+                          >
+                            Upload Thesis Draft
+                          </Button>
+                        )}
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          title="Delete project"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm(project);
+                          }}
+                        >
+                          🗑
                         </Button>
                         <Button
                           variant="ghost"
@@ -1228,7 +1357,7 @@ export default function Projects() {
           form={form}
           errors={errors}
           onChange={handleChange}
-          onSubmit={handleCreate}
+          onSubmit={requestCreateConfirmation}
           onCancel={closeModal}
           submitLabel="Create Project"
         />
@@ -1553,15 +1682,16 @@ export default function Projects() {
                             <p className="text-text-primary text-sm font-sans truncate">
                               {draft.title || draft.fileName}
                             </p>
-                            <a
-                              href={getDocumentUrl(draft.fileName)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-accent-blue text-sm font-mono truncate hover:underline"
+                            <button
+                              type="button"
+                              className="block max-w-full truncate text-left text-accent-blue text-sm font-mono hover:underline"
+                              onClick={(e) =>
+                                openDocumentPreview(e, draft, draft.title || draft.fileName)
+                              }
                             >
                               {draft.fileName} -{" "}
                               {draft.visibility === "public" ? "public" : "private"}
-                            </a>
+                            </button>
                           </div>
                           {draft.isFinal ? (
                             <div className="flex items-center gap-2 shrink-0">
@@ -1626,23 +1756,46 @@ export default function Projects() {
                   )}
 
                   {eligibleCollaborators.length > 0 ? (
-                    <div className="flex gap-3 mb-4">
-                      <select
-                        value={selectedCollaborator[optionsProject.id] || ""}
-                        onChange={(e) =>
-                          setSelectedCollaborator((prev) => ({
-                            ...prev,
-                            [optionsProject.id]: e.target.value,
-                          }))
-                        }
-                        className="flex-1 bg-bg-elevated border border-border rounded-lg px-3 py-2
-                                   text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
-                      >
-                        <option value="">Select collaborator</option>
-                        {eligibleCollaborators.map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+                    <div className="mb-4">
+                      <div className="mb-2">
+                        <label className="text-text-primary text-sm font-medium mb-1 block">
+                          Search collaborator
+                        </label>
+                        <input
+                          type="text"
+                          value={collaboratorSearch}
+                          onChange={(e) => setCollaboratorSearch(e.target.value)}
+                          placeholder="Search by name or email"
+                          className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                        />
+                      </div>
+                      <div className="grid gap-2 mb-3 max-h-52 overflow-y-auto">
+                        {eligibleCollaborators
+                          .filter((c) =>
+                            `${c.name} ${c.email}`
+                              .toLowerCase()
+                              .includes(collaboratorSearch.toLowerCase())
+                          )
+                          .map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedCollaborator((prev) => ({
+                                  ...prev,
+                                  [optionsProject.id]: String(c.id),
+                                }))
+                              }
+                              className={`w-full text-left rounded-lg border px-3 py-2 text-sm font-sans transition
+                                ${selectedCollaborator[optionsProject.id] === String(c.id)
+                                  ? "border-accent-blue bg-accent-blue/10"
+                                  : "border-border bg-bg-elevated"}`}
+                            >
+                              <div className="font-medium text-text-primary">{c.name}</div>
+                              <div className="text-text-secondary text-xs">{c.email}</div>
+                            </button>
+                          ))}
+                      </div>
                       <Button
                         size="sm"
                         variant="secondary"
@@ -1704,23 +1857,46 @@ export default function Projects() {
                 </h3>
 
                 {eligibleInstructors.length > 0 ? (
-                  <div className="flex gap-3 mb-4">
-                    <select
-                      value={selectedInstructor[optionsProject.id] || ""}
-                      onChange={(e) =>
-                        setSelectedInstructor((prev) => ({
-                          ...prev,
-                          [optionsProject.id]: e.target.value,
-                        }))
-                      }
-                      className="flex-1 bg-bg-elevated border border-border rounded-lg px-3 py-2
-                                 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
-                    >
-                      <option value="">Select course instructor</option>
-                      {eligibleInstructors.map((ins) => (
-                        <option key={ins.id} value={ins.id}>{ins.name}</option>
-                      ))}
-                    </select>
+                  <div className="mb-4">
+                    <div className="mb-2">
+                      <label className="text-text-primary text-sm font-medium mb-1 block">
+                        Search course instructor
+                      </label>
+                      <input
+                        type="text"
+                        value={instructorSearch}
+                        onChange={(e) => setInstructorSearch(e.target.value)}
+                        placeholder="Search by name or email"
+                        className="w-full bg-bg-elevated border border-border rounded-lg px-3 py-2 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                      />
+                    </div>
+                    <div className="grid gap-2 mb-3 max-h-52 overflow-y-auto">
+                      {eligibleInstructors
+                        .filter((ins) =>
+                          `${ins.name} ${ins.email}`
+                            .toLowerCase()
+                            .includes(instructorSearch.toLowerCase())
+                        )
+                        .map((ins) => (
+                          <button
+                            key={ins.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedInstructor((prev) => ({
+                                ...prev,
+                                [optionsProject.id]: String(ins.id),
+                              }))
+                            }
+                            className={`w-full text-left rounded-lg border px-3 py-2 text-sm font-sans transition
+                              ${selectedInstructor[optionsProject.id] === String(ins.id)
+                                ? "border-accent-blue bg-accent-blue/10"
+                                : "border-border bg-bg-elevated"}`}
+                          >
+                            <div className="font-medium text-text-primary">{ins.name}</div>
+                            <div className="text-text-secondary text-xs">{ins.email}</div>
+                          </button>
+                        ))}
+                    </div>
                     <Button
                       size="sm"
                       variant="secondary"
@@ -1774,7 +1950,7 @@ export default function Projects() {
                 )}
               </div>
 
-              {/* Edit / Delete */}
+              {/* Edit */}
               <div className="border-t border-border pt-4 flex flex-col gap-2">
                 <Button
                   variant="secondary"
@@ -1782,16 +1958,6 @@ export default function Projects() {
                   onClick={() => openEdit(optionsProject)}
                 >
                   {optionsProject.courseCode === "BP" ? "Edit thesis (PDFs)" : "Edit project"}
-                </Button>
-                <Button
-                  variant="danger"
-                  className="w-full"
-                  onClick={() => {
-                    setOptionsProjectId(null);
-                    setDeleteConfirm(optionsProject);
-                  }}
-                >
-                  Delete project
                 </Button>
               </div>
             </div>
@@ -1827,14 +1993,15 @@ export default function Projects() {
                           {draft.title || draft.fileName}
                         </p>
                       </div>
-                      <a
-                        href={getDocumentUrl(draft.fileName)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-accent-blue text-xs font-mono truncate hover:underline"
+                      <button
+                        type="button"
+                        className="block max-w-full truncate text-left text-accent-blue text-xs font-mono hover:underline"
+                        onClick={(e) =>
+                          openDocumentPreview(e, draft, draft.title || draft.fileName)
+                        }
                       >
                         {draft.fileName}
-                      </a>
+                      </button>
                     </div>
                     <Button
                       size="sm"
@@ -1870,7 +2037,9 @@ export default function Projects() {
                   accept=".pdf,application/pdf"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    setThesisEditAdd((prev) => ({ ...prev, fileName: file?.name || "" }));
+                    readPdfFile(file, (nextFile) =>
+                      setThesisEditAdd((prev) => ({ ...prev, ...nextFile }))
+                    );
                   }}
                 />
               </div>
@@ -1878,7 +2047,7 @@ export default function Projects() {
                 <p className="text-danger text-xs font-sans mt-2">{thesisEditError}</p>
               )}
               <div className="mt-4">
-                <Button type="button" size="sm" variant="gold" onClick={addThesisDraftInEditor}>
+                <Button type="button" size="sm" variant="gold" onClick={handleAddThesisDraftInEditor}>
                   Add PDF to thesis
                 </Button>
               </div>
@@ -1917,7 +2086,9 @@ export default function Projects() {
             accept=".pdf,application/pdf"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              setThesisForm((prev) => ({ ...prev, fileName: file?.name || "" }));
+              readPdfFile(file, (nextFile) =>
+                setThesisForm((prev) => ({ ...prev, ...nextFile }))
+              );
             }}
           />
 
@@ -2010,6 +2181,11 @@ export default function Projects() {
           applyTableEdit();
           setSaveConfirmOpen(false);
         }}
+      />
+
+      <DocumentPreviewModal
+        document={documentPreview}
+        onClose={() => setDocumentPreview(null)}
       />
 
       {/* Toasts */}
