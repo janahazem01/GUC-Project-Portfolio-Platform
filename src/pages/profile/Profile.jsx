@@ -1,7 +1,9 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { Card, Badge, Stars, Button, PageHeader, Input, Modal, ConfirmActionModal, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
-import { courses, instructorDirectory, projects } from "../../data/dummy";
+import { useProjects } from "../../context/ProjectsContext";
+import { courses, instructorDirectory, projects, portfolios } from "../../data/dummy";
 
 function StudentProfile({ user, updateUser, myProjects }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -242,7 +244,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
   );
 }
 
-function InstructorProfile({ user, updateUser, myCourses }) {
+function InstructorProfile({ user, updateUser, myCourses, isReadOnly }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -259,6 +261,7 @@ function InstructorProfile({ user, updateUser, myCourses }) {
   const [newEducationItem, setNewEducationItem] = useState("");
 
   const handleOpenEdit = () => {
+    if (isReadOnly) return;
     setFormData({
       bio: user?.bio || "",
       researchInterests: user?.researchInterests || [],
@@ -359,7 +362,7 @@ function InstructorProfile({ user, updateUser, myCourses }) {
             ))}
           </div>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleOpenEdit}>Edit Profile</Button>
+        {!isReadOnly && <Button variant="secondary" size="sm" onClick={handleOpenEdit}>Edit Profile</Button>}
       </div>
 
       {user?.linkedin && (
@@ -980,12 +983,32 @@ function EmployerProfile({ user, updateUser }) {
 }
 
 export default function Profile() {
-  const { user, updateUser } = useContext(AuthContext);
+  const { user: authUser, updateUser } = useContext(AuthContext);
+  const { portfolioId } = useParams();
   const { projectList } = useProjects();
-  const role = user?.role;
 
-  const myProjects = projectList.filter((project) => project.owner === user?.name && project.visibility === "public");
-  const myCourses = courses.filter((course) => user?.coursesTaught?.includes(course.id));
+  const isPublicView = Boolean(portfolioId);
+
+  // If we have a portfolioId, find that user. Otherwise use authed user.
+  const user = useMemo(() => {
+    if (portfolioId) {
+      const instructor = instructorDirectory.find(i => String(i.id + 100) === String(portfolioId));
+      if (instructor) {
+        return {
+          ...instructor,
+          role: "instructor"
+        };
+      }
+      return authUser;
+    }
+    return authUser;
+  }, [portfolioId, authUser]);
+
+  const role = user?.role;
+  const isReadOnly = isPublicView && user?.email !== authUser?.email;
+
+  const myProjects = useMemo(() => projectList.filter((project) => project.owner === user?.name && project.visibility === "public"), [projectList, user]);
+  const myCourses = useMemo(() => courses.filter((course) => user?.coursesTaught?.includes(course.id)), [user]);
 
   if (role === "employer") {
     return <EmployerProfile user={user} updateUser={updateUser} />;
@@ -994,7 +1017,7 @@ export default function Profile() {
   if (role === "instructor") {
     return (
       <div>
-        <InstructorProfile user={user} updateUser={updateUser} myCourses={myCourses} />
+        <InstructorProfile user={user} updateUser={updateUser} myCourses={myCourses} isReadOnly={isReadOnly} />
         <div className="mt-6">
           <InstructorDirectoryPreview />
         </div>

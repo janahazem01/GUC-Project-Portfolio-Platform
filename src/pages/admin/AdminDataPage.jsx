@@ -81,7 +81,14 @@ export default function AdminDataPage() {
   const [instructorRequestConfirm, setInstructorRequestConfirm] = useState(null);
   const [flaggedActionConfirm, setFlaggedActionConfirm] = useState(null);
   const [appealFilter, setAppealFilter] = useState("all");
+  const [viewingCompanyDocs, setViewingCompanyDocs] = useState(null);
   const page = pageTitles[section];
+  const handleDownload = (doc) => {
+    setActionFeedbackMessage(`Starting download for ${doc.name}...`);
+    setActionFeedbackOpen(true);
+    // Simulate download
+    setTimeout(() => setActionFeedbackOpen(false), 2000);
+  };
 
   useEffect(() => {
     const unsubscribe = subscribeDummyUpdates(() =>
@@ -169,7 +176,7 @@ export default function AdminDataPage() {
                         onClick={() => {
                           setSelectedRole(roleOption.value);
                           setFilterOpen(false);
-                          setFiltersAddedOpen(true);
+                          setActionFeedbackMessage('Filters were added successfully.'); setActionFeedbackOpen(true);
                         }}
                         className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-sans transition-colors ${
                           selectedRole === roleOption.value
@@ -349,13 +356,23 @@ export default function AdminDataPage() {
 
       {section === "employers" && (
         <Card className="p-0 overflow-hidden">
-          <DataHeader columns={["Company", "Email", "Location", "Status"]} />
+          <DataHeader 
+            columns={["Company", "Email", "Location", "Status", "Actions"]} 
+            style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}
+          />
           {employerUsers.map((user) => (
-            <DataRow key={user.id} columns={4}>
+            <DataRow key={user.id} columns={5} style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}>
               <p className="text-sm text-text-primary font-sans truncate">{user.companyName || user.name}</p>
               <p className="text-sm text-text-secondary font-sans truncate">{user.companyEmail || user.email}</p>
               <p className="text-sm text-text-secondary font-sans truncate">{user.location || user.address}</p>
-              <Badge variant={user.verificationStatus === "approved" ? "success" : "warning"}>{user.verificationStatus || "pending"}</Badge>
+              <div>
+                <Badge variant={user.verificationStatus === "approved" ? "success" : "warning"}>{user.verificationStatus || "pending"}</Badge>
+              </div>
+              <div className="flex justify-end pr-2">
+                <Button size="sm" variant="secondary" onClick={() => setViewingCompanyDocs(user)}>
+                  View Details
+                </Button>
+              </div>
             </DataRow>
           ))}
         </Card>
@@ -363,13 +380,23 @@ export default function AdminDataPage() {
 
       {section === "approvals" && (
         <Card className="p-0 overflow-hidden">
-          <DataHeader columns={["Employer", "Contact", "Location", "Status"]} />
+          <DataHeader 
+            columns={["Employer", "Contact", "Location", "Status", "Actions"]} 
+            style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}
+          />
           {employerApplications.map((application) => (
-            <DataRow key={application.id} columns={4}>
+            <DataRow key={application.id} columns={5} style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}>
               <p className="text-sm text-text-primary font-sans truncate">{application.name}</p>
               <p className="text-sm text-text-secondary font-sans truncate">{application.companyEmail}</p>
               <p className="text-sm text-text-secondary font-sans truncate">{application.location}</p>
-              <Badge variant={application.verificationStatus === "pending" ? "warning" : "success"}>{application.verificationStatus}</Badge>
+              <div>
+                <Badge variant={application.verificationStatus === "pending" ? "warning" : "success"}>{application.verificationStatus}</Badge>
+              </div>
+              <div className="flex justify-end pr-2">
+                <Button size="sm" variant="secondary" onClick={() => setViewingCompanyDocs(application)}>
+                  Details
+                </Button>
+              </div>
             </DataRow>
           ))}
         </Card>
@@ -648,6 +675,103 @@ export default function AdminDataPage() {
           setActionFeedbackOpen(true);
         }}
       />
+      {/* Company Verification Details Modal */}
+      <Modal
+        isOpen={Boolean(viewingCompanyDocs)}
+        onClose={() => setViewingCompanyDocs(null)}
+        title="Company Documentation"
+        contentClassName="max-w-2xl"
+      >
+        {viewingCompanyDocs && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 bg-bg-elevated/30 p-4 rounded-xl border border-border">
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">Company Name</p>
+                <p className="text-sm font-semibold text-text-primary">{viewingCompanyDocs.name || viewingCompanyDocs.companyName}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">Email</p>
+                <p className="text-sm text-text-secondary truncate">{viewingCompanyDocs.companyEmail || viewingCompanyDocs.email}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">Location</p>
+                <p className="text-sm text-text-secondary">{viewingCompanyDocs.location || viewingCompanyDocs.address}</p>
+              </div>
+              {viewingCompanyDocs.companyBio && (
+                <div className="col-span-2">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">About</p>
+                  <p className="text-sm text-text-secondary text-sm leading-relaxed">{viewingCompanyDocs.companyBio}</p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-display text-text-primary mb-3">Verification Documents</h3>
+              <div className="space-y-2">
+                {(!viewingCompanyDocs.uploadedDocs || viewingCompanyDocs.uploadedDocs.length === 0) ? (
+                  <p className="text-sm text-text-secondary italic">No documents uploaded.</p>
+                ) : (
+                  viewingCompanyDocs.uploadedDocs.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-bg-surface hover:border-accent-blue/50 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded bg-accent-blue/10 flex items-center justify-center text-accent-blue">
+                          ??
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">{doc.name}</p>
+                          <p className="text-[10px] text-text-secondary">Uploaded on {doc.uploadedAt}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost" 
+                          className="hover:text-accent-blue"
+                          onClick={() => {
+                            setActionFeedbackMessage(`Viewing document: ${doc.name}`);
+                            setActionFeedbackOpen(true);
+                          }}
+                        >
+                          View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="hover:text-accent-gold"
+                          onClick={() => handleDownload(doc)}
+                        >
+                          Download
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <Button variant="ghost" onClick={() => setViewingCompanyDocs(null)}>
+                Close
+              </Button>
+              {viewingCompanyDocs.verificationStatus === "pending" && (
+                <Button onClick={() => {
+                  setActionFeedbackMessage(`Verification process initialized for ${viewingCompanyDocs.name}`);
+                  setActionFeedbackOpen(true);
+                  setViewingCompanyDocs(null);
+                }}>
+                  Approve Verification
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
+
+
+
+
+
+

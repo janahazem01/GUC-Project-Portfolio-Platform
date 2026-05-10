@@ -12,6 +12,7 @@ import Projects     from "./pages/projects/Projects";
 import ProjectDetails from "./pages/projects/ProjectDetails";
 import ProjectPreview from "./pages/projects/ProjectPreview";
 import Explore      from "./pages/discovery/Explore";
+import Instructors  from "./pages/discovery/Instructors";
 import PortfolioDetail from "./pages/discovery/PortfolioDetail";
 import Favorites    from "./pages/favorites/Favorites";
 import Profile      from "./pages/profile/Profile";
@@ -101,7 +102,7 @@ function AppRoutes() {
         path="/explore/portfolio/:portfolioId"
         element={
           <ProtectedRoute allowedRoles={["student", "instructor", "employer", "admin"]}>
-            <AppLayout><PortfolioDetail /></AppLayout>
+            <AppLayout><Profile /></AppLayout>
           </ProtectedRoute>
         }
       />
@@ -111,6 +112,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["student", "instructor", "employer", "admin"]}>
             <AppLayout><Explore /></AppLayout>
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/instructors" 
+        element={
+          <ProtectedRoute allowedRoles={["student", "instructor", "employer", "admin"]}>
+            <AppLayout><Instructors /></AppLayout>
           </ProtectedRoute>
         } 
       />

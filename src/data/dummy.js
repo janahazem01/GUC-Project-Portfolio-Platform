@@ -1342,3 +1342,39 @@ export const internships = [
   },
 ];
 
+
+export const adminApproveEmployer = (id) => {
+  const application = employerApplications.find((app) => app.id === id);
+  if (!application) return { ok: false, error: "Application not found" };
+
+  application.verificationStatus = "approved";
+  
+  // Also create a new dummy user for this company so they can log in
+  const newUser = {
+    id: dummyUsers.length + 1,
+    name: application.name + " Admin",
+    email: application.companyEmail,
+    password: "password",
+    role: "employer",
+    companyName: application.name,
+    companyBio: application.companyBio,
+    address: application.address,
+    location: application.location,
+    companyEmail: application.companyEmail,
+    verificationStatus: "approved",
+    uploadedDocs: application.uploadedDocs,
+    status: "active",
+  };
+  
+  dummyUsers.push(newUser);
+  notifyDummyUpdates();
+  return { ok: true };
+};
+
+export const adminRejectEmployer = (id) => {
+  const application = employerApplications.find((app) => app.id === id);
+  if (!application) return { ok: false, error: "Application not found" };
+  application.verificationStatus = "rejected";
+  notifyDummyUpdates();
+  return { ok: true };
+};
