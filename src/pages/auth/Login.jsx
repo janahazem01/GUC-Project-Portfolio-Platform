@@ -1,28 +1,12 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-<<<<<<< HEAD
-import { Button, Input } from "../../components/ui";
-=======
 import { Button, Input, SuccessToast } from "../../components/ui";
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 import { AuthContext } from "../../context/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-<<<<<<< HEAD
-  const { login } = useContext(AuthContext);
-  const navigate = useNavigate();
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    setError("");
-
-    const result = login(email, password);
-    if (result.success) {
-      navigate("/");
-=======
   const [success, setSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const { login } = useContext(AuthContext);
@@ -55,7 +39,6 @@ export default function Login() {
       setTimeout(() => {
         navigate("/");
       }, 1000);
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     } else {
       setError(result.error);
     }
@@ -78,15 +61,9 @@ export default function Login() {
         {/* Demo credentials */}
         <div className="bg-bg-base p-4 rounded border border-border text-text-secondary text-xs font-mono">
           <p className="font-bold text-accent-gold mb-2">Demo Credentials:</p>
-<<<<<<< HEAD
-          <p>📚 Student: ahmed.elsayed@student.guc.edu.eg</p>
-          <p>👨‍💼 Admin: admin@guc.edu.eg</p>
-          <p>🎓 Instructor: dr.sara@guc.edu.eg</p>
-=======
           <p>📚 Student: ahmed.elsayed@gmail.com</p>
           <p>👨‍💼 Admin: admin@gmail.com</p>
           <p>🎓 Instructor: dr.sara@gmail.com</p>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
           <p>🏢 Employer: recruiter@techcompany.com</p>
           <p className="mt-2">Password: <span className="text-accent-blue">password</span></p>
         </div>
@@ -106,16 +83,6 @@ export default function Login() {
             </div>
           )}
 
-<<<<<<< HEAD
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            <Input
-              label="Email"
-              type="email"
-              placeholder="you@student.guc.edu.eg"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-=======
           <form onSubmit={handleLogin} className="flex flex-col gap-4" noValidate>
             <Input
               label="Email"
@@ -124,7 +91,6 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={fieldErrors.email}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
             />
             <Input
               label="Password"
@@ -132,11 +98,7 @@ export default function Login() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-<<<<<<< HEAD
-              required
-=======
               error={fieldErrors.password}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
             />
             <a href="/forgot-password" className="text-accent-blue text-xs font-sans hover:underline self-end -mt-2">
               Forgot password?
@@ -150,10 +112,7 @@ export default function Login() {
           </p>
         </div>
       </div>
-<<<<<<< HEAD
-=======
       <SuccessToast message={success} onClose={() => setSuccess("")} />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }
