@@ -9,11 +9,7 @@ export const dummyUsers = [
   {
     id: 1,
     name: "Ahmed El-Sayed",
-<<<<<<< HEAD
     email: "ahmed.elsayed@student.guc.edu.eg",
-=======
-    email: "ahmed.elsayed@gmail.com",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     password: "password",
     role: "student",
     major: "Media Engineering & Technology",
@@ -21,7 +17,6 @@ export const dummyUsers = [
     bio: "Passionate about web development and AI",
     linkedIn: "https://linkedin.com/in/ahmed",
     avatar: null,
-<<<<<<< HEAD
   },
   {
     id: 7,
@@ -46,7 +41,6 @@ export const dummyUsers = [
     bio: "Focused on usable and reliable web apps",
     linkedIn: "https://linkedin.com/in/mariam",
     avatar: null,
-=======
     status: "active",
     completedInternships: [
       {
@@ -77,80 +71,33 @@ export const dummyUsers = [
         description: "Shipped portfolio discovery flows and refined shared UI components with the product team.",
       },
     ],
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   },
   // Admin
   {
     id: 2,
     name: "Admin User",
-<<<<<<< HEAD
     email: "admin@guc.edu.eg",
-=======
-    email: "admin@gmail.com",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     password: "password",
     role: "admin",
     bio: "Platform administrator",
     avatar: null,
-<<<<<<< HEAD
-=======
     status: "active",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   },
   // Instructor
   {
     id: 3,
     name: "Dr. Sara Abdelhamid",
-<<<<<<< HEAD
     email: "dr.sara@guc.edu.eg",
-=======
-    email: "dr.sara@gmail.com",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     password: "password",
     role: "instructor",
     bio: "Associate Professor in Software Engineering",
     researchInterests: ["Software Architecture", "Design Patterns", "Agile Methods"],
     education: ["PhD in Computer Science - Cairo University", "BSc in Computer Science"],
-<<<<<<< HEAD
-    coursesTaught: [1, 4], // IDs from courses array
-    officeHours: "Mon 12:00-14:00",
-    linkedin: "https://linkedin.com/in/dr-sara",
-    avatar: null,
-  },
-  {
-    id: 5,
-    name: "Dr. Omar Tarek",
-    email: "dr.omar@guc.edu.eg",
-    password: "password",
-    role: "instructor",
-    bio: "Lecturer in Software Engineering and Cloud Systems",
-    researchInterests: ["Cloud Computing", "DevOps", "Software Testing"],
-    education: ["PhD in Software Engineering - GUC"],
-    coursesTaught: [1, 4],
-    officeHours: "Wed 10:00-12:00",
-    linkedin: "https://linkedin.com/in/dr-omar",
-    avatar: null,
-  },
-  {
-    id: 6,
-    name: "Dr. Karim Hassan",
-    email: "dr.karim@guc.edu.eg",
-    password: "password",
-    role: "instructor",
-    bio: "Assistant Professor in Machine Intelligence",
-    researchInterests: ["Natural Language Processing", "Deep Learning"],
-    education: ["PhD in Artificial Intelligence - TU Munich"],
-    coursesTaught: [2, 4],
-    officeHours: "Thu 13:00-15:00",
-    linkedin: "https://linkedin.com/in/dr-karim",
-    avatar: null,
-=======
     coursesTaught: [1, 2, 4],
     officeHours: "Mon 12:00-14:00",
     linkedin: "https://linkedin.com/in/dr-sara",
     avatar: null,
     status: "active",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   },
   // Employer
   {
@@ -168,11 +115,9 @@ export const dummyUsers = [
     logo: null,
     verificationStatus: "approved", // pending | approved | rejected
     uploadedDocs: [
-      { id: 1, name: "tax_certificate.pdf", uploadedAt: "2026-03-15" }
+      { id: 1, name: "tax_certificate.pdf", uploadedAt: "2026-03-15" },
     ],
     avatar: null,
-<<<<<<< HEAD
-=======
     status: "active",
   },
   {
@@ -189,18 +134,13 @@ export const dummyUsers = [
     linkedin: "https://linkedin.com/in/dr-aya",
     avatar: null,
     status: "active",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   },
 ];
 
 export const currentUser = {
   id: 1,
   name: "Ahmed El-Sayed",
-<<<<<<< HEAD
   email: "ahmed.elsayed@student.guc.edu.eg",
-=======
-  email: "ahmed.elsayed@gmail.com",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   role: "student",
   major: "Media Engineering & Technology",
   skills: ["React", "Node.js", "Python", "Figma"],
@@ -211,11 +151,7 @@ export const instructorDirectory = [
   {
     id: 1,
     name: "Dr. Sara Abdelhamid",
-<<<<<<< HEAD
     email: "dr.sara@guc.edu.eg",
-=======
-    email: "dr.sara@gmail.com",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     bio: "Associate Professor in Software Engineering",
     researchInterests: ["Software Architecture", "Design Patterns", "Agile Methods"],
     education: ["PhD in Computer Science - Cairo University", "BSc in Computer Science"],
@@ -224,37 +160,12 @@ export const instructorDirectory = [
   {
     id: 2,
     name: "Dr. Aya Salama",
-<<<<<<< HEAD
     email: "dr.aya@guc.edu.eg",
-=======
-    email: "dr.aya@gmail.com",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     bio: "Lecturer in Human-Computer Interaction",
     researchInterests: ["UX Research", "Usability Testing", "Interaction Design"],
     education: ["PhD in HCI - University of Warwick"],
     coursesTaught: [2, 3],
   },
-<<<<<<< HEAD
-  {
-    id: 3,
-    name: "Dr. Omar Tarek",
-    email: "dr.omar@guc.edu.eg",
-    bio: "Lecturer in Software Engineering and Cloud Systems",
-    researchInterests: ["Cloud Computing", "DevOps", "Software Testing"],
-    education: ["PhD in Software Engineering - GUC"],
-    coursesTaught: [1, 4],
-  },
-  {
-    id: 4,
-    name: "Dr. Karim Hassan",
-    email: "dr.karim@guc.edu.eg",
-    bio: "Assistant Professor in Machine Intelligence",
-    researchInterests: ["Natural Language Processing", "Deep Learning"],
-    education: ["PhD in Artificial Intelligence - TU Munich"],
-    coursesTaught: [2, 4],
-  },
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 ];
 
 export const employerApplications = [
@@ -312,18 +223,17 @@ export const projects = [
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
     demo: "https://smart-campus-navigator.example.com",
     report: "Smart_Campus_Navigator_Report.pdf",
-<<<<<<< HEAD
-    demoVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     languages: ["React", "Node.js", "MongoDB"],
     team: ["Ahmed El-Sayed", "Youssef Ahmed", "Mariam Hassan"],
     rating: 4.5,
     visibility: "public",
     createdAt: "2026-03-10",
-    description: "A web app that helps GUC students navigate the campus, find rooms, and check lab availability in real time.",
-    problem: "Students often lose time finding rooms, checking lab availability, and understanding building routes during busy academic days.",
-    solution: "The project combines searchable campus maps, room metadata, and live availability indicators in one student-facing dashboard.",
+    description:
+      "A web app that helps GUC students navigate the campus, find rooms, and check lab availability in real time.",
+    problem:
+      "Students often lose time finding rooms, checking lab availability, and understanding building routes during busy academic days.",
+    solution:
+      "The project combines searchable campus maps, room metadata, and live availability indicators in one student-facing dashboard.",
     features: [
       "Interactive campus map with building and room search",
       "Room details with capacity, equipment, and floor information",
@@ -341,7 +251,6 @@ export const projects = [
       { label: "Live Project", url: "https://smart-campus-navigator.example.com" },
       { label: "Final Report", url: "#" },
     ],
-<<<<<<< HEAD
     instructorInvitations: [
       {
         id: 1,
@@ -372,13 +281,11 @@ export const projects = [
         createdAt: "2026-03-12",
       },
     ],
-=======
     platformActive: true,
     flagged: false,
     flagReason: null,
     hiddenFromPublic: false,
     appealSubmitted: false,
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   },
   {
     id: 2,
@@ -391,18 +298,17 @@ export const projects = [
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
     demo: "https://arabic-sentiment.example.com",
     report: "Arabic_NLP_Sentiment_Report.pdf",
-<<<<<<< HEAD
     demoVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     languages: ["Python", "TensorFlow", "Flask"],
     team: ["Ahmed El-Sayed"],
     rating: 5,
     visibility: "public",
     createdAt: "2025-12-01",
     description: "An ML model trained on Egyptian Arabic tweets to classify sentiment with 91% accuracy.",
-    problem: "Most sentiment models perform poorly on informal Egyptian Arabic because of dialect, slang, Arabizi, and mixed-language posts.",
-    solution: "The project preprocesses Arabic social text, trains a neural classifier, and serves predictions through a Flask API.",
+    problem:
+      "Most sentiment models perform poorly on informal Egyptian Arabic because of dialect, slang, Arabizi, and mixed-language posts.",
+    solution:
+      "The project preprocesses Arabic social text, trains a neural classifier, and serves predictions through a Flask API.",
     features: [
       "Arabic text cleaning and normalization pipeline",
       "Support for dialect-heavy tweets and mixed Arabic-English phrases",
@@ -420,7 +326,6 @@ export const projects = [
       { label: "Live Project", url: "https://arabic-sentiment.example.com" },
       { label: "Final Report", url: "#" },
     ],
-<<<<<<< HEAD
     instructorInvitations: [
       {
         id: 2,
@@ -432,13 +337,11 @@ export const projects = [
       },
     ],
     tasks: [],
-=======
     platformActive: false,
     flagged: true,
     flagReason: "Report appendix matches a publicly posted assignment solution without attribution.",
     hiddenFromPublic: false,
     appealSubmitted: false,
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   },
   {
     id: 3,
@@ -451,20 +354,17 @@ export const projects = [
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
     demo: "https://guc-portfolio-platform.example.com",
     report: "GUC_Portfolio_Platform_Report.pdf",
-<<<<<<< HEAD
     demoVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     languages: ["React", "FastAPI", "PostgreSQL"],
-    team: ["Sara Mahmoud"],
-=======
-    languages: ["React", "FastAPI", "PostgreSQL"],
     team: ["Sara Mahmoud", "Omar Tarek", "Laila Mostafa"],
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     rating: 4,
     visibility: "public",
     createdAt: "2026-01-15",
     description: "A central platform for GUC students to showcase their course and bachelor projects.",
-    problem: "Student projects are scattered across private drives, repositories, and course submissions, making discovery difficult for instructors and employers.",
-    solution: "The platform provides searchable project profiles, role-based access, and structured project metadata for students, instructors, employers, and administrators.",
+    problem:
+      "Student projects are scattered across private drives, repositories, and course submissions, making discovery difficult for instructors and employers.",
+    solution:
+      "The platform provides searchable project profiles, role-based access, and structured project metadata for students, instructors, employers, and administrators.",
     features: [
       "Public project profiles with course, owner, stack, and rating",
       "Role-based navigation for students, instructors, employers, and admins",
@@ -482,36 +382,6 @@ export const projects = [
       { label: "Live Project", url: "https://guc-portfolio-platform.example.com" },
       { label: "Final Report", url: "#" },
     ],
-<<<<<<< HEAD
-    thesisDrafts: [
-      {
-        id: 301,
-        title: "Thesis Draft 1",
-        fileName: "GUC_Portfolio_Thesis_Draft_1.pdf",
-        uploadedAt: "2026-04-15",
-        isFinal: false,
-        visibility: "private",
-      },
-      {
-        id: 302,
-        title: "Final Thesis",
-        fileName: "GUC_Portfolio_Final_Thesis.pdf",
-        uploadedAt: "2026-05-01",
-        isFinal: true,
-        visibility: "public",
-      },
-    ],
-    finalDraftId: 302,
-    tasks: [
-      {
-        id: 3,
-        title: "Finalize thesis abstract",
-        description: "Write the one-page abstract for submission.",
-        assignee: "Sara Mahmoud",
-        status: "pending",
-        deadline: "2026-05-20",
-        createdAt: "2026-05-01",
-=======
     platformActive: false,
     flagged: true,
     flagReason: "Multiple students reported inconsistent team contribution claims in the project description.",
@@ -622,7 +492,6 @@ export const portfolios = [
 export let messageThreads = [
   {
     id: "thread-1",
-    /** Last message id fully read through (inclusive); missing key => nothing read yet */
     lastReadMessageIdByUserId: {
       1: "m2",
       3: "m2",
@@ -643,7 +512,6 @@ export let messageThreads = [
   },
   {
     id: "thread-2",
-    /** Student demo: recruiter message still unread until opened */
     lastReadMessageIdByUserId: {
       4: "m3",
     },
@@ -675,36 +543,11 @@ export let messageThreads = [
         senderId: 3,
         text: "Sharing the list of students who opted in for company presentations.",
         time: "May 5 · 2:01 PM",
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       },
     ],
   },
 ];
 
-<<<<<<< HEAD
-export const courses = [
-  { id: 1, name: "Software Engineering", code: "CSEN401" },
-  { id: 2, name: "Machine Intelligence", code: "CSEN901" },
-  { id: 3, name: "Database II", code: "CSEN604" },
-  { id: 4, name: "Bachelor Project", code: "BP" },
-];
-
-export const notifications = [
-  { id: 1, text: "Dr. Sara rated your project Smart Campus Navigator 4.5/5", read: false, time: "2h ago", audience: ["student"] },
-  { id: 2, text: "Youssef Ahmed accepted your collaboration invite", read: false, time: "5h ago", audience: ["student"] },
-  { id: 3, text: "New feedback on task: Design DB Schema", read: true, time: "1d ago", audience: ["student", "instructor"] },
-  { id: 4, text: "Your company verification documents are under review", read: false, time: "3h ago", audience: ["employer"] },
-  { id: 5, text: "Admin approved your company profile", read: true, time: "1d ago", audience: ["employer"] },
-  { id: 6, text: "New employer application waiting for review", read: false, time: "45m ago", audience: ["admin"] },
-];
-
-export function getVisibleNotifications(user) {
-  if (!user?.role) return notifications;
-
-  return notifications.filter((notification) =>
-    !notification.audience || notification.audience.includes(user.role)
-  );
-=======
 export function getThreadsForUser(user) {
   if (!user?.id) return [];
   return messageThreads.filter((thread) => thread.participants.some((p) => p.userId === user.id));
@@ -1455,32 +1298,23 @@ export function adminClearProjectFlag(projectId) {
   });
   emitDummyUpdate();
   return { ok: true };
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 }
 
 export function getUnreadNotificationCount(user) {
   return getVisibleNotifications(user).filter((notification) => !notification.read).length;
 }
 
-<<<<<<< HEAD
-=======
 export function getFlaggedProjects() {
   return projects.filter((project) => project.flagged === true);
 }
 
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 export const internships = [
   {
     id: 1,
     title: "Frontend Engineer Intern",
     company: "Instabug",
-<<<<<<< HEAD
-    duration: "3 months",
-    skills: ["React", "TypeScript"],
-    deadline: "2026-05-01",
-    status: "hiring",
-=======
-    details: "Work with the product team on customer-facing dashboards, reusable React components, and mobile observability workflows.",
+    details:
+      "Work with the product team on customer-facing dashboards, reusable React components, and mobile observability workflows.",
     duration: "3 months",
     skills: ["React", "TypeScript", "UI Testing"],
     languages: ["TypeScript", "JavaScript", "CSS"],
@@ -1505,148 +1339,6 @@ export const internships = [
         coverLetter: "I am very interested in this role as it aligns with my front-end development goals.",
       },
     ],
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
-  },
-  {
-    id: 2,
-    title: "ML Research Intern",
-    company: "Valeo Egypt",
-<<<<<<< HEAD
-    duration: "6 months",
-    skills: ["Python", "PyTorch"],
-    deadline: "2026-04-15",
-    status: "hiring",
-=======
-    details: "Support automotive AI experiments by preparing datasets, training models, and documenting model performance.",
-    duration: "6 months",
-    skills: ["Python", "PyTorch", "Data Analysis"],
-    languages: ["Python"],
-    deadline: "2026-04-15",
-    postedAt: "2026-03-20",
-    status: "hiring",
-    archived: false,
-    applications: [
-      {
-        id: 2001,
-        studentName: "Omar Tarek",
-        studentEmail: "omar.tarek@student.guc.edu.eg",
-        portfolioId: 104,
-        portfolioTitle: "Arabic Vision Research Lab",
-        skills: ["Python", "PyTorch", "Computer Vision"],
-        languages: ["Python"],
-        contributionScore: 92,
-        projectCount: 5,
-        matchScore: 90,
-        appliedAt: "2026-04-11",
-        status: "accepted",
-        coverLetter: "I have extensive experience with ML models and am excited about automotive AI.",
-      },
-    ],
-  },
-  {
-    id: 3,
-    title: "React Platform Intern",
-    company: "TechCompany Egypt",
-    details: "Build polished portfolio discovery screens, refine reusable React components, and maintain responsive employer-facing flows.",
-    duration: "3 months",
-    skills: ["React", "Tailwind CSS", "UX"],
-    languages: ["JavaScript", "HTML", "CSS"],
-    deadline: "2026-05-20",
-    postedAt: "2026-04-15",
-    status: "hiring",
-    archived: false,
-    applications: [
-      {
-        id: 3001,
-        studentName: "Ahmed El-Sayed",
-        studentEmail: "ahmed.elsayed@student.guc.edu.eg",
-        portfolioId: 101,
-        portfolioTitle: "Smart Campus Navigator",
-        skills: ["React", "Node.js", "Python", "Figma"],
-        languages: ["JavaScript", "Python"],
-        contributionScore: 96,
-        projectCount: 3,
-        matchScore: 95,
-        appliedAt: "2026-05-02",
-        status: "nominated",
-        coverLetter: "My experience with React and component design makes me perfect for this role.",
-      },
-      {
-        id: 3002,
-        studentName: "Sara Mahmoud",
-        studentEmail: "sara.mahmoud@student.guc.edu.eg",
-        portfolioId: 103,
-        portfolioTitle: "GUC Portfolio Platform",
-        skills: ["React", "FastAPI", "PostgreSQL"],
-        languages: ["JavaScript", "Python", "SQL"],
-        contributionScore: 98,
-        projectCount: 5,
-        matchScore: 97,
-        appliedAt: "2026-05-03",
-        status: "nominated",
-        coverLetter: "I am passionate about building scalable React applications and would love to contribute.",
-      },
-      {
-        id: 3003,
-        studentName: "Youssef Ahmed",
-        studentEmail: "youssef.ahmed@student.guc.edu.eg",
-        portfolioId: 105,
-        portfolioTitle: "Course Planner Dashboard",
-        skills: ["React", "Figma", "Accessibility"],
-        languages: ["JavaScript", "CSS"],
-        contributionScore: 84,
-        projectCount: 2,
-        matchScore: 79,
-        appliedAt: "2026-05-04",
-        status: "rejected",
-        coverLetter: "I have worked on React projects and am interested in this opportunity.",
-      },
-    ],
-  },
-  {
-    id: 4,
-    title: "Backend Integration Intern",
-    company: "TechCompany Egypt",
-    details: "Prototype API-ready data models, prepare integration contracts, and document frontend-backend handoff points.",
-    duration: "2 months",
-    skills: ["API Design", "Node.js", "Documentation"],
-    languages: ["JavaScript", "SQL"],
-    deadline: "2026-04-25",
-    postedAt: "2026-04-05",
-    status: "filled",
-    archived: false,
-    applications: [
-      {
-        id: 4001,
-        studentName: "Laila Mostafa",
-        studentEmail: "laila.mostafa@student.guc.edu.eg",
-        portfolioId: 106,
-        portfolioTitle: "Database Audit Console",
-        skills: ["Node.js", "PostgreSQL", "Technical Writing"],
-        languages: ["JavaScript", "SQL"],
-        contributionScore: 91,
-        projectCount: 4,
-        matchScore: 88,
-        appliedAt: "2026-04-20",
-        status: "accepted",
-        coverLetter: "My backend development expertise and documentation skills are well-suited for this role.",
-      },
-      {
-        id: 4002,
-        studentName: "Ahmed El-Sayed",
-        studentEmail: "ahmed.elsayed@student.guc.edu.eg",
-        portfolioId: 101,
-        portfolioTitle: "Smart Campus Navigator",
-        skills: ["Node.js", "Python", "React"],
-        languages: ["JavaScript", "Python"],
-        contributionScore: 96,
-        projectCount: 3,
-        matchScore: 86,
-        appliedAt: "2026-04-21",
-        status: "nominated",
-        coverLetter: "I am interested in learning more about backend API design and integration.",
-      },
-    ],
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   },
 ];
+

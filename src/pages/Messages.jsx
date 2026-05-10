@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import { Card, PageHeader } from "../components/ui";
-
-export default function Messages() {
-  return (
-    <div>
-      <PageHeader title="Messages" subtitle="Private conversations" />
-      <Card>
-        <p className="text-text-secondary font-sans text-sm">No messages yet.</p>
-      </Card>
-=======
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, PageHeader } from "../components/ui";
@@ -226,7 +215,6 @@ export default function Messages() {
           )}
         </section>
       </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }

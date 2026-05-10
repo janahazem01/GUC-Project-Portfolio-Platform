@@ -14,11 +14,7 @@ export function Card({ children, className = "", hover = false, ...props }) {
 }
 
 export function Button({ children, variant = "primary", size = "md", className = "", ...props }) {
-<<<<<<< HEAD
-  const base = "font-sans font-medium rounded-lg transition-all duration-150 cursor-pointer";
-=======
   const base = "font-sans font-medium rounded-lg transition-all duration-150 cursor-pointer disabled:opacity-45 disabled:pointer-events-none disabled:cursor-not-allowed";
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const sizes = { sm: "px-3 py-1.5 text-sm", md: "px-5 py-2.5 text-sm", lg: "px-6 py-3 text-base" };
   const variants = {
     primary: "bg-accent-blue text-white hover:bg-accent-blue/80",
@@ -34,11 +30,7 @@ export function Button({ children, variant = "primary", size = "md", className =
   );
 }
 
-<<<<<<< HEAD
-export function Badge({ children, variant = "default" }) {
-=======
 export function Badge({ children, variant = "default", className = "" }) {
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const variants = {
     default: "bg-bg-elevated text-text-secondary",
     gold: "bg-accent-gold/10 text-accent-gold border border-accent-gold/30",
@@ -48,47 +40,28 @@ export function Badge({ children, variant = "default", className = "" }) {
     danger: "bg-danger/10 text-danger border border-danger/30",
   };
   return (
-<<<<<<< HEAD
-    <span className={`font-mono text-xs px-2 py-0.5 rounded-full ${variants[variant]}`}>
-=======
     <span className={`inline-flex items-center justify-center font-mono text-xs px-2.5 py-0.5 rounded-full whitespace-nowrap ${variants[variant]} ${className}`}>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       {children}
     </span>
   );
 }
 
-<<<<<<< HEAD
-export function Input({ label, className = "", ...props }) {
-=======
 export function Input({ label, error, className = "", ...props }) {
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   return (
     <div className="flex flex-col gap-1.5">
       {label && <label className="text-sm text-text-secondary font-sans">{label}</label>}
       <input
-<<<<<<< HEAD
-        className={`bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans
-          placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors ${className}`}
-        {...props}
-      />
-=======
         className={`bg-bg-elevated border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors ${error ? "border-danger text-danger" : "border-border"} ${className}`}
         {...props}
       />
       {error && <p className="text-danger text-sm">{error}</p>}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }
 
 export function PageHeader({ title, subtitle, action }) {
   return (
-<<<<<<< HEAD
-    <div className="flex items-start justify-between mb-8">
-=======
     <div className="flex items-center justify-between mb-8 gap-6">
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       <div>
         <h1 className="font-display text-2xl text-text-primary mb-1">{title}</h1>
         {subtitle && <p className="text-text-secondary text-sm font-sans">{subtitle}</p>}
@@ -108,40 +81,13 @@ export function Stars({ rating, max = 5 }) {
   );
 }
 
-<<<<<<< HEAD
-export function Modal({ isOpen, onClose, title, children }) {
-=======
 export function Modal({ isOpen, onClose, title, children, backdropClassName = "", contentClassName = "" }) {
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   if (!isOpen) return null;
 
   return (
     <>
       {/* Backdrop */}
       <div
-<<<<<<< HEAD
-        className="fixed inset-0 bg-black/50 z-40"
-        onClick={onClose}
-      />
-      
-      {/* Modal: header stays fixed; body scrolls — avoids content showing above the title bar */}
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md max-h-[90vh] flex flex-col">
-        <Card className="flex max-h-[90vh] flex-col overflow-hidden p-0">
-          <div className="flex shrink-0 items-center justify-between border-b border-border bg-bg-surface px-6 py-4">
-            <h2 className="font-display text-xl text-text-primary">{title}</h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-text-secondary hover:text-text-primary text-xl leading-none"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-            {children}
-          </div>
-=======
         className={`fixed inset-0 bg-black/50 z-40 ${backdropClassName}`}
         onClick={onClose}
       />
@@ -161,14 +107,11 @@ export function Modal({ isOpen, onClose, title, children, backdropClassName = ""
             </button>
           </div>
           {children}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
         </Card>
       </div>
     </>
   );
 }
-<<<<<<< HEAD
-=======
 
 export function ConfirmActionModal({ isOpen, action, onClose, onConfirm, variant = "gold" }) {
   const handleConfirm = () => {
@@ -212,4 +155,3 @@ export function SuccessToast({ message, onClose }) {
   );
 }
 
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687

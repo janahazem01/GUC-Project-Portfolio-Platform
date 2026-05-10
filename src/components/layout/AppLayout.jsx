@@ -1,13 +1,7 @@
-<<<<<<< HEAD
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useRef, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-import { getVisibleNotifications } from "../../data/dummy";
 import { useProjects } from "../../context/ProjectsContext";
-=======
-import { useState, useContext, useEffect, useRef, useMemo } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../context/AuthContext";
 import { ConfirmActionModal } from "../ui";
 import { Card } from "../ui";
 import {
@@ -62,30 +56,20 @@ function playNotificationChime() {
     /* ignore */
   }
 }
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
 const allNavItems = [
   { label: "Dashboard",   icon: "⊞", path: "/", roles: ["student", "instructor", "employer", "admin"] },
   { label: "Projects",    icon: "◈", path: "/projects", roles: ["student", "instructor"] },
-<<<<<<< HEAD
   { label: "Tasks",       icon: "T", path: "/tasks", roles: ["student", "instructor"] },
   { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
   { label: "Portfolio",   icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
-  { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor"] },
-  { label: "Requests",    icon: "R", path: "/requests", roles: ["student", "instructor"] },
-  { label: "Messages",    icon: "◇", path: "/messages", roles: ["student", "instructor", "employer", "admin"] },
-=======
-  { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
+  { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor","employer"] },
+  { label: "Requests",    icon: "◧", path: "/requests", roles: ["student", "instructor","admin"] },
   { label: "Courses",    icon: "▤", path: "/courses", roles: ["admin", "instructor"] },
-  { label: "Requests",    icon: "◧", path: "/admin/requests", roles: ["admin"] },
-  { label: "Portfolio",   icon: "◉", path: "/profile", roles: ["student", "instructor", "employer"] },
-  { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor", "employer"] },
   { label: "Messages",    icon: "✉", path: "/messages", roles: ["student", "instructor", "employer"] },
   { label: "Favorites",   icon: "★", path: "/favorites", roles: ["student", "employer"] },
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 ];
 
-// Helper to get nav items for a specific role
 const getNavItemsForRole = (role) => {
   return allNavItems.filter((item) => item.roles.includes(role));
 };
@@ -103,10 +87,7 @@ function SidebarTooltip({ collapsed, label }) {
 function UserMenu({ collapsed }) {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-<<<<<<< HEAD
-=======
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
   const handleLogout = () => {
     logout();
@@ -121,11 +102,6 @@ function UserMenu({ collapsed }) {
   };
 
   return (
-<<<<<<< HEAD
-    <div className={`border-t border-border flex flex-col gap-2 ${collapsed ? "p-2" : "p-3"}`}>
-      <div className={`group relative flex items-center rounded-lg text-text-primary text-sm w-full ${collapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-2"}`}>
-        <span className="w-7 shrink-0 text-center text-base">{roleEmoji[user?.role] || "👤"}</span>
-=======
     <div className={`shrink-0 border-t border-border flex flex-col gap-1.5 ${collapsed ? "p-2" : "p-2.5"}`}>
       <div className={`group relative flex min-h-10 items-center rounded-lg text-text-primary text-sm w-full ${collapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-1.5"}`}>
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-blue/10 border border-accent-blue/20 overflow-hidden">
@@ -135,7 +111,6 @@ function UserMenu({ collapsed }) {
             <span className="text-base leading-none">{roleEmoji[user?.role] || "👤"}</span>
           )}
         </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
         {!collapsed && (
           <div className="flex-1 text-left truncate">
             <div className="text-sm font-medium truncate">{user?.name}</div>
@@ -147,20 +122,13 @@ function UserMenu({ collapsed }) {
       
       {!collapsed && (
         <button
-<<<<<<< HEAD
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors w-full text-left font-sans"
-=======
           onClick={() => setShowLogoutConfirm(true)}
           className="flex min-h-9 items-center gap-3 px-3 py-1.5 rounded-lg text-xs text-danger hover:bg-danger/10 transition-colors w-full text-left font-sans"
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
         >
           <span>⎋</span>
           <span>Logout</span>
         </button>
       )}
-<<<<<<< HEAD
-=======
 
       <ConfirmActionModal
         isOpen={showLogoutConfirm}
@@ -169,18 +137,27 @@ function UserMenu({ collapsed }) {
         onConfirm={handleLogout}
         variant="danger"
       />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }
 
 export function AppLayout({ children }) {
   const [collapsed, setCollapsed] = useState(false);
-<<<<<<< HEAD
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationTick, setNotificationTick] = useState(0);
   const { user } = useContext(AuthContext);
   const { projectList } = useProjects();
+  const navigate = useNavigate();
   const navItems = getNavItemsForRole(user?.role);
+  const location = useLocation();
+  const activeNavPath = location.state?.activeNav || (location.pathname.startsWith("/admin") ? "/" : location.pathname);
+
+  const bootstrapNotificationIdsRef = useRef(new Set());
+  const [, setDoNotDisturbBump] = useState(0);
+  const doNotDisturb = readDoNotDisturb();
+  const canUseDoNotDisturb = ["student", "employer", "instructor"].includes(user?.role);
+
+  // --- HEAD branch: project-invitation unread counts via localStorage read state ---
   const notificationStateKey = `guc_notification_read_state_${user?.email || "guest"}`;
   const readState = (() => {
     try {
@@ -191,6 +168,7 @@ export function AppLayout({ children }) {
   })();
   const getEffectiveRead = (id, defaultRead) => readState[id] ?? defaultRead;
 
+  // Refresh when storage or custom event fires (HEAD branch)
   useEffect(() => {
     const refreshNotificationState = () => setNotificationTick((value) => value + 1);
     window.addEventListener("storage", refreshNotificationState);
@@ -213,28 +191,12 @@ export function AppLayout({ children }) {
 
     return count + instructorCount + collaboratorCount;
   }, 0);
-  const unreadBaseNotificationCount = getVisibleNotifications(user).filter((notification) =>
-    !getEffectiveRead(notification.id, notification.read)
-  ).length;
-  void notificationTick;
-  const unreadNotificationCount = unreadBaseNotificationCount + unreadProjectInvitationCount;
-  const location = useLocation();
-  const activeNavPath = location.state?.activeNav || (location.pathname.startsWith("/admin") ? "/" : location.pathname);
-=======
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
-  const navItems = getNavItemsForRole(user?.role);
-  const location = useLocation();
-  const activeNavPath = location.state?.activeNav || location.pathname;
+
+  // --- Incoming branch: live subscription, DM badge, toast chimes ---
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(() =>
     getUnreadNotificationCount(user)
   );
   const [unreadDmTotal, setUnreadDmTotal] = useState(() => getUnreadInboundThreadTotal(user));
-  const bootstrapNotificationIdsRef = useRef(new Set());
-  const [, setDoNotDisturbBump] = useState(0);
-  const doNotDisturb = readDoNotDisturb();
-  const canUseDoNotDisturb = ["student", "employer", "instructor"].includes(user?.role);
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -246,12 +208,11 @@ export function AppLayout({ children }) {
     const syncUnread = () => {
       const visibleNow = getVisibleNotifications(user);
       setUnreadNotificationCount(
-        visibleNow.filter((notification) => !notification.read).length
+        visibleNow.filter((notification) => !getEffectiveRead(notification.id, notification.read)).length
       );
       setUnreadDmTotal(getUnreadInboundThreadTotal(user));
 
       const boot = bootstrapNotificationIdsRef.current;
-
       const fresh = visibleNow.filter((notification) => !boot.has(notification.id));
       if (fresh.length === 0) return;
 
@@ -263,7 +224,8 @@ export function AppLayout({ children }) {
         .reverse()
         .find(
           (notification) =>
-            !notification.read && notification.audience?.includes(user.role)
+            !getEffectiveRead(notification.id, notification.read) &&
+            notification.audience?.includes(user.role)
         );
 
       const mutePopups =
@@ -285,7 +247,7 @@ export function AppLayout({ children }) {
 
     syncUnread();
     return subscribeDummyUpdates(syncUnread);
-  }, [user]);
+  }, [user, notificationTick]); // notificationTick re-syncs when storage/custom events fire
 
   const toggleDoNotDisturb = () => {
     const next = !readDoNotDisturb();
@@ -297,30 +259,24 @@ export function AppLayout({ children }) {
     setDoNotDisturbBump((value) => value + 1);
   };
 
+  // Combined unread count: live base count + project invitation count
+  const totalUnreadNotificationCount = unreadNotificationCount + unreadProjectInvitationCount;
+
   const unreadBadgeLabel = useMemo(() => {
     if (doNotDisturb) return null;
-    if (unreadNotificationCount <= 0) return null;
-    if (unreadNotificationCount > 99) return "99+";
-    return String(unreadNotificationCount);
-  }, [unreadNotificationCount, doNotDisturb]);
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
+    if (totalUnreadNotificationCount <= 0) return null;
+    if (totalUnreadNotificationCount > 99) return "99+";
+    return String(totalUnreadNotificationCount);
+  }, [totalUnreadNotificationCount, doNotDisturb]);
 
   return (
     <div className="flex min-h-screen bg-bg-base">
       <aside
-<<<<<<< HEAD
-        className={`fixed top-0 left-0 h-screen bg-bg-surface border-r border-border flex flex-col z-40
-          transition-all duration-300 ${collapsed ? "w-16" : "w-56"}`}
-      >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-border">
-=======
         className={`fixed inset-y-0 left-0 h-screen overflow-hidden bg-bg-surface border-r border-border flex flex-col z-40
           transition-all duration-300 ${collapsed ? "w-16" : "w-56"}`}
       >
         {/* Logo */}
         <div className="shrink-0 flex items-center gap-3 px-4 py-5 border-b border-border">
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
           <span className="text-accent-gold font-mono text-lg font-medium shrink-0">GP</span>
           {!collapsed && (
             <span className="font-display text-sm text-text-primary truncate">GUC Portfolio</span>
@@ -328,19 +284,12 @@ export function AppLayout({ children }) {
         </div>
 
         {/* Nav */}
-<<<<<<< HEAD
-        <nav className="flex-1 py-4 flex flex-col gap-1 px-2">
-          {navItems.map((item) => {
-            const active = activeNavPath === item.path ||
-              (item.path !== "/" && activeNavPath.startsWith(item.path));
-=======
         <nav className="min-h-0 flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-2">
           {navItems.map((item) => {
             const active = activeNavPath === item.path ||
               (item.path !== "/" && activeNavPath.startsWith(item.path));
             const showUnreadDmCue =
               item.path === "/messages" && unreadDmTotal > 0 && !(canUseDoNotDisturb && doNotDisturb);
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
             return (
               <Link
                 key={item.path}
@@ -351,9 +300,6 @@ export function AppLayout({ children }) {
                     : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
                   }`}
               >
-<<<<<<< HEAD
-                <span className="w-7 shrink-0 text-center text-base">{item.icon}</span>
-=======
                 <span className="relative flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">
                   <span aria-hidden="true">{item.icon}</span>
                   {showUnreadDmCue && (
@@ -366,7 +312,6 @@ export function AppLayout({ children }) {
                     </abbr>
                   )}
                 </span>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
                 {!collapsed && <span className="truncate">{item.label}</span>}
                 <SidebarTooltip collapsed={collapsed} label={item.label} />
               </Link>
@@ -374,19 +319,6 @@ export function AppLayout({ children }) {
           })}
         </nav>
 
-<<<<<<< HEAD
-        {/* Notifications + Collapse */}
-        <div className="border-t border-border p-2 flex flex-col gap-1">
-          <Link
-            to="/notifications"
-            className={`group relative flex items-center rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}`}
-          >
-            <span className="relative w-7 shrink-0 text-center">
-              <span>🔔</span>
-              {unreadNotificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-danger rounded-full text-[9px] text-white flex items-center justify-center font-mono">
-                  {unreadNotificationCount}
-=======
         {/* Do not disturb + Notifications + Collapse */}
         <div className="shrink-0 border-t border-border p-2 flex flex-col gap-1">
           {canUseDoNotDisturb && (
@@ -426,15 +358,11 @@ export function AppLayout({ children }) {
                   aria-live="polite"
                 >
                   {unreadBadgeLabel}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
                 </span>
               )}
             </span>
             {!collapsed && <span>Notifications</span>}
             <SidebarTooltip collapsed={collapsed} label="Notifications" />
-<<<<<<< HEAD
-          </Link>
-=======
           </button>
 
           {notificationsOpen && (
@@ -455,16 +383,11 @@ export function AppLayout({ children }) {
               }}
             />
           )}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
           <button
             onClick={() => setCollapsed(!collapsed)}
             className={`group relative flex items-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors text-sm w-full ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}`}
           >
-<<<<<<< HEAD
-            <span className="w-7 shrink-0 text-center">{collapsed ? "→" : "←"}</span>
-=======
             <span className="flex h-5 w-7 shrink-0 items-center justify-center leading-none">{collapsed ? "→" : "←"}</span>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
             {!collapsed && <span>Collapse</span>}
             <SidebarTooltip collapsed={collapsed} label={collapsed ? "Expand" : "Collapse"} />
           </button>
@@ -477,18 +400,13 @@ export function AppLayout({ children }) {
       <main
         className={`flex-1 transition-all duration-300 ${collapsed ? "ml-16" : "ml-56"} p-8 min-h-screen`}
       >
-<<<<<<< HEAD
-=======
         <LiveNotificationToastBoundary />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
         {children}
       </main>
     </div>
   );
 }
 
-<<<<<<< HEAD
-=======
 function NotificationsDock({ collapsed, user, navigate, onClose, onOpenFull, markRead, markAllRead }) {
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -719,4 +637,4 @@ function LiveNotificationToastBoundary() {
     </div>
   );
 }
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
+

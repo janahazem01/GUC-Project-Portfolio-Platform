@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-<<<<<<< HEAD
-import { Badge, Button, Card, Modal, PageHeader } from "../../components/ui";
-import { courses, dummyUsers, employerApplications, projects } from "../../data/dummy";
-=======
 import { Badge, Button, Card, PageHeader, ConfirmActionModal, Modal } from "../../components/ui";
 import {
   adminClearProjectFlag,
@@ -18,7 +14,6 @@ import {
   setProjectPlatformActive,
   subscribeDummyUpdates,
 } from "../../data/dummy";
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
 const roleLabels = {
   student: "Student",
@@ -34,15 +29,6 @@ const pageTitles = {
   employers: ["Employers", "Employer accounts registered on the platform."],
   approvals: ["Approvals", "Employer verification requests and statuses."],
   flagged: ["Flagged Projects", "Reported or flagged project records."],
-<<<<<<< HEAD
-};
-
-function DataHeader({ columns }) {
-  return (
-    <div className="grid gap-4 border-b border-border px-4 py-3" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
-      {columns.map((column) => (
-        <p key={column} className="font-mono text-[11px] uppercase tracking-widest text-text-secondary">{column}</p>
-=======
   requests: ["Instructor Requests", "Link and unlink requests from course instructors."],
   appeals: ["Student Appeals", "Short appeals submitted after projects are flagged for review."],
 };
@@ -64,68 +50,19 @@ function DataHeader({ columns, style, alignments = [] }) {
         >
           {column}
         </p>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       ))}
     </div>
   );
 }
 
-<<<<<<< HEAD
-function DataRow({ children, columns }) {
-  return (
-    <div className="grid gap-4 px-4 py-4 items-center border-b border-border last:border-0" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
-=======
 function DataRow({ children, columns, style }) {
   return (
     <div className="grid gap-4 px-4 py-5 items-center border-b border-border last:border-0" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, ...style }}>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       {children}
     </div>
   );
 }
 
-<<<<<<< HEAD
-export default function AdminDataPage() {
-  const { section } = useParams();
-  const navigate = useNavigate();
-  const [selectedRoles, setSelectedRoles] = useState([]);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [filtersAddedOpen, setFiltersAddedOpen] = useState(false);
-  const page = pageTitles[section];
-
-  if (!page) return <Navigate to="/" replace />;
-
-  const roleOptions = [
-    { value: "student", label: "Student" },
-    { value: "instructor", label: "Course Instructor" },
-    { value: "employer", label: "Employer" },
-    { value: "admin", label: "Administrator" },
-  ];
-
-  const employerUsers = dummyUsers.filter((user) => user.role === "employer");
-  const availableRoles = roleOptions.map((option) => option.value);
-  const visibleRoles = selectedRoles.length > 0 ? selectedRoles : availableRoles;
-  const isFiltered = selectedRoles.length > 0;
-  const filteredUsers = useMemo(
-    () => dummyUsers.filter((user) => visibleRoles.includes(user.role)),
-    [visibleRoles]
-  );
-  const groupedUsers = useMemo(
-    () =>
-      selectedRoles
-        .map((role) => ({ role, users: dummyUsers.filter((user) => user.role === role) }))
-        .filter((group) => group.users.length > 0),
-    [selectedRoles]
-  );
-
-
-  return (
-    <div>
-      <PageHeader
-        title={page[0]}
-        subtitle={page[1]}
-        action={<Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>}
-=======
 function isPlatformProjectActive(project) {
   return project.platformActive !== false;
 }
@@ -182,7 +119,6 @@ export default function AdminDataPage() {
             Back
           </Button>
         }
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       />
 
       {section === "users" && (
@@ -201,20 +137,12 @@ export default function AdminDataPage() {
                     <path d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
                   </svg>
                 </span>
-<<<<<<< HEAD
-                Filter by role
-=======
                 {selectedRole ? `Filter: ${roleLabels[selectedRole]}` : "Filter by role"}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
               </Button>
               {filterOpen && (
                 <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-border bg-bg-base p-3 shadow-xl">
                   <div className="mb-3 flex items-center justify-between">
-<<<<<<< HEAD
-                    <p className="text-sm font-display text-text-primary">Select roles</p>
-=======
                     <p className="text-sm font-display text-text-primary">Select role</p>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
                     <button
                       type="button"
                       onClick={() => setFilterOpen(false)}
@@ -225,14 +153,10 @@ export default function AdminDataPage() {
                   </div>
                   <button
                     type="button"
-<<<<<<< HEAD
-                    onClick={() => setSelectedRoles([])}
-=======
                     onClick={() => {
                       setSelectedRole("");
                       setFilterOpen(false);
                     }}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
                     className="mb-2 w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left text-sm font-sans text-text-secondary hover:border-text-primary hover:text-text-primary"
                   >
                     Clear filter
@@ -242,15 +166,6 @@ export default function AdminDataPage() {
                       <button
                         key={roleOption.value}
                         type="button"
-<<<<<<< HEAD
-                        onClick={() => setSelectedRoles((current) =>
-                          current.includes(roleOption.value)
-                            ? current.filter((role) => role !== roleOption.value)
-                            : [...current, roleOption.value]
-                        )}
-                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-sans transition-colors ${
-                          selectedRoles.includes(roleOption.value)
-=======
                         onClick={() => {
                           setSelectedRole(roleOption.value);
                           setFilterOpen(false);
@@ -258,7 +173,6 @@ export default function AdminDataPage() {
                         }}
                         className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-sans transition-colors ${
                           selectedRole === roleOption.value
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
                             ? "border-accent-blue bg-accent-blue/10 text-text-primary"
                             : "border-border bg-bg-elevated text-text-secondary hover:border-text-primary hover:text-text-primary"
                         }`}
@@ -267,20 +181,6 @@ export default function AdminDataPage() {
                       </button>
                     ))}
                   </div>
-<<<<<<< HEAD
-                  <div className="mt-3 flex justify-end">
-                    <Button
-                      onClick={() => {
-                        setFilterOpen(false);
-                        setFiltersAddedOpen(true);
-                      }}
-                      className="w-full"
-                    >
-                      Done
-                    </Button>
-                  </div>
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
                 </div>
               )}
             </div>
@@ -288,16 +188,12 @@ export default function AdminDataPage() {
 
 
           <Card className="p-0 overflow-hidden">
-<<<<<<< HEAD
-            <DataHeader columns={["Full Name", "Email", "Role"]} />
-=======
             <div className="grid gap-4 border-b border-border px-4 py-4 bg-bg-elevated/50 items-center" style={{ gridTemplateColumns: "2.6fr 2.3fr 1.4fr 1.1fr" }}>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Full Name</p>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Email</p>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Role</p>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Status</p>
             </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
             {isFiltered ? (
               groupedUsers.map(({ role, users }) => (
                 <div key={role}>
@@ -307,14 +203,6 @@ export default function AdminDataPage() {
                     </p>
                   </div>
                   {users.map((user) => (
-<<<<<<< HEAD
-                    <DataRow key={`${role}-${user.id}`} columns={3}>
-                      <p className="text-sm text-text-primary font-sans truncate">{user.name}</p>
-                      <p className="text-sm text-text-secondary font-sans truncate">{user.email}</p>
-                      <div>
-                        <Badge variant="blue">{roleLabels[user.role]}</Badge>
-                      </div>
-=======
                     <DataRow key={`${role}-${user.id}`} columns={4} style={{ gridTemplateColumns: "2.6fr 2.3fr 1.4fr 1.1fr" }}>
                       <div className="truncate text-left">
                         <p className="text-sm text-text-primary font-semibold truncate">{user.name}</p>
@@ -328,21 +216,12 @@ export default function AdminDataPage() {
                       <div className="flex items-center justify-start">
                         <Badge variant={user.status === "active" ? "success" : "danger"}>{user.status}</Badge>
                       </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
                     </DataRow>
                   ))}
                 </div>
               ))
             ) : (
               filteredUsers.map((user) => (
-<<<<<<< HEAD
-                <DataRow key={user.id} columns={3}>
-                  <p className="text-sm text-text-primary font-sans truncate">{user.name}</p>
-                  <p className="text-sm text-text-secondary font-sans truncate">{user.email}</p>
-                  <div>
-                    <Badge variant="blue">{roleLabels[user.role]}</Badge>
-                  </div>
-=======
                 <DataRow key={user.id} columns={4} style={{ gridTemplateColumns: "2.6fr 2.3fr 1.4fr 1.1fr" }}>
                   <div className="truncate text-left">
                     <p className="text-sm text-text-primary font-semibold truncate">{user.name}</p>
@@ -356,7 +235,6 @@ export default function AdminDataPage() {
                   <div className="flex items-center justify-start">
                     <Badge variant={user.status === "active" ? "success" : "danger"}>{user.status}</Badge>
                   </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
                 </DataRow>
               ))
             )}
@@ -378,32 +256,6 @@ export default function AdminDataPage() {
         </>
       )}
 
-<<<<<<< HEAD
-      {section === "courses" && (
-        <Card className="p-0 overflow-hidden">
-          <DataHeader columns={["Course Name", "Code", "Linked Projects"]} />
-          {courses.map((course) => (
-            <DataRow key={course.id} columns={3}>
-              <p className="text-sm text-text-primary font-sans">{course.name}</p>
-              <p className="text-sm text-text-secondary font-mono">{course.code}</p>
-              <Badge variant="blue">{projects.filter((project) => project.courseCode === course.code).length}</Badge>
-            </DataRow>
-          ))}
-        </Card>
-      )}
-
-      {section === "projects" && (
-        <Card className="p-0 overflow-hidden">
-          <DataHeader columns={["Project", "Owner", "Course", "Created"]} />
-          {projects.map((project) => (
-            <DataRow key={project.id} columns={4}>
-              <p className="text-sm text-text-primary font-sans truncate">{project.title}</p>
-              <p className="text-sm text-text-secondary font-sans truncate">{project.owner}</p>
-              <Badge variant="blue">{project.courseCode}</Badge>
-              <p className="text-sm text-text-secondary font-mono">{project.createdAt}</p>
-            </DataRow>
-          ))}
-=======
       {section === "projects" && (
         <Card className="p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-border bg-bg-elevated/40">
@@ -492,7 +344,6 @@ export default function AdminDataPage() {
               </tbody>
             </table>
           </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
         </Card>
       )}
 
@@ -524,16 +375,6 @@ export default function AdminDataPage() {
         </Card>
       )}
 
-<<<<<<< HEAD
-      {section === "flagged" && (
-        <Card>
-          <div className="flex items-center justify-between">
-            <p className="text-text-secondary text-sm font-sans">No flagged projects at this time.</p>
-            <Badge variant="danger">0 flagged</Badge>
-          </div>
-        </Card>
-      )}
-=======
       {section === "requests" && (
         <Card className="p-0 overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b border-border bg-bg-elevated/40">
@@ -807,7 +648,6 @@ export default function AdminDataPage() {
           setActionFeedbackOpen(true);
         }}
       />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }

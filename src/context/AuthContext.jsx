@@ -1,53 +1,11 @@
-<<<<<<< HEAD
-import { createContext, useState, useEffect } from "react";
-=======
-/* eslint-disable react-refresh/only-export-components */
 import { createContext, useState } from "react";
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 import { dummyUsers } from "../data/dummy";
 
 export const AuthContext = createContext();
 
 // Simple OTP generator for demo
 const generateOtp = () => Math.random().toString().slice(2, 6);
-<<<<<<< HEAD
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [resetOtp, setResetOtp] = useState(null);
-
-  const mergeWithLatestDummyUser = (savedUser) => {
-    if (!savedUser?.email) return savedUser;
-
-    const latestDummyUser = dummyUsers.find((dummyUser) => dummyUser.email === savedUser.email);
-    return latestDummyUser ? { ...latestDummyUser, ...savedUser } : savedUser;
-  };
-
-  // Initialize from localStorage on mount
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      const hydratedUser = mergeWithLatestDummyUser(parsedUser);
-      setUser(hydratedUser);
-      localStorage.setItem("user", JSON.stringify(hydratedUser));
-    }
-    setLoading(false);
-  }, []);
-
-  // Auto-detect role from email pattern
-  const detectRoleFromEmail = (email) => {
-    if (email.includes("@student.guc.edu.eg")) return "student";
-    if (email.includes("@guc.edu.eg")) return "admin";
-    if (email.includes("@guc.edu.eg")) {
-      // Could be instructor if not admin
-      const user = dummyUsers.find(u => u.email === email);
-      return user?.role || "instructor";
-    }
-    return "employer"; // Default to employer for external emails
-  };
-=======
 const userOverridesStorageKey = "gucUserOverrides";
 
 const getUserOverrides = () => {
@@ -79,12 +37,11 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [resetOtp, setResetOtp] = useState(null);
   const loading = false;
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
   const login = (email, password) => {
     const localUsers = getLocalUsers();
     const allUsers = [...dummyUsers, ...localUsers];
-    
+
     const foundUser = allUsers.find(
       (u) => u.email === email && u.password === password
     );
@@ -95,12 +52,9 @@ export const AuthProvider = ({ children }) => {
 
     const loggedInUser = mergeWithLatestDummyUser({ ...foundUser });
     delete loggedInUser.password; // Don't store password
-    
+
     setUser(loggedInUser);
-<<<<<<< HEAD
     localStorage.setItem("user", JSON.stringify(loggedInUser));
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     return { success: true, user: loggedInUser };
   };
 
@@ -108,11 +62,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const raw = localStorage.getItem("localUsers");
       return raw ? JSON.parse(raw) : [];
-<<<<<<< HEAD
-    } catch (e) {
-=======
     } catch {
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       return [];
     }
   };
@@ -121,8 +71,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("localUsers", JSON.stringify(arr));
   };
 
-<<<<<<< HEAD
-=======
   const persistUserProfile = (nextUser) => {
     if (!nextUser?.email) return;
 
@@ -152,7 +100,6 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const register = (payload) => {
     // payload can be { name, email, password, role } or employer fields like { companyName, companyEmail }
     const email = payload.email || payload.companyEmail;
@@ -166,20 +113,19 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: "Email already registered" };
     }
 
-<<<<<<< HEAD
-    const role = payload.role || (email.includes("@student.guc.edu.eg") ? "student" : email.includes("@guc.edu.eg") ? "instructor" : "employer");
-=======
-    const role = payload.role || "student";
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
+    const role =
+      payload.role ||
+      (email.includes("@student.guc.edu.eg")
+        ? "student"
+        : email.includes("@guc.edu.eg")
+        ? "instructor"
+        : "employer");
 
     const newUser = {
       id: Date.now(),
       role,
-<<<<<<< HEAD
-=======
       favoriteProjectIds: [],
       favoritePortfolioIds: [],
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       ...payload,
       email,
     };
@@ -190,25 +136,14 @@ export const AuthProvider = ({ children }) => {
     const loggedInUser = { ...newUser };
     delete loggedInUser.password;
     setUser(loggedInUser);
-<<<<<<< HEAD
     localStorage.setItem("user", JSON.stringify(loggedInUser));
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
     return { success: true, user: loggedInUser };
   };
 
   const logout = () => {
     setUser(null);
-<<<<<<< HEAD
     localStorage.removeItem("user");
-  };
-
-  const updateUser = (updatedData) => {
-    const newUser = { ...user, ...updatedData };
-    setUser(newUser);
-    localStorage.setItem("user", JSON.stringify(newUser));
-=======
   };
 
   const updateUser = (updatedData) => {
@@ -216,7 +151,6 @@ export const AuthProvider = ({ children }) => {
     const newUser = { ...user, ...updatedData };
     setUser(newUser);
     persistUserProfile(newUser);
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   };
 
   const requestPasswordReset = (email) => {
@@ -257,8 +191,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, updateUser, register, requestPasswordReset, verifyOtpAndReset, resetOtp, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+        login,
+        logout,
+        updateUser,
+        register,
+        requestPasswordReset,
+        verifyOtpAndReset,
+        resetOtp,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
+

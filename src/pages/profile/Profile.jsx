@@ -1,15 +1,4 @@
 import { useState, useContext } from "react";
-<<<<<<< HEAD
-import { Card, Badge, Stars, Button, PageHeader, Input, Modal } from "../../components/ui";
-import { AuthContext } from "../../context/AuthContext";
-import { useProjects } from "../../context/ProjectsContext";
-import { courses, instructorDirectory } from "../../data/dummy";
-import { useNavigate } from "react-router-dom";
-
-function StudentProfile({ user, updateUser, myProjects }) {
-  const navigate = useNavigate();
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-=======
 import { Card, Badge, Stars, Button, PageHeader, Input, Modal, ConfirmActionModal, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { courses, instructorDirectory, projects } from "../../data/dummy";
@@ -18,15 +7,11 @@ function StudentProfile({ user, updateUser, myProjects }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const [formData, setFormData] = useState({
     major: user?.major || "",
     linkedIn: user?.linkedIn || "",
     skills: user?.skills || [],
-<<<<<<< HEAD
-=======
     avatar: user?.avatar || null,
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   });
   const [newSkill, setNewSkill] = useState("");
 
@@ -35,17 +20,12 @@ function StudentProfile({ user, updateUser, myProjects }) {
       major: user?.major || "",
       linkedIn: user?.linkedIn || "",
       skills: user?.skills || [],
-<<<<<<< HEAD
-=======
       avatar: user?.avatar || null,
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     });
     setNewSkill("");
     setIsEditModalOpen(true);
   };
 
-<<<<<<< HEAD
-=======
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -57,7 +37,6 @@ function StudentProfile({ user, updateUser, myProjects }) {
     }
   };
 
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const handleAddSkill = () => {
     const trimmedSkill = newSkill.trim();
     if (trimmedSkill && !formData.skills.includes(trimmedSkill)) {
@@ -77,14 +56,6 @@ function StudentProfile({ user, updateUser, myProjects }) {
   };
 
   const handleSaveProfile = () => {
-<<<<<<< HEAD
-    updateUser({
-      major: formData.major,
-      linkedIn: formData.linkedIn,
-      skills: formData.skills,
-    });
-    setIsEditModalOpen(false);
-=======
     setConfirmation({
       action: "save these changes to your portfolio",
       variant: "primary",
@@ -99,18 +70,11 @@ function StudentProfile({ user, updateUser, myProjects }) {
         setSuccessMessage("Profile updated successfully!");
       },
     });
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   };
 
   return (
     <div>
       <div className="bg-bg-surface border border-border rounded-lg p-8 mb-6 flex items-start gap-6">
-<<<<<<< HEAD
-        <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center shrink-0">
-          <span className="font-display text-2xl text-accent-gold">
-            {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
-          </span>
-=======
         <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center shrink-0 overflow-hidden">
           {user?.avatar ? (
             <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -119,7 +83,6 @@ function StudentProfile({ user, updateUser, myProjects }) {
               {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
             </span>
           )}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
         </div>
         <div className="flex-1">
           <h1 className="font-display text-3xl text-text-primary mb-1">{user?.name}</h1>
@@ -153,11 +116,7 @@ function StudentProfile({ user, updateUser, myProjects }) {
       <PageHeader
         title="Portfolio"
         subtitle={`${myProjects.length} public project${myProjects.length !== 1 ? "s" : ""}`}
-<<<<<<< HEAD
         action={<Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>Manage visibility</Button>}
-=======
-        action={<Button variant="ghost" size="sm">Manage visibility</Button>}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       />
 
       {myProjects.length > 0 ? (
@@ -182,10 +141,6 @@ function StudentProfile({ user, updateUser, myProjects }) {
         </Card>
       )}
 
-<<<<<<< HEAD
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Portfolio">
-        <div className="flex flex-col gap-4">
-=======
       {/* Internships Section */}
       {user?.completedInternships?.length > 0 && (
         <div className="mt-8">
@@ -232,7 +187,6 @@ function StudentProfile({ user, updateUser, myProjects }) {
               />
             </div>
           </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
           <Input
             label="Major"
             type="text"
@@ -275,8 +229,6 @@ function StudentProfile({ user, updateUser, myProjects }) {
           </div>
         </div>
       </Modal>
-<<<<<<< HEAD
-=======
 
       <ConfirmActionModal
         isOpen={Boolean(confirmation)}
@@ -286,18 +238,14 @@ function StudentProfile({ user, updateUser, myProjects }) {
         onConfirm={confirmation?.onConfirm}
       />
       <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }
 
 function InstructorProfile({ user, updateUser, myCourses }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-<<<<<<< HEAD
-=======
   const [confirmation, setConfirmation] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const [formData, setFormData] = useState({
     bio: user?.bio || "",
     researchInterests: user?.researchInterests || [],
@@ -305,10 +253,7 @@ function InstructorProfile({ user, updateUser, myCourses }) {
     coursesTaught: user?.coursesTaught || [],
     linkedin: user?.linkedin || "",
     officeHours: user?.officeHours || "",
-<<<<<<< HEAD
-=======
     avatar: user?.avatar || null,
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   });
   const [newResearchInterest, setNewResearchInterest] = useState("");
   const [newEducationItem, setNewEducationItem] = useState("");
@@ -321,18 +266,13 @@ function InstructorProfile({ user, updateUser, myCourses }) {
       coursesTaught: user?.coursesTaught || [],
       linkedin: user?.linkedin || "",
       officeHours: user?.officeHours || "",
-<<<<<<< HEAD
-=======
       avatar: user?.avatar || null,
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     });
     setNewResearchInterest("");
     setNewEducationItem("");
     setIsEditModalOpen(true);
   };
 
-<<<<<<< HEAD
-=======
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -344,7 +284,6 @@ function InstructorProfile({ user, updateUser, myCourses }) {
     }
   };
 
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const toggleCourse = (courseId) => {
     const isLinked = formData.coursesTaught.includes(courseId);
     const nextCourses = isLinked
@@ -376,19 +315,6 @@ function InstructorProfile({ user, updateUser, myCourses }) {
   };
 
   const handleSaveProfile = () => {
-<<<<<<< HEAD
-    updateUser({
-      bio: formData.bio,
-      researchInterests: formData.researchInterests,
-      education: formData.education,
-      coursesTaught: formData.coursesTaught.includes(4)
-        ? formData.coursesTaught
-        : [...formData.coursesTaught, 4],
-      linkedin: formData.linkedin,
-      officeHours: formData.officeHours,
-    });
-    setIsEditModalOpen(false);
-=======
     setConfirmation({
       action: "save these changes to your instructor profile",
       variant: "primary",
@@ -408,18 +334,11 @@ function InstructorProfile({ user, updateUser, myCourses }) {
         setSuccessMessage("Profile updated successfully!");
       },
     });
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   };
 
   return (
     <div>
       <div className="bg-bg-surface border border-border rounded-lg p-8 mb-6 flex items-start gap-6">
-<<<<<<< HEAD
-        <div className="w-20 h-20 rounded-full bg-accent-blue/20 border-2 border-accent-blue flex items-center justify-center shrink-0">
-          <span className="font-display text-2xl text-accent-blue">
-            {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
-          </span>
-=======
         <div className="w-20 h-20 rounded-full bg-accent-blue/20 border-2 border-accent-blue flex items-center justify-center shrink-0 overflow-hidden">
           {user?.avatar ? (
             <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -428,7 +347,6 @@ function InstructorProfile({ user, updateUser, myCourses }) {
               {user?.name?.split(" ").map((name) => name[0]).join("") || "?"}
             </span>
           )}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
         </div>
         <div className="flex-1">
           <h1 className="font-display text-3xl text-text-primary mb-1">{user?.name}</h1>
@@ -503,8 +421,6 @@ function InstructorProfile({ user, updateUser, myCourses }) {
 
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Instructor Profile">
         <div className="flex flex-col gap-4">
-<<<<<<< HEAD
-=======
           <div className="flex items-center gap-4 py-2">
             <div className="w-16 h-16 rounded-full bg-accent-blue/10 border border-accent-blue/30 flex items-center justify-center overflow-hidden shrink-0">
               {formData.avatar ? (
@@ -523,7 +439,6 @@ function InstructorProfile({ user, updateUser, myCourses }) {
               />
             </div>
           </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
           <div>
             <label className="text-sm text-text-secondary font-sans mb-1.5 block">Bio</label>
             <textarea
@@ -622,8 +537,6 @@ function InstructorProfile({ user, updateUser, myCourses }) {
           </div>
         </div>
       </Modal>
-<<<<<<< HEAD
-=======
 
       <ConfirmActionModal
         isOpen={Boolean(confirmation)}
@@ -633,7 +546,6 @@ function InstructorProfile({ user, updateUser, myCourses }) {
         onConfirm={confirmation?.onConfirm}
       />
       <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }
@@ -662,11 +574,8 @@ function InstructorDirectoryPreview() {
 
 function EmployerProfile({ user, updateUser }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-<<<<<<< HEAD
-=======
   const [confirmation, setConfirmation] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const [formData, setFormData] = useState({
     companyName: user?.companyName || "",
     companyBio: user?.companyBio || "",
@@ -679,11 +588,8 @@ function EmployerProfile({ user, updateUser }) {
     logo: user?.logo || null,
   });
   const [pendingLocation, setPendingLocation] = useState(user?.location || "Cairo, Egypt");
-<<<<<<< HEAD
-=======
   const [viewingDoc, setViewingDoc] = useState(null);
   const [locationConfirmOpen, setLocationConfirmOpen] = useState(false);
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
   const mapSrc = `https://www.google.com/maps?q=${encodeURIComponent(formData.location || pendingLocation)}&output=embed`;
 
@@ -712,10 +618,7 @@ function EmployerProfile({ user, updateUser }) {
       ...files.map((file, index) => ({
         id: Date.now() + index,
         name: file.name,
-<<<<<<< HEAD
         url: URL.createObjectURL(file),
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
         uploadedAt: new Date().toISOString().slice(0, 10),
       })),
     ];
@@ -729,33 +632,6 @@ function EmployerProfile({ user, updateUser }) {
 
   const handleLogoUpload = (event) => {
     const file = event.target.files?.[0];
-<<<<<<< HEAD
-    if (!file) return;
-
-    setFormData((previous) => ({
-      ...previous,
-      logo: file.name,
-    }));
-    event.target.value = "";
-  };
-
-  const handleSaveProfile = () => {
-    updateUser({
-      companyName: formData.companyName,
-      companyBio: formData.companyBio,
-      address: formData.address,
-      location: formData.location,
-      companyEmail: formData.companyEmail,
-      companyPhone: formData.companyPhone,
-      verificationStatus: formData.verificationStatus,
-      uploadedDocs: formData.uploadedDocs,
-      logo: formData.logo,
-    });
-    setIsEditModalOpen(false);
-  };
-
-  const handlePickLocation = () => {
-=======
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -801,20 +677,10 @@ function EmployerProfile({ user, updateUser }) {
   };
 
   const applyPinnedLocation = () => {
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     setFormData((previous) => ({
       ...previous,
       location: pendingLocation,
     }));
-<<<<<<< HEAD
-  };
-
-  const removeDoc = (docId) => {
-    setFormData((previous) => ({
-      ...previous,
-      uploadedDocs: previous.uploadedDocs.filter((doc) => doc.id !== docId),
-    }));
-=======
     updateUser({
       ...user,
       location: pendingLocation,
@@ -835,7 +701,6 @@ function EmployerProfile({ user, updateUser }) {
         }));
       },
     });
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   };
 
   return (
@@ -843,11 +708,7 @@ function EmployerProfile({ user, updateUser }) {
       <div className="bg-bg-surface border border-border rounded-lg p-8 mb-6 flex items-start gap-6">
         <div className="w-20 h-20 rounded-full bg-accent-gold/20 border-2 border-accent-gold flex items-center justify-center shrink-0 overflow-hidden">
           {user?.logo ? (
-<<<<<<< HEAD
-            <span className="text-xs text-accent-gold font-mono px-2 text-center">{user.logo}</span>
-=======
             <img src={user.logo} alt={user.companyName} className="w-full h-full object-cover" />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
           ) : (
             <span className="font-display text-2xl text-accent-gold">
               {user?.companyName?.split(" ").map((name) => name[0]).join("") || "E"}
@@ -856,11 +717,7 @@ function EmployerProfile({ user, updateUser }) {
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1 flex-wrap">
-<<<<<<< HEAD
-            <h1 className="font-display text-3xl text-text-primary">{user?.companyName}</h1>
-=======
             <h1 className="font-display text-3xl text-text-primary">{user?.name}</h1>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
             <Badge variant={user?.verificationStatus === "approved" ? "success" : user?.verificationStatus === "rejected" ? "danger" : "warning"}>
               {user?.verificationStatus || "pending"}
             </Badge>
@@ -877,13 +734,10 @@ function EmployerProfile({ user, updateUser }) {
           <h2 className="font-display text-lg text-text-primary mb-4">Company Information</h2>
           <div className="flex flex-col gap-3 text-sm">
             <div>
-<<<<<<< HEAD
-=======
               <p className="text-text-secondary text-xs uppercase tracking-widest mb-1">Company Name</p>
               <p className="text-text-primary">{user?.companyName}</p>
             </div>
             <div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
               <p className="text-text-secondary text-xs uppercase tracking-widest mb-1">Email</p>
               <p className="text-text-primary">{user?.companyEmail}</p>
             </div>
@@ -906,24 +760,6 @@ function EmployerProfile({ user, updateUser }) {
           <h2 className="font-display text-lg text-text-primary mb-4">Verification Documents</h2>
           <div className="flex flex-col gap-2">
             {user?.uploadedDocs?.length ? user.uploadedDocs.map((doc) => (
-<<<<<<< HEAD
-              <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm">
-                <div>
-                  <a
-                    href={doc.url || "about:blank"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent-blue text-base font-sans hover:underline"
-                  >
-                    {doc.name}
-                  </a>
-                  <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
-                </div>
-                <Badge variant="gold">PDF</Badge>
-              </div>
-            )) : (
-              <p className="text-text-secondary text-sm">No verification documents uploaded.</p>
-=======
               <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm group">
                 <div 
                   className="cursor-pointer flex-1"
@@ -945,7 +781,6 @@ function EmployerProfile({ user, updateUser }) {
               </div>
             )) : (
               <p className="text-danger text-sm font-medium">⚠️ Tax certificate required. Please upload one.</p>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
             )}
           </div>
         </Card>
@@ -992,21 +827,15 @@ function EmployerProfile({ user, updateUser }) {
             onChange={(e) => setPendingLocation(e.target.value)}
           />
           <div className="flex items-end">
-<<<<<<< HEAD
-            <Button type="button" variant="primary" onClick={handlePickLocation}>Use this location</Button>
-=======
             <Button type="button" variant="primary" onClick={() => setLocationConfirmOpen(true)}>
               Use this location
             </Button>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
           </div>
         </div>
       </Card>
 
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Employer Profile">
         <div className="flex flex-col gap-4">
-<<<<<<< HEAD
-=======
           <div className="flex items-center gap-4 py-2">
             <div className="w-16 h-16 rounded-full bg-accent-gold/10 border border-accent-gold/30 flex items-center justify-center overflow-hidden shrink-0">
               {formData.logo ? (
@@ -1025,7 +854,6 @@ function EmployerProfile({ user, updateUser }) {
               />
             </div>
           </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
           <Input
             label="Company Name"
             value={formData.companyName}
@@ -1073,20 +901,6 @@ function EmployerProfile({ user, updateUser }) {
             <div className="flex flex-col gap-2 mt-3">
               {formData.uploadedDocs.map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between bg-bg-elevated border border-border rounded-lg px-3 py-2 text-sm">
-<<<<<<< HEAD
-                  <div>
-                    <a
-                      href={doc.url || "about:blank"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-accent-blue text-base font-sans hover:underline"
-                    >
-                      {doc.name}
-                    </a>
-                    <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
-                  </div>
-                  <button type="button" className="text-danger text-xs font-semibold" onClick={() => removeDoc(doc.id)}>Remove</button>
-=======
                   <div 
                     className="cursor-pointer flex-1"
                     onClick={() => setViewingDoc(doc)}
@@ -1094,7 +908,6 @@ function EmployerProfile({ user, updateUser }) {
                     <p className="text-text-primary hover:text-accent-gold transition-colors">{doc.name}</p>
                     <p className="text-text-secondary text-xs">Uploaded {doc.uploadedAt}</p>
                   </div>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
                 </div>
               ))}
             </div>
@@ -1106,8 +919,6 @@ function EmployerProfile({ user, updateUser }) {
           </div>
         </div>
       </Modal>
-<<<<<<< HEAD
-=======
 
       <Modal isOpen={Boolean(viewingDoc)} onClose={() => setViewingDoc(null)} title={`Viewing: ${viewingDoc?.name}`}>
         <div className="flex flex-col gap-4">
@@ -1164,23 +975,16 @@ function EmployerProfile({ user, updateUser }) {
         onConfirm={applyPinnedLocation}
       />
       <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }
 
 export default function Profile() {
   const { user, updateUser } = useContext(AuthContext);
-<<<<<<< HEAD
   const { projectList } = useProjects();
   const role = user?.role;
 
   const myProjects = projectList.filter((project) => project.owner === user?.name && project.visibility === "public");
-=======
-  const role = user?.role;
-
-  const myProjects = projects.filter((project) => project.owner === user?.name && project.visibility === "public");
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   const myCourses = courses.filter((course) => user?.coursesTaught?.includes(course.id));
 
   if (role === "employer") {
@@ -1210,8 +1014,4 @@ export default function Profile() {
   }
 
   return <StudentProfile user={user} updateUser={updateUser} myProjects={myProjects} />;
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687

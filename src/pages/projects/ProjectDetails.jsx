@@ -1,49 +1,16 @@
-<<<<<<< HEAD
-import { useContext, useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Badge, Button, Card, Modal, PageHeader, Stars } from "../../components/ui";
-import { AuthContext } from "../../context/AuthContext";
-import { useProjects } from "../../context/ProjectsContext";
-
-const taskStatusVariant = {
-  pending: "warning",
-  postponed: "default",
-  completed: "success",
-};
-
-function canChangeTaskStatus(project, task, user) {
-  if (project.owner === user?.name) return true;
-  if (task.assignee && task.assignee === user?.name) return true;
-
-  return (project.collaboratorInvitations || []).some((invite) =>
-    invite.status === "accepted" &&
-    invite.collaboratorName === task.assignee &&
-    (invite.email === user?.email || invite.collaboratorName === user?.name)
-  );
-}
-
-function canViewInstructorFeedback(project, user) {
-  if (!user?.name) return false;
-  if (project.owner === user.name) return true;
-  if ((project.team || []).includes(user.name)) return true;
-  if (user.role === "instructor" && project.supervisor === user.name) return true;
-
-  const acceptedCollaborator = (project.collaboratorInvitations || []).some((invite) =>
-    invite.status === "accepted" &&
-    (invite.email === user.email || invite.collaboratorName === user.name)
-  );
-  const acceptedInstructor = (project.instructorInvitations || []).some((invite) =>
-    invite.status === "accepted" &&
-    (invite.email === user.email || invite.instructorName === user.name)
-  );
-
-  return acceptedCollaborator || acceptedInstructor;
-}
-=======
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-import { Badge, Button, Card, ConfirmActionModal, Modal, PageHeader, Stars, SuccessToast } from "../../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  ConfirmActionModal,
+  Modal,
+  PageHeader,
+  Stars,
+  SuccessToast,
+} from "../../components/ui";
 import {
   portfolios,
   projects,
@@ -55,8 +22,63 @@ import {
 } from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const taskStatusVariant = {
+  pending: "warning",
+  postponed: "default",
+  completed: "success",
+};
+
 const portfolioByOwner = new Map(portfolios.map((portfolio) => [portfolio.owner, portfolio]));
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
+
+function canChangeTaskStatus(project, task, user) {
+  if (project.owner === user?.name) return true;
+  if (task.assignee && task.assignee === user?.name) return true;
+
+  return (project.collaboratorInvitations || []).some(
+    (invite) =>
+      invite.status === "accepted" &&
+      invite.collaboratorName === task.assignee &&
+      (invite.email === user?.email || invite.collaboratorName === user?.name)
+  );
+}
+
+function canViewInstructorFeedback(project, user) {
+  if (!user?.name) return false;
+  if (project.owner === user.name) return true;
+  if ((project.team || []).includes(user.name)) return true;
+  if (user.role === "instructor" && project.supervisor === user.name) return true;
+
+  const acceptedCollaborator = (project.collaboratorInvitations || []).some(
+    (invite) =>
+      invite.status === "accepted" &&
+      (invite.email === user.email || invite.collaboratorName === user.name)
+  );
+  const acceptedInstructor = (project.instructorInvitations || []).some(
+    (invite) =>
+      invite.status === "accepted" &&
+      (invite.email === user.email || invite.instructorName === user.name)
+  );
+
+  return acceptedCollaborator || acceptedInstructor;
+}
+
+function getDocumentUrl(fileName) {
+  return fileName ? `/documents/${encodeURIComponent(fileName)}` : "#";
+}
+
+function buildFeedback(user, text) {
+  return {
+    id: Date.now(),
+    author: user?.name,
+    authorEmail: user?.email,
+    text: text.trim(),
+    createdAt: new Date().toISOString().slice(0, 10),
+  };
+}
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
 
 function ReadmeSection({ title, children }) {
   return (
@@ -65,11 +87,6 @@ function ReadmeSection({ title, children }) {
       <div className="border-t border-border pt-4">{children}</div>
     </section>
   );
-}
-
-<<<<<<< HEAD
-function getDocumentUrl(fileName) {
-  return fileName ? `/documents/${encodeURIComponent(fileName)}` : "#";
 }
 
 function InteractiveStarRating({ value, onRate }) {
@@ -84,7 +101,9 @@ function InteractiveStarRating({ value, onRate }) {
               key={star}
               type="button"
               onClick={() => onRate(star)}
-              className={`text-2xl leading-none transition-colors ${star <= rating ? "text-accent-gold" : "text-border hover:text-text-secondary"}`}
+              className={`text-2xl leading-none transition-colors ${
+                star <= rating ? "text-accent-gold" : "text-border hover:text-text-secondary"
+              }`}
               aria-label={`Rate ${star} of 5 stars`}
             >
               ★
@@ -93,19 +112,11 @@ function InteractiveStarRating({ value, onRate }) {
         </div>
         <Badge variant="gold">{rating}/5</Badge>
       </div>
-      <p className="text-text-secondary text-xs font-sans mt-2">Click a star to set and save the public rating.</p>
+      <p className="text-text-secondary text-xs font-sans mt-2">
+        Click a star to set and save the public rating.
+      </p>
     </div>
   );
-}
-
-function buildFeedback(user, text) {
-  return {
-    id: Date.now(),
-    author: user?.name,
-    authorEmail: user?.email,
-    text: text.trim(),
-    createdAt: new Date().toISOString().slice(0, 10),
-  };
 }
 
 function FeedbackList({ feedback = [], onRemove, currentUser }) {
@@ -126,7 +137,9 @@ function FeedbackList({ feedback = [], onRemove, currentUser }) {
             </div>
             {item.authorEmail === currentUser?.email && (
               <div className="flex items-center gap-2 shrink-0">
-                <Button size="sm" variant="danger" onClick={() => onRemove(item.id)}>Remove</Button>
+                <Button size="sm" variant="danger" onClick={() => onRemove(item.id)}>
+                  Remove
+                </Button>
               </div>
             )}
           </div>
@@ -136,139 +149,19 @@ function FeedbackList({ feedback = [], onRemove, currentUser }) {
   );
 }
 
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 export default function ProjectDetails() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useContext(AuthContext);
-<<<<<<< HEAD
-  const { projectList, updateProject } = useProjects();
-  const [projectFeedbackText, setProjectFeedbackText] = useState("");
-  const [taskFeedbackText, setTaskFeedbackText] = useState({});
-  const [thesisFeedbackText, setThesisFeedbackText] = useState({});
-  const [ratingValue, setRatingValue] = useState("");
-  const [toast, setToast] = useState("");
-  const [confirmFeedback, setConfirmFeedback] = useState(null);
-  const project = projectList.find((item) => item.id === Number(projectId));
-  const openExternal = (url) => window.open(url, "_blank", "noopener,noreferrer");
-  const activeNav = location.state?.activeNav || "/projects";
-  const openPreview = () => navigate(`/projects/${project.id}/preview`, { state: { activeNav } });
-  const openTasks = () => navigate(`/tasks?projectId=${project.id}`);
-  const showToast = (message) => setToast(message);
 
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = window.setTimeout(() => setToast(""), 3500);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
-
-  const updateTaskStatus = (taskId, status) => {
-    updateProject(project.id, {
-      tasks: (project.tasks || []).map((task) =>
-        task.id === taskId ? { ...task, status } : task
-      ),
-    });
-  };
-  const isInstructor = user?.role === "instructor";
-
-  const applyRating = (stars) => {
-    const rating = Math.max(1, Math.min(5, Math.round(Number(stars) || 1)));
-    updateProject(project.id, { rating });
-    setRatingValue(String(rating));
-    showToast("Rating saved successfully.");
-  };
-
-  const saveProjectFeedback = () => {
-    if (!projectFeedbackText.trim()) return;
-    updateProject(project.id, {
-      feedback: [...(project.feedback || []), buildFeedback(user, projectFeedbackText)],
-    });
-    setProjectFeedbackText("");
-    showToast("Project feedback submitted successfully.");
-  };
-
-  const removeProjectFeedback = (feedbackId) => {
-    updateProject(project.id, {
-      feedback: (project.feedback || []).filter((feedback) => feedback.id !== feedbackId),
-    });
-    setConfirmFeedback(null);
-    showToast("Feedback removed successfully.");
-  };
-
-  const saveTaskFeedback = (taskId) => {
-    const text = taskFeedbackText[taskId] || "";
-    if (!text.trim()) return;
-    updateProject(project.id, {
-      tasks: (project.tasks || []).map((task) =>
-        task.id === taskId
-          ? { ...task, feedback: [...(task.feedback || []), buildFeedback(user, text)] }
-          : task
-      ),
-    });
-    setTaskFeedbackText((previous) => ({ ...previous, [taskId]: "" }));
-    showToast("Task feedback submitted successfully.");
-  };
-
-  const removeTaskFeedback = (taskId, feedbackId) => {
-    updateProject(project.id, {
-      tasks: (project.tasks || []).map((task) =>
-        task.id === taskId
-          ? { ...task, feedback: (task.feedback || []).filter((feedback) => feedback.id !== feedbackId) }
-          : task
-      ),
-    });
-    setConfirmFeedback(null);
-    showToast("Feedback removed successfully.");
-  };
-
-  const saveThesisFeedback = (draftId) => {
-    const text = thesisFeedbackText[draftId] || "";
-    if (!text.trim()) return;
-    updateProject(project.id, {
-      thesisDrafts: (project.thesisDrafts || []).map((draft) =>
-        draft.id === draftId
-          ? { ...draft, feedback: [...(draft.feedback || []), buildFeedback(user, text)] }
-          : draft
-      ),
-    });
-    setThesisFeedbackText((previous) => ({ ...previous, [draftId]: "" }));
-    showToast("Draft feedback submitted successfully.");
-  };
-
-  const removeThesisFeedback = (draftId, feedbackId) => {
-    updateProject(project.id, {
-      thesisDrafts: (project.thesisDrafts || []).map((draft) =>
-        draft.id === draftId
-          ? { ...draft, feedback: (draft.feedback || []).filter((feedback) => feedback.id !== feedbackId) }
-          : draft
-      ),
-    });
-    setConfirmFeedback(null);
-    showToast("Feedback removed successfully.");
-  };
-
-  const requestRemoveFeedback = (type, ids = {}) => {
-    setConfirmFeedback({
-      type,
-      ...ids,
-      message: "Are you sure you want to remove this feedback?",
-    });
-  };
-
-  const confirmRemoveFeedback = () => {
-    if (!confirmFeedback) return;
-    if (confirmFeedback.type === "project") removeProjectFeedback(confirmFeedback.feedbackId);
-    if (confirmFeedback.type === "task") removeTaskFeedback(confirmFeedback.taskId, confirmFeedback.feedbackId);
-    if (confirmFeedback.type === "thesis") removeThesisFeedback(confirmFeedback.draftId, confirmFeedback.feedbackId);
-  };
-=======
   const activeNav = location.state?.activeNav || "/projects";
   const numericId = Number(projectId);
 
+  // Moderation live-update subscription
   const [moderationRevision, setModerationRevision] = useState(0);
-
   useEffect(() => {
     const unsubscribe = subscribeDummyUpdates(() =>
       setModerationRevision((revision) => revision + 1)
@@ -286,16 +179,31 @@ export default function ProjectDetails() {
     return getProjectAppeals().filter((appeal) => appeal.projectId === project.id);
   }, [project?.id, moderationRevision]);
 
-  const [confirmation, setConfirmation] = useState(null);
+  // Feedback state
+  const [projectFeedbackText, setProjectFeedbackText] = useState("");
+  const [taskFeedbackText, setTaskFeedbackText] = useState({});
+  const [thesisFeedbackText, setThesisFeedbackText] = useState({});
+  const [ratingValue, setRatingValue] = useState("");
+  const [confirmFeedback, setConfirmFeedback] = useState(null);
+
+  // General UI state
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [confirmation, setConfirmation] = useState(null);
+
+  // Flag modal state
   const [flagModalOpen, setFlagModalOpen] = useState(false);
   const [flagStep, setFlagStep] = useState("details");
   const [flagReason, setFlagReason] = useState("");
   const [flagError, setFlagError] = useState("");
   const [flagConfirmAck, setFlagConfirmAck] = useState(false);
+
+  // Appeal state
   const [appealMessage, setAppealMessage] = useState("");
   const [appealError, setAppealError] = useState("");
+
+  // Admin deactivate modal
   const [adminExploreDeactivateOpen, setAdminExploreDeactivateOpen] = useState(false);
+
   const {
     canUseFavorites,
     isFavoriteProject,
@@ -305,7 +213,6 @@ export default function ProjectDetails() {
     savePortfolio,
     removePortfolio,
   } = useFavorites();
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
   if (!project) {
     return (
@@ -313,32 +220,171 @@ export default function ProjectDetails() {
         <PageHeader
           title="Project Not Found"
           subtitle="The selected project could not be found."
-          action={<Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>}
+          action={
+            <Button variant="secondary" onClick={() => navigate(-1)}>
+              Back
+            </Button>
+          }
         />
         <Card>
-          <p className="text-text-secondary font-sans">Please select another project from the projects page.</p>
+          <p className="text-text-secondary font-sans">
+            Please select another project from the projects page.
+          </p>
         </Card>
       </div>
     );
   }
 
-<<<<<<< HEAD
+  // Derived values
+  const isInstructor = user?.role === "instructor";
   const canViewFeedback = canViewInstructorFeedback(project, user);
-=======
-  const openExternal = (url) => window.open(url, "_blank", "noopener,noreferrer");
-  const openPreview = () => navigate(`/projects/${project.id}/preview`, { state: { activeNav } });
-  const ownerPortfolio = portfolioByOwner.get(project.owner);
-  const pendingAppeal = appealsForProject.find((appeal) => appeal.status === "pending");
-
   const canModerateProject = ["admin", "instructor"].includes(user?.role);
   const viewingOwnerStudent = user?.role === "student" && project.owner === user?.name;
   const adminFromExplore = user?.role === "admin" && activeNav === "/explore";
   const canAdminDeactivateFromExplore = adminFromExplore && project.platformActive !== false;
+  const ownerPortfolio = portfolioByOwner.get(project.owner);
+  const pendingAppeal = appealsForProject.find((appeal) => appeal.status === "pending");
+  const projectSaved = isFavoriteProject(project.id);
+  const portfolioSaved = ownerPortfolio ? isFavoritePortfolio(ownerPortfolio.id) : false;
+
+  const openExternal = (url) => window.open(url, "_blank", "noopener,noreferrer");
+  const openPreview = () =>
+    navigate(`/projects/${project.id}/preview`, { state: { activeNav } });
+
+  // ── Task status ────────────────────────────────────────────────────────────
+
+  const updateTaskStatus = (taskId, status) => {
+    // NOTE: projects from dummy data are mutated in-place via setProjectPlatformActive etc.
+    // Adapt this call to your actual project-update mechanism if needed.
+    const updated = projects.find((p) => p.id === project.id);
+    if (updated) {
+      updated.tasks = (updated.tasks || []).map((task) =>
+        task.id === taskId ? { ...task, status } : task
+      );
+      setModerationRevision((r) => r + 1);
+    }
+  };
+
+  // ── Rating ─────────────────────────────────────────────────────────────────
+
+  const applyRating = (stars) => {
+    const rating = Math.max(1, Math.min(5, Math.round(Number(stars) || 1)));
+    const updated = projects.find((p) => p.id === project.id);
+    if (updated) updated.rating = rating;
+    setRatingValue(String(rating));
+    setFeedbackMessage("Rating saved successfully.");
+  };
+
+  // ── Project feedback ───────────────────────────────────────────────────────
+
+  const saveProjectFeedback = () => {
+    if (!projectFeedbackText.trim()) return;
+    const updated = projects.find((p) => p.id === project.id);
+    if (updated) {
+      updated.feedback = [...(updated.feedback || []), buildFeedback(user, projectFeedbackText)];
+    }
+    setProjectFeedbackText("");
+    setFeedbackMessage("Project feedback submitted successfully.");
+    setModerationRevision((r) => r + 1);
+  };
+
+  const removeProjectFeedback = (feedbackId) => {
+    const updated = projects.find((p) => p.id === project.id);
+    if (updated) {
+      updated.feedback = (updated.feedback || []).filter((f) => f.id !== feedbackId);
+    }
+    setConfirmFeedback(null);
+    setFeedbackMessage("Feedback removed successfully.");
+    setModerationRevision((r) => r + 1);
+  };
+
+  // ── Task feedback ──────────────────────────────────────────────────────────
+
+  const saveTaskFeedback = (taskId) => {
+    const text = taskFeedbackText[taskId] || "";
+    if (!text.trim()) return;
+    const updated = projects.find((p) => p.id === project.id);
+    if (updated) {
+      updated.tasks = (updated.tasks || []).map((task) =>
+        task.id === taskId
+          ? { ...task, feedback: [...(task.feedback || []), buildFeedback(user, text)] }
+          : task
+      );
+    }
+    setTaskFeedbackText((prev) => ({ ...prev, [taskId]: "" }));
+    setFeedbackMessage("Task feedback submitted successfully.");
+    setModerationRevision((r) => r + 1);
+  };
+
+  const removeTaskFeedback = (taskId, feedbackId) => {
+    const updated = projects.find((p) => p.id === project.id);
+    if (updated) {
+      updated.tasks = (updated.tasks || []).map((task) =>
+        task.id === taskId
+          ? { ...task, feedback: (task.feedback || []).filter((f) => f.id !== feedbackId) }
+          : task
+      );
+    }
+    setConfirmFeedback(null);
+    setFeedbackMessage("Feedback removed successfully.");
+    setModerationRevision((r) => r + 1);
+  };
+
+  // ── Thesis feedback ────────────────────────────────────────────────────────
+
+  const saveThesisFeedback = (draftId) => {
+    const text = thesisFeedbackText[draftId] || "";
+    if (!text.trim()) return;
+    const updated = projects.find((p) => p.id === project.id);
+    if (updated) {
+      updated.thesisDrafts = (updated.thesisDrafts || []).map((draft) =>
+        draft.id === draftId
+          ? { ...draft, feedback: [...(draft.feedback || []), buildFeedback(user, text)] }
+          : draft
+      );
+    }
+    setThesisFeedbackText((prev) => ({ ...prev, [draftId]: "" }));
+    setFeedbackMessage("Draft feedback submitted successfully.");
+    setModerationRevision((r) => r + 1);
+  };
+
+  const removeThesisFeedback = (draftId, feedbackId) => {
+    const updated = projects.find((p) => p.id === project.id);
+    if (updated) {
+      updated.thesisDrafts = (updated.thesisDrafts || []).map((draft) =>
+        draft.id === draftId
+          ? { ...draft, feedback: (draft.feedback || []).filter((f) => f.id !== feedbackId) }
+          : draft
+      );
+    }
+    setConfirmFeedback(null);
+    setFeedbackMessage("Feedback removed successfully.");
+    setModerationRevision((r) => r + 1);
+  };
+
+  // ── Confirm-remove dispatcher ──────────────────────────────────────────────
+
+  const requestRemoveFeedback = (type, ids = {}) => {
+    setConfirmFeedback({
+      type,
+      ...ids,
+      message: "Are you sure you want to remove this feedback?",
+    });
+  };
+
+  const confirmRemoveFeedback = () => {
+    if (!confirmFeedback) return;
+    if (confirmFeedback.type === "project") removeProjectFeedback(confirmFeedback.feedbackId);
+    if (confirmFeedback.type === "task")
+      removeTaskFeedback(confirmFeedback.taskId, confirmFeedback.feedbackId);
+    if (confirmFeedback.type === "thesis")
+      removeThesisFeedback(confirmFeedback.draftId, confirmFeedback.feedbackId);
+  };
+
+  // ── Favorites ──────────────────────────────────────────────────────────────
 
   const requestProjectFavorite = () => {
-    if (!project) return;
     const isSaved = isFavoriteProject(project.id);
-
     setConfirmation({
       action: `${isSaved ? "remove this project from" : "save this project to"} your favorites`,
       variant: isSaved ? "danger" : "gold",
@@ -357,7 +403,6 @@ export default function ProjectDetails() {
   const requestPortfolioFavorite = () => {
     if (!ownerPortfolio) return;
     const isSaved = isFavoritePortfolio(ownerPortfolio.id);
-
     setConfirmation({
       action: `${isSaved ? "remove this portfolio from" : "save this portfolio to"} your favorites`,
       variant: isSaved ? "danger" : "gold",
@@ -373,8 +418,8 @@ export default function ProjectDetails() {
     });
   };
 
-  const projectSaved = isFavoriteProject(project.id);
-  const portfolioSaved = ownerPortfolio ? isFavoritePortfolio(ownerPortfolio.id) : false;
+  // ── Header action bar ──────────────────────────────────────────────────────
+
   const headerAction = (
     <div className="flex flex-wrap justify-end gap-2">
       {canModerateProject && (
@@ -393,9 +438,7 @@ export default function ProjectDetails() {
               Flag for policy review
             </Button>
           )}
-          {project.flagged && (
-            <Badge variant="warning">Moderation enabled</Badge>
-          )}
+          {project.flagged && <Badge variant="warning">Moderation enabled</Badge>}
         </>
       )}
       {canAdminDeactivateFromExplore && (
@@ -421,43 +464,32 @@ export default function ProjectDetails() {
           )}
         </>
       )}
-      <Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>
+      <Button variant="secondary" onClick={() => navigate(-1)}>
+        Back
+      </Button>
     </div>
   );
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div>
       <PageHeader
         title={project.title}
         subtitle={`${project.course} - ${project.owner}`}
-<<<<<<< HEAD
-        action={
-          <div className="flex items-center gap-3">
-            <Button variant="gold" onClick={openTasks}>Tasks</Button>
-            <Button variant="secondary" onClick={() => navigate(-1)}>Back</Button>
-          </div>
-        }
-      />
-
-=======
         action={headerAction}
       />
 
-      {feedbackMessage && (
-        <Card className="mb-4 border-success/40 bg-success/10">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-success text-sm font-sans">{feedbackMessage}</p>
-            <Button variant="ghost" size="sm" onClick={() => setFeedbackMessage("")}>Dismiss</Button>
-          </div>
-        </Card>
-      )}
+      {/* Status / moderation banners */}
 
       {project.platformActive === false && (
         <Card className="mb-4 border-warning/50 bg-warning/10">
-          <p className="text-warning text-xs font-mono uppercase tracking-widest mb-1">Platform status</p>
+          <p className="text-warning text-xs font-mono uppercase tracking-widest mb-1">
+            Platform status
+          </p>
           <p className="text-text-primary text-sm font-sans">
-            This project is deactivated. It is hidden from Explore until an administrator activates it again from Admin → Projects.
+            This project is deactivated. It is hidden from Explore until an administrator
+            activates it again from Admin → Projects.
           </p>
         </Card>
       )}
@@ -466,10 +498,15 @@ export default function ProjectDetails() {
         <Card className="mb-4 border-warning/60 bg-warning/10">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-warning text-xs font-mono uppercase tracking-widest mb-1">Public listing</p>
-              <p className="font-display text-lg text-text-primary">Hidden after moderation decision</p>
+              <p className="text-warning text-xs font-mono uppercase tracking-widest mb-1">
+                Public listing
+              </p>
+              <p className="font-display text-lg text-text-primary">
+                Hidden after moderation decision
+              </p>
               <p className="text-text-secondary text-sm font-sans mt-1">
-                Administrators removed this submission from Explore while reviewers finish follow-up checks.
+                Administrators removed this submission from Explore while reviewers finish
+                follow-up checks.
               </p>
             </div>
           </div>
@@ -487,11 +524,17 @@ export default function ProjectDetails() {
               {pendingAppeal && <Badge variant="blue">Appeal queued</Badge>}
             </div>
             <div>
-              <p className="text-text-secondary text-xs font-mono uppercase tracking-[0.2em] mb-1">Recorded reason</p>
-              <p className="text-text-primary text-sm font-sans leading-relaxed">{project.flagReason}</p>
+              <p className="text-text-secondary text-xs font-mono uppercase tracking-[0.2em] mb-1">
+                Recorded reason
+              </p>
+              <p className="text-text-primary text-sm font-sans leading-relaxed">
+                {project.flagReason}
+              </p>
             </div>
             <p className="text-text-secondary text-xs font-sans">
-              The project is taken offline for students and employers until the owner submits an appeal or an administrator clears the flag. The reason you see above is shared with the student.
+              The project is taken offline for students and employers until the owner submits an
+              appeal or an administrator clears the flag. The reason you see above is shared with
+              the student.
             </p>
           </div>
         </Card>
@@ -501,8 +544,12 @@ export default function ProjectDetails() {
         <>
           {pendingAppeal ? (
             <Card className="mb-4 border-accent-blue/40 bg-accent-blue/5">
-              <p className="text-accent-blue font-mono text-[11px] uppercase tracking-[0.2em] mb-2">Appeal inbox</p>
-              <p className="font-display text-xl text-text-primary mb-3">Moderators are reviewing your note</p>
+              <p className="text-accent-blue font-mono text-[11px] uppercase tracking-[0.2em] mb-2">
+                Appeal inbox
+              </p>
+              <p className="font-display text-xl text-text-primary mb-3">
+                Moderators are reviewing your note
+              </p>
               <div className="space-y-2 text-sm font-sans text-text-secondary mb-4">
                 <p>Submitted on {pendingAppeal.submittedAt}</p>
                 <p className="text-text-primary bg-bg-elevated border border-border rounded-lg p-3 leading-relaxed">
@@ -510,67 +557,76 @@ export default function ProjectDetails() {
                 </p>
               </div>
               <p className="text-xs text-text-secondary font-sans">
-                You&apos;ll receive a notification once an administrator publishes a moderation decision.
+                You&apos;ll receive a notification once an administrator publishes a moderation
+                decision.
               </p>
             </Card>
-          ) : (
-            !project.appealSubmitted ? (
-              <Card className="mb-4 border-border">
-                <p className="font-display text-lg text-text-primary mb-2">Submit a short appeal</p>
-                <p className="text-text-secondary text-sm font-sans mb-4">
-                  Explain your perspective succinctly (16–420 characters). Appeals route directly to administrators.
-                </p>
-                <div className="space-y-2">
-                  <label className="text-xs font-mono uppercase tracking-[0.2em] text-text-secondary">Explanation</label>
-                  <textarea
-                    value={appealMessage}
-                    onChange={(event) => {
-                      setAppealMessage(event.target.value);
-                      setAppealError("");
-                    }}
-                    rows={4}
-                    maxLength={420}
-                    className="w-full rounded-lg border border-border bg-bg-elevated px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
-                    placeholder="Clarify how the flagged content complies with university policy..."
-                  />
-                  <div className="flex justify-between text-xs font-mono text-text-secondary">
-                    <span>{appealMessage.length}/420</span>
-                    {appealError && <span className="text-danger">{appealError}</span>}
-                  </div>
-                  <Button
-                    onClick={() => {
-                      const result = submitProjectAppeal(user, project.id, appealMessage);
-                      if (!result.ok) {
-                        setAppealError(result.error || "Unable to submit appeal.");
-                        return;
-                      }
-                      setAppealMessage("");
-                      setAppealError("");
-                      setFeedbackMessage("Appeal captured — administrators were notified instantly.");
-                    }}
-                  >
-                    Send appeal to administrators
-                  </Button>
+          ) : !project.appealSubmitted ? (
+            <Card className="mb-4 border-border">
+              <p className="font-display text-lg text-text-primary mb-2">Submit a short appeal</p>
+              <p className="text-text-secondary text-sm font-sans mb-4">
+                Explain your perspective succinctly (16–420 characters). Appeals route directly to
+                administrators.
+              </p>
+              <div className="space-y-2">
+                <label className="text-xs font-mono uppercase tracking-[0.2em] text-text-secondary">
+                  Explanation
+                </label>
+                <textarea
+                  value={appealMessage}
+                  onChange={(e) => {
+                    setAppealMessage(e.target.value);
+                    setAppealError("");
+                  }}
+                  rows={4}
+                  maxLength={420}
+                  className="w-full rounded-lg border border-border bg-bg-elevated px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+                  placeholder="Clarify how the flagged content complies with university policy..."
+                />
+                <div className="flex justify-between text-xs font-mono text-text-secondary">
+                  <span>{appealMessage.length}/420</span>
+                  {appealError && <span className="text-danger">{appealError}</span>}
                 </div>
-              </Card>
-            ) : (
-              <Card className="mb-4 border-border bg-bg-elevated/40">
-                <p className="text-sm text-text-secondary font-sans">
-                  You already surfaced an appeal for this flag cycle. Administrators will follow up with the next moderation step.
-                </p>
-              </Card>
-            )
+                <Button
+                  onClick={() => {
+                    const result = submitProjectAppeal(user, project.id, appealMessage);
+                    if (!result.ok) {
+                      setAppealError(result.error || "Unable to submit appeal.");
+                      return;
+                    }
+                    setAppealMessage("");
+                    setAppealError("");
+                    setFeedbackMessage(
+                      "Appeal captured — administrators were notified instantly."
+                    );
+                  }}
+                >
+                  Send appeal to administrators
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <Card className="mb-4 border-border bg-bg-elevated/40">
+              <p className="text-sm text-text-secondary font-sans">
+                You already surfaced an appeal for this flag cycle. Administrators will follow up
+                with the next moderation step.
+              </p>
+            </Card>
           )}
         </>
       )}
 
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
+      {/* Main content */}
+
       <div className="flex flex-col gap-4">
+        {/* Project overview card */}
         <Card>
           <div className="flex items-start justify-between gap-6 mb-4">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="blue">{project.courseCode}</Badge>
-              <Badge variant={project.visibility === "public" ? "success" : "default"}>{project.visibility}</Badge>
+              <Badge variant={project.visibility === "public" ? "success" : "default"}>
+                {project.visibility}
+              </Badge>
               {project.languages.map((language) => (
                 <Badge key={language}>{language}</Badge>
               ))}
@@ -578,19 +634,18 @@ export default function ProjectDetails() {
             <div className="flex flex-col items-end gap-2 shrink-0">
               <Stars rating={project.rating} />
               <Badge variant="gold">{project.status}</Badge>
-<<<<<<< HEAD
               {isInstructor && (
                 <InteractiveStarRating
                   value={ratingValue || String(Math.round(project.rating || 0))}
                   onRate={applyRating}
                 />
               )}
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
             </div>
           </div>
 
-          <p className="text-text-secondary text-sm font-sans leading-6 mb-6">{project.description}</p>
+          <p className="text-text-secondary text-sm font-sans leading-6 mb-6">
+            {project.description}
+          </p>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -620,34 +675,37 @@ export default function ProjectDetails() {
           </div>
         </Card>
 
-<<<<<<< HEAD
+        {/* Project feedback */}
         {canViewFeedback && (
-        <Card>
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h2 className="font-display text-lg text-text-primary">Project Feedback</h2>
-            <Badge variant="blue">{project.feedback?.length || 0}</Badge>
-          </div>
-          <FeedbackList
-            feedback={project.feedback}
-            currentUser={user}
-            onRemove={(feedbackId) => requestRemoveFeedback("project", { feedbackId })}
-          />
-          {isInstructor && (
-            <div className="mt-4 flex flex-col gap-3">
-              <textarea
-                value={projectFeedbackText}
-                onChange={(e) => setProjectFeedbackText(e.target.value)}
-                placeholder="Add project feedback"
-                className="min-h-20 bg-bg-elevated border border-border rounded-lg px-4 py-3 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue"
-              />
-              <div>
-                <Button size="sm" variant="secondary" onClick={saveProjectFeedback}>Save Feedback</Button>
-              </div>
+          <Card>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h2 className="font-display text-lg text-text-primary">Project Feedback</h2>
+              <Badge variant="blue">{project.feedback?.length || 0}</Badge>
             </div>
-          )}
-        </Card>
+            <FeedbackList
+              feedback={project.feedback}
+              currentUser={user}
+              onRemove={(feedbackId) => requestRemoveFeedback("project", { feedbackId })}
+            />
+            {isInstructor && (
+              <div className="mt-4 flex flex-col gap-3">
+                <textarea
+                  value={projectFeedbackText}
+                  onChange={(e) => setProjectFeedbackText(e.target.value)}
+                  placeholder="Add project feedback"
+                  className="min-h-20 bg-bg-elevated border border-border rounded-lg px-4 py-3 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue"
+                />
+                <div>
+                  <Button size="sm" variant="secondary" onClick={saveProjectFeedback}>
+                    Save Feedback
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
         )}
 
+        {/* Tasks */}
         <Card>
           <div className="flex items-center justify-between gap-3 mb-4">
             <h2 className="font-display text-lg text-text-primary">Tasks</h2>
@@ -657,19 +715,23 @@ export default function ProjectDetails() {
             <div className="flex flex-col divide-y divide-border">
               {project.tasks.map((task) => {
                 const canChangeStatus = canChangeTaskStatus(project, task, user);
-
                 return (
                   <div key={task.id} className="py-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="text-text-primary text-sm font-sans">{task.title}</p>
-                        <p className="text-text-secondary text-sm font-sans mt-1">{task.description}</p>
+                        <p className="text-text-secondary text-sm font-sans mt-1">
+                          {task.description}
+                        </p>
                         <p className="text-text-secondary text-xs font-mono mt-2">
-                          Assigned to {task.assignee || project.owner} - deadline {task.deadline}
+                          Assigned to {task.assignee || project.owner} - deadline{" "}
+                          {task.deadline}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant={taskStatusVariant[task.status] || "default"}>{task.status}</Badge>
+                        <Badge variant={taskStatusVariant[task.status] || "default"}>
+                          {task.status}
+                        </Badge>
                         {canChangeStatus && (
                           <select
                             value={task.status}
@@ -684,36 +746,52 @@ export default function ProjectDetails() {
                       </div>
                     </div>
                     {canViewFeedback && (
-                    <div className="mt-3">
-                      <FeedbackList
-                        feedback={task.feedback}
-                        currentUser={user}
-                        onRemove={(feedbackId) => requestRemoveFeedback("task", { taskId: task.id, feedbackId })}
-                      />
-                      {isInstructor && (
-                        <div className="mt-3 flex flex-col gap-2">
-                          <textarea
-                            value={taskFeedbackText[task.id] || ""}
-                            onChange={(e) => setTaskFeedbackText((previous) => ({ ...previous, [task.id]: e.target.value }))}
-                            placeholder="Add task feedback"
-                            className="min-h-16 bg-bg-elevated border border-border rounded-lg px-4 py-3 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue"
-                          />
-                          <div>
-                            <Button size="sm" variant="secondary" onClick={() => saveTaskFeedback(task.id)}>Save Task Feedback</Button>
+                      <div className="mt-3">
+                        <FeedbackList
+                          feedback={task.feedback}
+                          currentUser={user}
+                          onRemove={(feedbackId) =>
+                            requestRemoveFeedback("task", { taskId: task.id, feedbackId })
+                          }
+                        />
+                        {isInstructor && (
+                          <div className="mt-3 flex flex-col gap-2">
+                            <textarea
+                              value={taskFeedbackText[task.id] || ""}
+                              onChange={(e) =>
+                                setTaskFeedbackText((prev) => ({
+                                  ...prev,
+                                  [task.id]: e.target.value,
+                                }))
+                              }
+                              placeholder="Add task feedback"
+                              className="min-h-16 bg-bg-elevated border border-border rounded-lg px-4 py-3 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue"
+                            />
+                            <div>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => saveTaskFeedback(task.id)}
+                              >
+                                Save Task Feedback
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-text-secondary text-sm font-sans">No tasks have been created for this project yet.</p>
+            <p className="text-text-secondary text-sm font-sans">
+              No tasks have been created for this project yet.
+            </p>
           )}
         </Card>
 
+        {/* Thesis drafts */}
         {canViewFeedback && project.thesisDrafts?.length > 0 && (
           <Card>
             <div className="flex items-center justify-between gap-3 mb-4">
@@ -725,8 +803,12 @@ export default function ProjectDetails() {
                 <div key={draft.id} className="py-4">
                   <div className="flex items-center gap-2 mb-2">
                     {draft.isFinal && <Badge variant="success">Final</Badge>}
-                    <p className="text-text-primary text-sm font-sans">{draft.title || draft.fileName}</p>
-                    <Badge variant={draft.visibility === "public" ? "blue" : "default"}>{draft.visibility}</Badge>
+                    <p className="text-text-primary text-sm font-sans">
+                      {draft.title || draft.fileName}
+                    </p>
+                    <Badge variant={draft.visibility === "public" ? "blue" : "default"}>
+                      {draft.visibility}
+                    </Badge>
                   </div>
                   <a
                     href={getDocumentUrl(draft.fileName)}
@@ -739,18 +821,31 @@ export default function ProjectDetails() {
                   <FeedbackList
                     feedback={draft.feedback}
                     currentUser={user}
-                    onRemove={(feedbackId) => requestRemoveFeedback("thesis", { draftId: draft.id, feedbackId })}
+                    onRemove={(feedbackId) =>
+                      requestRemoveFeedback("thesis", { draftId: draft.id, feedbackId })
+                    }
                   />
                   {isInstructor && (
                     <div className="mt-3 flex flex-col gap-2">
                       <textarea
                         value={thesisFeedbackText[draft.id] || ""}
-                        onChange={(e) => setThesisFeedbackText((previous) => ({ ...previous, [draft.id]: e.target.value }))}
+                        onChange={(e) =>
+                          setThesisFeedbackText((prev) => ({
+                            ...prev,
+                            [draft.id]: e.target.value,
+                          }))
+                        }
                         placeholder="Add thesis draft feedback"
                         className="min-h-16 bg-bg-elevated border border-border rounded-lg px-4 py-3 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue"
                       />
                       <div>
-                        <Button size="sm" variant="secondary" onClick={() => saveThesisFeedback(draft.id)}>Save Draft Feedback</Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => saveThesisFeedback(draft.id)}
+                        >
+                          Save Draft Feedback
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -760,8 +855,7 @@ export default function ProjectDetails() {
           </Card>
         )}
 
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
+        {/* README */}
         <Card className="p-0 overflow-hidden">
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
             <div className="flex items-center gap-3">
@@ -784,15 +878,18 @@ export default function ProjectDetails() {
             <div>
               <h1 className="font-display text-4xl text-text-primary mb-4">{project.title}</h1>
               <div className="border-t border-border pt-4">
-                <p className="text-text-secondary text-sm font-sans leading-6">{project.description}</p>
+                <p className="text-text-secondary text-sm font-sans leading-6">
+                  {project.description}
+                </p>
               </div>
             </div>
 
             <ReadmeSection title="Project Access">
               <ul className="list-disc pl-6 text-text-secondary text-sm font-sans leading-7">
-                {project.demo && <li>Visual preview: available from the View Project button.</li>}
+                {project.demo && (
+                  <li>Visual preview: available from the View Project button.</li>
+                )}
                 <li>Repository: available from the GitHub button.</li>
-<<<<<<< HEAD
                 {project.report && (
                   <li>
                     Report:{" "}
@@ -806,8 +903,6 @@ export default function ProjectDetails() {
                     </a>
                   </li>
                 )}
-=======
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
               </ul>
             </ReadmeSection>
 
@@ -816,7 +911,9 @@ export default function ProjectDetails() {
             </ReadmeSection>
 
             <ReadmeSection title="Solution">
-              <p className="text-text-secondary text-sm font-sans leading-6">{project.solution}</p>
+              <p className="text-text-secondary text-sm font-sans leading-6">
+                {project.solution}
+              </p>
             </ReadmeSection>
 
             <ReadmeSection title="Key Features">
@@ -837,17 +934,10 @@ export default function ProjectDetails() {
           </div>
         </Card>
       </div>
-<<<<<<< HEAD
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-success text-sm font-sans">{toast}</p>
-            <button type="button" className="text-success text-xs font-semibold" onClick={() => setToast("")}>
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
+
+      {/* ── Modals ──────────────────────────────────────────────────────────── */}
+
+      {/* Remove-feedback confirmation */}
       <Modal
         isOpen={Boolean(confirmFeedback)}
         onClose={() => setConfirmFeedback(null)}
@@ -856,13 +946,17 @@ export default function ProjectDetails() {
         <div className="flex flex-col gap-4">
           <p className="text-text-secondary text-sm font-sans">{confirmFeedback?.message}</p>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setConfirmFeedback(null)}>Cancel</Button>
-            <Button variant="danger" onClick={confirmRemoveFeedback}>Remove Feedback</Button>
+            <Button variant="secondary" onClick={() => setConfirmFeedback(null)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={confirmRemoveFeedback}>
+              Remove Feedback
+            </Button>
           </div>
         </div>
       </Modal>
-=======
 
+      {/* Flag modal */}
       <Modal
         isOpen={flagModalOpen}
         onClose={() => {
@@ -871,18 +965,28 @@ export default function ProjectDetails() {
           setFlagStep("details");
           setFlagConfirmAck(false);
         }}
-        title={flagStep === "details" ? "Report an academic integrity concern" : "Confirm moderation action"}
+        title={
+          flagStep === "details"
+            ? "Report an academic integrity concern"
+            : "Confirm moderation action"
+        }
       >
         {flagStep === "details" ? (
           <>
             <div className="rounded-lg border border-border bg-bg-elevated/50 px-4 py-3 mb-5 space-y-2">
-              <p className="text-xs font-mono uppercase tracking-[0.2em] text-text-secondary">University policy</p>
+              <p className="text-xs font-mono uppercase tracking-[0.2em] text-text-secondary">
+                University policy
+              </p>
               <p className="text-sm text-text-secondary font-sans leading-relaxed">
-                Use this workflow for plagiarism, misrepresentation, or other breaches of programme rules. A clear, factual reason is required.
+                Use this workflow for plagiarism, misrepresentation, or other breaches of programme
+                rules. A clear, factual reason is required.
               </p>
               <ul className="text-sm text-text-secondary font-sans list-disc pl-5 space-y-1 leading-relaxed">
                 <li>The project is deactivated on the platform immediately.</li>
-                <li>The student may submit one appeal with evidence; until then the listing stays inactive.</li>
+                <li>
+                  The student may submit one appeal with evidence; until then the listing stays
+                  inactive.
+                </li>
                 <li>Administrators see your reason and can uphold or reverse the flag.</li>
               </ul>
             </div>
@@ -893,8 +997,8 @@ export default function ProjectDetails() {
               </label>
               <textarea
                 value={flagReason}
-                onChange={(event) => {
-                  setFlagReason(event.target.value);
+                onChange={(e) => {
+                  setFlagReason(e.target.value);
                   setFlagError("");
                 }}
                 rows={5}
@@ -915,7 +1019,8 @@ export default function ProjectDetails() {
                 className="mt-1 rounded border-border text-danger focus:ring-danger/30"
               />
               <span className="text-sm text-text-secondary font-sans leading-relaxed">
-                I confirm this report is submitted in good faith and reflects a genuine concern under GUC academic integrity expectations.
+                I confirm this report is submitted in good faith and reflects a genuine concern
+                under GUC academic integrity expectations.
               </span>
             </label>
 
@@ -938,7 +1043,9 @@ export default function ProjectDetails() {
                 onClick={() => {
                   const trimmed = flagReason.trim();
                   if (trimmed.length < 28) {
-                    setFlagError("Please provide a fuller explanation (at least 28 characters).");
+                    setFlagError(
+                      "Please provide a fuller explanation (at least 28 characters)."
+                    );
                     return;
                   }
                   if (!flagConfirmAck) {
@@ -949,26 +1056,34 @@ export default function ProjectDetails() {
                   setFlagStep("confirm");
                 }}
               >
-                Review & continue
+                Review &amp; continue
               </Button>
             </div>
           </>
         ) : (
           <>
             <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-4 mb-5 space-y-3">
-              <p className="text-sm font-sans text-text-primary font-semibold">You are about to flag this submission</p>
+              <p className="text-sm font-sans text-text-primary font-semibold">
+                You are about to flag this submission
+              </p>
               <p className="text-sm text-text-secondary font-sans">
                 <span className="text-text-primary font-medium">{project.title}</span>
                 {" · "}
                 {project.courseCode} · {project.owner}
               </p>
               <div>
-                <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary mb-1">Reason on record</p>
-                <p className="text-sm text-text-primary font-sans leading-relaxed whitespace-pre-wrap">{flagReason.trim()}</p>
+                <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary mb-1">
+                  Reason on record
+                </p>
+                <p className="text-sm text-text-primary font-sans leading-relaxed whitespace-pre-wrap">
+                  {flagReason.trim()}
+                </p>
               </div>
             </div>
             <p className="text-sm text-text-secondary font-sans mb-6">
-              After you confirm, the project is deactivated for public discovery and the student receives a notification with this reason. This cannot be undone from this screen; appeals are handled by administrators.
+              After you confirm, the project is deactivated for public discovery and the student
+              receives a notification with this reason. This cannot be undone from this screen;
+              appeals are handled by administrators.
             </p>
             <div className="flex justify-end gap-3">
               <Button type="button" variant="secondary" onClick={() => setFlagStep("details")}>
@@ -1001,6 +1116,7 @@ export default function ProjectDetails() {
         )}
       </Modal>
 
+      {/* Favorites confirm modal */}
       <ConfirmActionModal
         isOpen={Boolean(confirmation)}
         action={confirmation?.action}
@@ -1009,6 +1125,7 @@ export default function ProjectDetails() {
         onConfirm={confirmation?.onConfirm}
       />
 
+      {/* Admin deactivate confirm modal */}
       <ConfirmActionModal
         isOpen={adminExploreDeactivateOpen}
         action={`deactivate "${project.title}" — it will disappear from Explore until an administrator activates it again from Admin → Projects`}
@@ -1017,12 +1134,13 @@ export default function ProjectDetails() {
         onConfirm={() => {
           setProjectPlatformActive(project.id, false);
           setAdminExploreDeactivateOpen(false);
-          setFeedbackMessage(`“${project.title}” was deactivated.`);
+          setFeedbackMessage(`"${project.title}" was deactivated.`);
         }}
       />
 
+      {/* Success toast */}
       <SuccessToast message={feedbackMessage} onClose={() => setFeedbackMessage("")} />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }
+

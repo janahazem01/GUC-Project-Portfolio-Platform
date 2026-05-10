@@ -1,14 +1,40 @@
-<<<<<<< HEAD
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Badge, Stars, Button, PageHeader, Modal, Input } from "../../components/ui";
+import {
+  Card,
+  Badge,
+  Stars,
+  Button,
+  PageHeader,
+  Modal,
+  Input,
+  SuccessToast,
+  ConfirmActionModal,
+} from "../../components/ui";
+import { MiniDonutChart } from "../../components/viz/Charts.jsx";
+import { CHART_COLORS } from "../../components/viz/chartColors.js";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
 import { courses, dummyUsers, instructorDirectory } from "../../data/dummy";
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── constants ───────────────────────────────────────────────────────────────
 const REQUIRED = "This field cannot be left empty";
 
+const invitationStatusVariant = {
+  accepted: "success",
+  rejected: "danger",
+  "no reply": "warning",
+};
+
+const taskStatusVariant = {
+  pending: "warning",
+  postponed: "default",
+  completed: "success",
+};
+
+const bachelorProjectCourse = courses.find((c) => c.code === "BP");
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
 const blankForm = () => ({
   title: "",
   courseId: "",
@@ -19,21 +45,7 @@ const blankForm = () => ({
   visibility: "public",
 });
 
-function validate(form) {
-  const errs = {};
-  if (!form.title.trim())     errs.title     = REQUIRED;
-  if (!form.courseId)         errs.courseId  = REQUIRED;
-  if (!form.github.trim())    errs.github    = REQUIRED;
-  if (!form.languages.trim()) errs.languages = REQUIRED;
-  return errs;
-}
-
-const bachelorProjectCourse = courses.find((course) => course.code === "BP");
-
-const blankThesisDraftForm = () => ({
-  title: "",
-  fileName: "",
-});
+const blankThesisDraftForm = () => ({ title: "", fileName: "" });
 
 const blankTaskForm = () => ({
   title: "",
@@ -43,17 +55,14 @@ const blankTaskForm = () => ({
   deadline: "",
 });
 
-const invitationStatusVariant = {
-  accepted: "success",
-  rejected: "danger",
-  "no reply": "warning",
-};
-
-const taskStatusVariant = {
-  pending: "warning",
-  "postponed": "default",
-  completed: "success",
-};
+function validateProjectForm(form) {
+  const errs = {};
+  if (!form.title.trim()) errs.title = REQUIRED;
+  if (!form.courseId) errs.courseId = REQUIRED;
+  if (!form.github.trim()) errs.github = REQUIRED;
+  if (!form.languages.trim()) errs.languages = REQUIRED;
+  return errs;
+}
 
 function canAccessProject(project, user) {
   if (!user?.name) return false;
@@ -62,31 +71,32 @@ function canAccessProject(project, user) {
   if ((project.team || []).includes(user.name)) return true;
 
   if (user.role === "instructor") {
-    return (project.instructorInvitations || []).some((invite) =>
-      invite.status === "accepted" &&
-      (invite.email === user.email || invite.instructorName === user.name)
+    return (project.instructorInvitations || []).some(
+      (inv) =>
+        inv.status === "accepted" &&
+        (inv.email === user.email || inv.instructorName === user.name)
     );
   }
 
-  return (project.collaboratorInvitations || []).some((invite) =>
-    invite.status === "accepted" &&
-    (invite.email === user.email || invite.collaboratorName === user.name)
+  return (project.collaboratorInvitations || []).some(
+    (inv) =>
+      inv.status === "accepted" &&
+      (inv.email === user.email || inv.collaboratorName === user.name)
   );
 }
 
 function getCourseIdByCode(courseCode) {
-  return courses.find((course) => course.code === courseCode)?.id;
+  return courses.find((c) => c.code === courseCode)?.id;
 }
 
 function getDocumentUrl(fileName) {
   return fileName ? `/documents/${encodeURIComponent(fileName)}` : "#";
 }
 
-// ─── ProjectForm lives OUTSIDE the page component so it never remounts ───────
+// ─── ProjectForm (outside page so it never remounts) ─────────────────────────
 function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }) {
   return (
     <div className="flex flex-col gap-4">
-      {/* Title */}
       <div>
         <Input
           label="Project Title *"
@@ -97,7 +107,6 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
         {errors.title && <p className="text-danger text-xs font-sans mt-1">{errors.title}</p>}
       </div>
 
-      {/* Course */}
       <div>
         <label className="text-sm text-text-secondary font-sans">Course *</label>
         <select
@@ -116,7 +125,6 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
         {errors.courseId && <p className="text-danger text-xs font-sans mt-1">{errors.courseId}</p>}
       </div>
 
-      {/* GitHub */}
       <div>
         <Input
           label="GitHub Link *"
@@ -127,7 +135,6 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
         {errors.github && <p className="text-danger text-xs font-sans mt-1">{errors.github}</p>}
       </div>
 
-      {/* Languages */}
       <div>
         <Input
           label="Programming Languages *"
@@ -139,7 +146,6 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
         {errors.languages && <p className="text-danger text-xs font-sans mt-1">{errors.languages}</p>}
       </div>
 
-      {/* Demo video */}
       <div>
         <Input
           label="Demo Video URL"
@@ -150,7 +156,6 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
         <p className="text-text-secondary text-xs font-sans mt-1">Optional</p>
       </div>
 
-      {/* Report */}
       <div>
         <Input
           label="Project Report Name"
@@ -161,7 +166,6 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
         <p className="text-text-secondary text-xs font-sans mt-1">Optional — not uploaded, just labeled</p>
       </div>
 
-      {/* Req 20 — visibility */}
       <div>
         <label className="text-sm text-text-secondary font-sans">Portfolio Visibility *</label>
         <div className="mt-2 flex gap-3">
@@ -192,71 +196,131 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
       </p>
 
       <div className="flex items-center justify-end gap-3 pt-2">
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button type="button" variant="gold" onClick={onSubmit}>{submitLabel}</Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="button" variant="gold" onClick={onSubmit}>
+          {submitLabel}
+        </Button>
       </div>
     </div>
   );
 }
 
-// ─── Page component ──────────────────────────────────────────────────────────
+// ─── Page component ───────────────────────────────────────────────────────────
 export default function Projects() {
   const { user } = useContext(AuthContext);
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   const { projectList, addProject, updateProject, deleteProject, toggleVisibility } = useProjects();
 
-  const [modal,         setModal]         = useState(null);   // null | { mode, project? }
-  const [form,          setForm]          = useState(blankForm());
-  const [errors,        setErrors]        = useState({});
-  const [successMsg,    setSuccessMsg]    = useState("");
-  const [modalNotice,   setModalNotice]   = useState(null);
+  // ── modal / form state ────────────────────────────────────────────
+  const [modal, setModal] = useState(null); // null | { mode: "create" | "edit", project? }
+  const [form, setForm] = useState(blankForm());
+  const [errors, setErrors] = useState({});
+
+  // edit-in-table state (second implementation's inline edit modal)
+  const [editingProject, setEditingProject] = useState(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    course: "",
+    courseCode: "",
+    description: "",
+    languages: "",
+    createdAt: "",
+  });
+  const [editFormErrors, setEditFormErrors] = useState({});
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
+
+  // toasts
+  const [successMsg, setSuccessMsg] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [modalNotice, setModalNotice] = useState(null); // { message, area }
+
+  // confirm dialogs
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [editConfirm,   setEditConfirm]   = useState(false);
+  const [editConfirm, setEditConfirm] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
-  const [thesisModal,   setThesisModal]   = useState(null);
-  const [thesisForm,    setThesisForm]    = useState(blankThesisDraftForm());
-  const [thesisError,   setThesisError]   = useState("");
-  const [taskForm,      setTaskForm]      = useState(blankTaskForm());
-  const [taskError,     setTaskError]     = useState("");
-  const [selectedInstructor, setSelectedInstructor] = useState({});
-  const [selectedCollaborator, setSelectedCollaborator] = useState({});
-  const [optionsProjectId, setOptionsProjectId] = useState(null);
-  const [tasksProjectId, setTasksProjectId] = useState(null);
+
+  // thesis
+  const [thesisModal, setThesisModal] = useState(null);
+  const [thesisForm, setThesisForm] = useState(blankThesisDraftForm());
+  const [thesisError, setThesisError] = useState("");
   const [thesisEditProjectId, setThesisEditProjectId] = useState(null);
   const [thesisEditAdd, setThesisEditAdd] = useState({ title: "", fileName: "" });
   const [thesisEditError, setThesisEditError] = useState("");
+
+  // tasks
+  const [taskForm, setTaskForm] = useState(blankTaskForm());
+  const [taskError, setTaskError] = useState("");
+  const [tasksProjectId, setTasksProjectId] = useState(null);
+
+  // invitations
+  const [selectedInstructor, setSelectedInstructor] = useState({});
+  const [selectedCollaborator, setSelectedCollaborator] = useState({});
+
+  // options panel
+  const [optionsProjectId, setOptionsProjectId] = useState(null);
+
+  // search
   const [myProjectsSearch, setMyProjectsSearch] = useState("");
 
-  // Req 21 - view projects I own, joined, or supervise
-  const myProjects = projectList.filter((project) => canAccessProject(project, user));
-  const thesisEditProject = projectList.find((project) => project.id === thesisEditProjectId);
-  const myProjectsFiltered = myProjects.filter((project) => {
+  // ── derived data ──────────────────────────────────────────────────
+  const myProjects = useMemo(
+    () => projectList.filter((p) => canAccessProject(p, user)),
+    [projectList, user]
+  );
+
+  const myProjectsFiltered = useMemo(() => {
     const q = myProjectsSearch.trim().toLowerCase();
-    if (!q) return true;
-    return project.title.toLowerCase().includes(q);
-  });
-  const optionsProject = projectList.find((project) => project.id === optionsProjectId);
-  const tasksProject = projectList.find((project) => project.id === tasksProjectId);
+    return q ? myProjects.filter((p) => p.title.toLowerCase().includes(q)) : myProjects;
+  }, [myProjects, myProjectsSearch]);
 
-  const viewProject = (id) => navigate(`/projects/${id}`);
-  const openProjectTasks = (id) => navigate(`/tasks?projectId=${id}`);
-  const showModalNotice = (message, area = "general") => {
-    setModalNotice({ message, area });
-  };
+  const languageInsights = useMemo(() => {
+    const tallies = {};
+    myProjects.forEach((p) =>
+      p.languages.forEach((lang) => {
+        tallies[lang] = (tallies[lang] || 0) + 1;
+      })
+    );
+    const total = Object.values(tallies).reduce((a, c) => a + c, 0);
+    const sorted = Object.entries(tallies)
+      .sort((a, b) => b[1] - a[1])
+      .map(([language, count], i) => ({
+        language,
+        count,
+        pct: total ? Math.round((count / total) * 100) : 0,
+        key: language,
+        label: language,
+        value: count,
+        sliceIndex: i,
+      }));
+    return { total, sorted };
+  }, [myProjects]);
 
+  const optionsProject = projectList.find((p) => p.id === optionsProjectId);
+  const tasksProject = projectList.find((p) => p.id === tasksProjectId);
+  const thesisEditProject = projectList.find((p) => p.id === thesisEditProjectId);
+
+  // ── auto-dismiss toasts ───────────────────────────────────────────
   useEffect(() => {
-    if (!modalNotice) return undefined;
-    const timer = window.setTimeout(() => setModalNotice(null), 3500);
-    return () => window.clearTimeout(timer);
+    if (!modalNotice) return;
+    const t = window.setTimeout(() => setModalNotice(null), 3500);
+    return () => window.clearTimeout(t);
   }, [modalNotice]);
 
   useEffect(() => {
-    if (!successMsg) return undefined;
-    const timer = window.setTimeout(() => setSuccessMsg(""), 3500);
-    return () => window.clearTimeout(timer);
+    if (!successMsg) return;
+    const t = window.setTimeout(() => setSuccessMsg(""), 3500);
+    return () => window.clearTimeout(t);
   }, [successMsg]);
 
-  // ── open modals ────────────────────────────────────────────────────
+  const showModalNotice = (message, area = "general") => setModalNotice({ message, area });
+
+  // ── navigation helpers ────────────────────────────────────────────
+  const viewProject = (id) => navigate(`/projects/${id}`);
+  const openProjectTasks = (id) => navigate(`/tasks?projectId=${id}`);
+
+  // ── create/edit modal (card view) ─────────────────────────────────
   const openCreate = () => {
     setForm(blankForm());
     setErrors({});
@@ -277,12 +341,12 @@ export default function Projects() {
     }
     const courseObj = courses.find((c) => c.name === project.course);
     setForm({
-      title:      project.title,
-      courseId:   courseObj ? String(courseObj.id) : "",
-      github:     project.github    || "",
-      report:     project.report    || "",
-      languages:  project.languages.join(", "),
-      demoVideo:  project.demoVideo || "",
+      title: project.title,
+      courseId: courseObj ? String(courseObj.id) : "",
+      github: project.github || "",
+      report: project.report || "",
+      languages: project.languages.join(", "),
+      demoVideo: project.demoVideo || "",
       visibility: project.visibility || "public",
     });
     setErrors({});
@@ -290,10 +354,217 @@ export default function Projects() {
     setModal({ mode: "edit", project });
   };
 
+  const closeModal = () => {
+    setModal(null);
+    setErrors({});
+    setModalNotice(null);
+  };
+
+  const handleChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+  };
+
+  // ── create/edit modal (table row inline edit) ─────────────────────
+  const openTableEdit = (event, project) => {
+    event.stopPropagation();
+    setEditingProject(project);
+    setEditForm({
+      title: project.title,
+      course: project.course,
+      courseCode: project.courseCode,
+      description: project.description,
+      languages: project.languages.join(", "),
+      createdAt: project.createdAt,
+    });
+    setEditFormErrors({});
+    setSuccessMessage("");
+  };
+
+  const closeTableEdit = () => {
+    setEditingProject(null);
+    setEditFormErrors({});
+    setSaveConfirmOpen(false);
+  };
+
+  const updateEditField = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+    if (editFormErrors[field] && value.trim()) {
+      setEditFormErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const validateEditForm = () => {
+    const nextErrors = {};
+    Object.entries(editForm).forEach(([field, value]) => {
+      if (!value.trim()) nextErrors[field] = REQUIRED;
+    });
+    setEditFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleTableEditSubmit = (event) => {
+    event.preventDefault();
+    if (!validateEditForm()) return;
+    setSaveConfirmOpen(true);
+  };
+
+  const applyTableEdit = () => {
+    if (!editingProject) return;
+    updateProject(editingProject.id, {
+      title: editForm.title.trim(),
+      course: editForm.course.trim(),
+      courseCode: editForm.courseCode.trim(),
+      description: editForm.description.trim(),
+      languages: editForm.languages
+        .split(",")
+        .map((l) => l.trim())
+        .filter(Boolean),
+      createdAt: editForm.createdAt.trim(),
+    });
+    closeTableEdit();
+    setSuccessMessage("Edits were made successfully");
+  };
+
+  // ── CRUD ──────────────────────────────────────────────────────────
+  const handleCreate = () => {
+    const errs = validateProjectForm(form);
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+
+    const course = courses.find((c) => c.id === Number(form.courseId));
+    addProject({
+      id: Date.now(),
+      title: form.title.trim(),
+      course: course?.name || "",
+      courseCode: course?.code || "",
+      owner: user?.name,
+      supervisor: "",
+      status: "In Progress",
+      github: form.github.trim(),
+      demo: form.demoVideo.trim() || null,
+      report: form.report.trim() || null,
+      demoVideo: form.demoVideo.trim() || null,
+      languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean),
+      team: [user?.name],
+      rating: 0,
+      visibility: form.visibility,
+      createdAt: new Date().toISOString().slice(0, 10),
+      description: "",
+      problem: "",
+      solution: "",
+      features: [],
+      outcomes: [],
+      resources: [{ label: "Project Repository", url: form.github.trim() }],
+      tasks: [],
+    });
+    setForm(blankForm());
+    setErrors({});
+    showModalNotice("Project created successfully.");
+  };
+
+  const requestUpdateConfirmation = () => {
+    const errs = validateProjectForm(form);
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+    setEditConfirm(true);
+  };
+
+  const handleUpdate = () => {
+    const course = courses.find((c) => c.id === Number(form.courseId));
+    updateProject(modal.project.id, {
+      title: form.title.trim(),
+      course: course?.name || modal.project.course,
+      courseCode: course?.code || modal.project.courseCode,
+      github: form.github.trim(),
+      report: form.report.trim() || modal.project.report,
+      demoVideo: form.demoVideo.trim() || modal.project.demoVideo,
+      demo: form.demoVideo.trim() || modal.project.demo,
+      languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean),
+      visibility: form.visibility,
+    });
+    setEditConfirm(false);
+    setErrors({});
+    showModalNotice("Project updated successfully.");
+  };
+
+  const handleDelete = () => {
+    deleteProject(deleteConfirm.id);
+    setDeleteConfirm(null);
+    setSuccessMsg("Project deleted.");
+  };
+
+  // ── thesis ────────────────────────────────────────────────────────
+  const openThesisUpload = () => {
+    setThesisForm(blankThesisDraftForm());
+    setThesisError("");
+    setModalNotice(null);
+    setThesisModal({ mode: "upload" });
+  };
+
+  const closeThesisModal = () => {
+    setThesisModal(null);
+    setThesisError("");
+    setModalNotice(null);
+  };
+
   const closeThesisEditModal = () => {
     setThesisEditProjectId(null);
     setThesisEditAdd({ title: "", fileName: "" });
     setThesisEditError("");
+  };
+
+  const getBachelorProject = () =>
+    projectList.find((p) => p.owner === user?.name && p.courseCode === "BP");
+
+  const handleThesisUpload = () => {
+    if (!thesisForm.title.trim() || !thesisForm.fileName.trim()) {
+      setThesisError("Add a draft title and choose a file name.");
+      return;
+    }
+    const nextDraft = {
+      id: Date.now(),
+      title: thesisForm.title.trim(),
+      fileName: thesisForm.fileName.trim(),
+      uploadedAt: new Date().toISOString().slice(0, 10),
+      isFinal: false,
+      visibility: "private",
+    };
+    const bachelorProject = getBachelorProject();
+    if (bachelorProject) {
+      updateProject(bachelorProject.id, {
+        thesisDrafts: [...(bachelorProject.thesisDrafts || []), nextDraft],
+      });
+    } else {
+      addProject({
+        id: Date.now() + 1,
+        title: "Bachelor Project Thesis",
+        course: bachelorProjectCourse?.name || "Bachelor Project",
+        courseCode: bachelorProjectCourse?.code || "BP",
+        owner: user?.name,
+        supervisor: "",
+        status: "Drafting",
+        github: "#",
+        demo: null,
+        report: null,
+        demoVideo: null,
+        languages: [],
+        team: [user?.name],
+        rating: 0,
+        visibility: "public",
+        createdAt: new Date().toISOString().slice(0, 10),
+        description: "Bachelor Project thesis draft workspace.",
+        problem: "",
+        solution: "",
+        features: [],
+        outcomes: [],
+        resources: [],
+        thesisDrafts: [nextDraft],
+        finalDraftId: null,
+        tasks: [],
+      });
+    }
+    setThesisForm(blankThesisDraftForm());
+    setThesisError("");
+    showModalNotice("Thesis draft uploaded under Bachelor Project.");
   };
 
   const addThesisDraftInEditor = () => {
@@ -335,156 +606,12 @@ export default function Projects() {
           })),
           finalDraftId: removedFinal ? null : project.finalDraftId,
         });
-        showModalNotice(removedFinal ? "Draft removed. Final selection cleared." : "Thesis PDF removed.", "thesis");
+        showModalNotice(
+          removedFinal ? "Draft removed. Final selection cleared." : "Thesis PDF removed.",
+          "thesis"
+        );
       },
     });
-  };
-
-  const closeModal = () => { setModal(null); setErrors({}); setModalNotice(null); };
-
-  // ── field change ───────────────────────────────────────────────────
-  const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
-  };
-
-  // ── CRUD ───────────────────────────────────────────────────────────
-  const handleCreate = () => {
-    const errs = validate(form);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-
-    const course = courses.find((c) => c.id === Number(form.courseId));
-    addProject({
-      id:          Date.now(),
-      title:       form.title.trim(),
-      course:      course?.name || "",
-      courseCode:  course?.code || "",
-      owner:       user?.name,
-      supervisor:  "",
-      status:      "In Progress",
-      github:      form.github.trim(),
-      demo:        form.demoVideo.trim() || null,
-      report:      form.report.trim()    || null,
-      demoVideo:   form.demoVideo.trim() || null,
-      languages:   form.languages.split(",").map((l) => l.trim()).filter(Boolean),
-      team:        [user?.name],
-      rating:      0,
-      visibility:  form.visibility,
-      createdAt:   new Date().toISOString().slice(0, 10),
-      description: "",
-      problem:     "",
-      solution:    "",
-      features:    [],
-      outcomes:    [],
-      resources:   [{ label: "Project Repository", url: form.github.trim() }],
-      tasks:       [],
-    });
-    setForm(blankForm());
-    setErrors({});
-    showModalNotice("Project created successfully.");
-  };
-
-  const requestUpdateConfirmation = () => {
-    const errs = validate(form);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    setEditConfirm(true);
-  };
-
-  const handleUpdate = () => {
-    const course = courses.find((c) => c.id === Number(form.courseId));
-    updateProject(modal.project.id, {
-      title:      form.title.trim(),
-      course:     course?.name     || modal.project.course,
-      courseCode: course?.code     || modal.project.courseCode,
-      github:     form.github.trim(),
-      report:     form.report.trim()    || modal.project.report,
-      demoVideo:  form.demoVideo.trim() || modal.project.demoVideo,
-      demo:       form.demoVideo.trim() || modal.project.demo,
-      languages:  form.languages.split(",").map((l) => l.trim()).filter(Boolean),
-      visibility: form.visibility,
-    });
-    setEditConfirm(false);
-    setErrors({});
-    showModalNotice("Project updated successfully.");
-  };
-
-  const handleDelete = () => {
-    deleteProject(deleteConfirm.id);
-    setDeleteConfirm(null);
-    setSuccessMsg("Project deleted.");
-  };
-
-  const openThesisUpload = () => {
-    setThesisForm(blankThesisDraftForm());
-    setThesisError("");
-    setModalNotice(null);
-    setThesisModal({ mode: "upload" });
-  };
-
-  const closeThesisModal = () => {
-    setThesisModal(null);
-    setThesisError("");
-    setModalNotice(null);
-  };
-
-  const getBachelorProject = () =>
-    projectList.find((project) => project.owner === user?.name && project.courseCode === "BP");
-
-  const buildThesisDraft = () => ({
-    id: Date.now(),
-    title: thesisForm.title.trim(),
-    fileName: thesisForm.fileName.trim(),
-    uploadedAt: new Date().toISOString().slice(0, 10),
-    isFinal: false,
-    visibility: "private",
-  });
-
-  const handleThesisUpload = () => {
-    if (!thesisForm.title.trim() || !thesisForm.fileName.trim()) {
-      setThesisError("Add a draft title and choose a file name.");
-      return;
-    }
-
-    const nextDraft = buildThesisDraft();
-    const bachelorProject = getBachelorProject();
-
-    if (bachelorProject) {
-      updateProject(bachelorProject.id, {
-        thesisDrafts: [...(bachelorProject.thesisDrafts || []), nextDraft],
-      });
-    } else {
-      addProject({
-        id: Date.now() + 1,
-        title: "Bachelor Project Thesis",
-        course: bachelorProjectCourse?.name || "Bachelor Project",
-        courseCode: bachelorProjectCourse?.code || "BP",
-        owner: user?.name,
-        supervisor: "",
-        status: "Drafting",
-        github: "#",
-        demo: null,
-        report: null,
-        demoVideo: null,
-        languages: [],
-        team: [user?.name],
-        rating: 0,
-        visibility: "public",
-        createdAt: new Date().toISOString().slice(0, 10),
-        description: "Bachelor Project thesis draft workspace.",
-        problem: "",
-        solution: "",
-        features: [],
-        outcomes: [],
-        resources: [],
-        thesisDrafts: [nextDraft],
-        finalDraftId: null,
-        tasks: [],
-      });
-    }
-
-    setThesisForm(blankThesisDraftForm());
-    setThesisError("");
-    showModalNotice("Thesis draft uploaded under Bachelor Project.");
   };
 
   const markFinalDraft = (e, project, draftId) => {
@@ -492,10 +619,10 @@ export default function Projects() {
     updateProject(project.id, {
       finalDraftId: draftId,
       visibility: "public",
-      thesisDrafts: (project.thesisDrafts || []).map((draft) => ({
-        ...draft,
-        isFinal: draft.id === draftId,
-        visibility: draft.id === draftId ? "public" : "private",
+      thesisDrafts: (project.thesisDrafts || []).map((d) => ({
+        ...d,
+        isFinal: d.id === draftId,
+        visibility: d.id === draftId ? "public" : "private",
       })),
     });
     showModalNotice("Final thesis draft selected. Other drafts are now private.", "thesis");
@@ -505,8 +632,8 @@ export default function Projects() {
     e.stopPropagation();
     updateProject(project.id, {
       finalDraftId: null,
-      thesisDrafts: (project.thesisDrafts || []).map((draft) => ({
-        ...draft,
+      thesisDrafts: (project.thesisDrafts || []).map((d) => ({
+        ...d,
         isFinal: false,
         visibility: "private",
       })),
@@ -514,23 +641,9 @@ export default function Projects() {
     showModalNotice("Final thesis draft selection cancelled.", "thesis");
   };
 
-  const getEligibleCollaborators = (project) => {
-    if (project.courseCode === "BP") return [];
-    const invitedIds = (project.collaboratorInvitations || []).map((invite) => invite.studentId);
-    const currentTeam = new Set([...(project.team || []), project.owner]);
-    return dummyUsers.filter((candidate) =>
-      candidate.role === "student" &&
-      candidate.email !== user?.email &&
-      !currentTeam.has(candidate.name) &&
-      !invitedIds.includes(candidate.id)
-    );
-  };
-
-  const getProjectCollaborators = (project) =>
-    project.courseCode === "BP" ? [] : (project.team || []).filter((member) => member !== project.owner);
-
+  // ── tasks ─────────────────────────────────────────────────────────
   const handleTaskField = (field, value) => {
-    setTaskForm((previous) => ({ ...previous, [field]: value }));
+    setTaskForm((prev) => ({ ...prev, [field]: value }));
     if (taskError) setTaskError("");
   };
 
@@ -545,14 +658,12 @@ export default function Projects() {
       setTaskError("Assign the task to a collaborator.");
       return;
     }
-
-    const nextTaskId = Math.max(0, ...(project.tasks || []).map((task) => Number(task.id) || 0)) + 1;
-
+    const nextId = Math.max(0, ...(project.tasks || []).map((t) => Number(t.id) || 0)) + 1;
     updateProject(project.id, {
       tasks: [
         ...(project.tasks || []),
         {
-          id: nextTaskId,
+          id: nextId,
           title: taskForm.title.trim(),
           description: taskForm.description.trim(),
           assignee: project.courseCode === "BP" ? project.owner : taskForm.assignee,
@@ -569,25 +680,21 @@ export default function Projects() {
 
   const updateTaskStatus = (project, taskId, status) => {
     updateProject(project.id, {
-      tasks: (project.tasks || []).map((task) =>
-        task.id === taskId ? { ...task, status } : task
-      ),
+      tasks: (project.tasks || []).map((t) => (t.id === taskId ? { ...t, status } : t)),
     });
   };
 
   const updateTaskField = (project, taskId, field, value) => {
     if (project.owner !== user?.name) return;
     updateProject(project.id, {
-      tasks: (project.tasks || []).map((task) =>
-        task.id === taskId ? { ...task, [field]: value } : task
-      ),
+      tasks: (project.tasks || []).map((t) => (t.id === taskId ? { ...t, [field]: value } : t)),
     });
   };
 
   const deleteTask = (project, taskId) => {
     if (project.owner !== user?.name) return;
     updateProject(project.id, {
-      tasks: (project.tasks || []).filter((task) => task.id !== taskId),
+      tasks: (project.tasks || []).filter((t) => t.id !== taskId),
     });
     showModalNotice("Task removed.", "tasks");
   };
@@ -604,57 +711,30 @@ export default function Projects() {
     });
   };
 
-  const requestRemoveCollaborator = (e, project, collaboratorName) => {
-    e.stopPropagation();
-    if (project.owner !== user?.name || project.courseCode === "BP") return;
-    setConfirmAction({
-      title: "Remove Collaborator",
-      message: `Are you sure you want to remove ${collaboratorName} from this project? Their assigned tasks will become unassigned.`,
-      confirmLabel: "Remove Collaborator",
-      variant: "danger",
-      onConfirm: () => removeCollaborator(project, collaboratorName),
-    });
-  };
-
-  const requestCancelInvitation = (e, project, invitationId, type) => {
-    e.stopPropagation();
-    setConfirmAction({
-      title: "Cancel Invitation",
-      message: "Are you sure you want to cancel this invitation?",
-      confirmLabel: "Cancel Invitation",
-      variant: "danger",
-      onConfirm: () => cancelInvitation(project, invitationId, type),
-    });
-  };
-
-  const removeCollaborator = (project, collaboratorName) => {
-    if (project.owner !== user?.name || project.courseCode === "BP") return;
-    updateProject(project.id, {
-      team: (project.team || []).filter((member) => member !== collaboratorName),
-      collaboratorInvitations: (project.collaboratorInvitations || []).filter(
-        (invite) => invite.collaboratorName !== collaboratorName
-      ),
-      tasks: (project.tasks || []).map((task) =>
-        task.assignee === collaboratorName ? { ...task, assignee: "" } : task
-      ),
-    });
-    showModalNotice(`${collaboratorName} removed from the project.`, "collaborators");
-  };
-
-  const getEligibleInstructors = (project) => {
-    const courseId = getCourseIdByCode(project.courseCode);
-    const invitedIds = (project.instructorInvitations || []).map((invite) => invite.instructorId);
-    return instructorDirectory.filter((instructor) =>
-      instructor.coursesTaught.includes(courseId) && !invitedIds.includes(instructor.id)
+  // ── collaborators ─────────────────────────────────────────────────
+  const getEligibleCollaborators = (project) => {
+    if (project.courseCode === "BP") return [];
+    const invitedIds = (project.collaboratorInvitations || []).map((i) => i.studentId);
+    const currentTeam = new Set([...(project.team || []), project.owner]);
+    return dummyUsers.filter(
+      (u) =>
+        u.role === "student" &&
+        u.email !== user?.email &&
+        !currentTeam.has(u.name) &&
+        !invitedIds.includes(u.id)
     );
   };
+
+  const getProjectCollaborators = (project) =>
+    project.courseCode === "BP"
+      ? []
+      : (project.team || []).filter((m) => m !== project.owner);
 
   const inviteCollaborator = (e, project) => {
     e.stopPropagation();
     const studentId = Number(selectedCollaborator[project.id]);
-    const collaborator = dummyUsers.find((item) => item.id === studentId && item.role === "student");
+    const collaborator = dummyUsers.find((u) => u.id === studentId && u.role === "student");
     if (!collaborator) return;
-
     updateProject(project.id, {
       collaboratorInvitations: [
         ...(project.collaboratorInvitations || []),
@@ -668,16 +748,50 @@ export default function Projects() {
         },
       ],
     });
-    setSelectedCollaborator((previous) => ({ ...previous, [project.id]: "" }));
+    setSelectedCollaborator((prev) => ({ ...prev, [project.id]: "" }));
     showModalNotice(`Invitation sent to ${collaborator.name}.`, "collaborators");
+  };
+
+  const requestRemoveCollaborator = (e, project, collaboratorName) => {
+    e.stopPropagation();
+    if (project.owner !== user?.name || project.courseCode === "BP") return;
+    setConfirmAction({
+      title: "Remove Collaborator",
+      message: `Are you sure you want to remove ${collaboratorName} from this project? Their assigned tasks will become unassigned.`,
+      confirmLabel: "Remove Collaborator",
+      variant: "danger",
+      onConfirm: () => removeCollaborator(project, collaboratorName),
+    });
+  };
+
+  const removeCollaborator = (project, collaboratorName) => {
+    if (project.owner !== user?.name || project.courseCode === "BP") return;
+    updateProject(project.id, {
+      team: (project.team || []).filter((m) => m !== collaboratorName),
+      collaboratorInvitations: (project.collaboratorInvitations || []).filter(
+        (inv) => inv.collaboratorName !== collaboratorName
+      ),
+      tasks: (project.tasks || []).map((t) =>
+        t.assignee === collaboratorName ? { ...t, assignee: "" } : t
+      ),
+    });
+    showModalNotice(`${collaboratorName} removed from the project.`, "collaborators");
+  };
+
+  // ── instructors ───────────────────────────────────────────────────
+  const getEligibleInstructors = (project) => {
+    const courseId = getCourseIdByCode(project.courseCode);
+    const invitedIds = (project.instructorInvitations || []).map((i) => i.instructorId);
+    return instructorDirectory.filter(
+      (ins) => ins.coursesTaught.includes(courseId) && !invitedIds.includes(ins.id)
+    );
   };
 
   const inviteInstructor = (e, project) => {
     e.stopPropagation();
     const instructorId = Number(selectedInstructor[project.id]);
-    const instructor = instructorDirectory.find((item) => item.id === instructorId);
+    const instructor = instructorDirectory.find((i) => i.id === instructorId);
     if (!instructor) return;
-
     updateProject(project.id, {
       instructorInvitations: [
         ...(project.instructorInvitations || []),
@@ -691,18 +805,33 @@ export default function Projects() {
         },
       ],
     });
-    setSelectedInstructor((previous) => ({ ...previous, [project.id]: "" }));
+    setSelectedInstructor((prev) => ({ ...prev, [project.id]: "" }));
     showModalNotice(`Invitation sent to ${instructor.name}.`, "instructors");
+  };
+
+  const requestCancelInvitation = (e, project, invitationId, type) => {
+    e.stopPropagation();
+    setConfirmAction({
+      title: "Cancel Invitation",
+      message: "Are you sure you want to cancel this invitation?",
+      confirmLabel: "Cancel Invitation",
+      variant: "danger",
+      onConfirm: () => cancelInvitation(project, invitationId, type),
+    });
   };
 
   const cancelInvitation = (project, invitationId, type) => {
     const key = type === "collaborator" ? "collaboratorInvitations" : "instructorInvitations";
     updateProject(project.id, {
-      [key]: (project[key] || []).filter((invite) => invite.id !== invitationId),
+      [key]: (project[key] || []).filter((inv) => inv.id !== invitationId),
     });
-    showModalNotice("Invitation cancelled.", type === "collaborator" ? "collaborators" : "instructors");
+    showModalNotice(
+      "Invitation cancelled.",
+      type === "collaborator" ? "collaborators" : "instructors"
+    );
   };
 
+  // ── portfolio visibility ──────────────────────────────────────────
   const toggleProjectPortfolio = (project) => {
     toggleVisibility(project.id);
     showModalNotice(
@@ -712,141 +841,13 @@ export default function Projects() {
     );
   };
 
-  // ── render ─────────────────────────────────────────────────────────
-=======
-import { useContext, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, Badge, Stars, Button, PageHeader, Modal, Input, SuccessToast, ConfirmActionModal } from "../../components/ui";
-import { MiniDonutChart } from "../../components/viz/Charts.jsx";
-import { CHART_COLORS } from "../../components/viz/chartColors.js";
-import { AuthContext } from "../../context/AuthContext";
-import { emitDummyUpdate, projects, subscribeDummyUpdates } from "../../data/dummy";
-
-const emptyError = "This field cannot be left empty";
-
-export default function Projects() {
-  const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
-  const [rev, setRev] = useState(0);
-  const [editingProject, setEditingProject] = useState(null);
-  const [editForm, setEditForm] = useState({
-    title: "",
-    course: "",
-    courseCode: "",
-    description: "",
-    languages: "",
-    createdAt: "",
-  });
-  const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState("");
-  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
-
-  useEffect(() => subscribeDummyUpdates(() => setRev((r) => r + 1)), []);
-
-  const myProjects = useMemo(
-    () => projects.filter((project) => project.owner === user?.name),
-    [user?.name, rev]
-  );
-
-  const languageInsights = useMemo(() => {
-    const tallies = {};
-    myProjects.forEach((project) => {
-      project.languages.forEach((lang) => {
-        tallies[lang] = (tallies[lang] || 0) + 1;
-      });
-    });
-    const total = Object.values(tallies).reduce((acc, count) => acc + count, 0);
-    const sorted = Object.entries(tallies)
-      .sort((a, b) => b[1] - a[1])
-      .map(([language, count], index) => ({
-        language,
-        count,
-        pct: total ? Math.round((count / total) * 100) : 0,
-        key: language,
-        label: language,
-        value: count,
-        sliceIndex: index,
-      }));
-    return { total, sorted };
-  }, [myProjects]);
-
-  const viewProject = (projectId) => navigate(`/projects/${projectId}`, { state: { activeNav: "/projects" } });
-
-  const openEdit = (event, project) => {
-    event.stopPropagation();
-    setEditingProject(project);
-    setEditForm({
-      title: project.title,
-      course: project.course,
-      courseCode: project.courseCode,
-      description: project.description,
-      languages: project.languages.join(", "),
-      createdAt: project.createdAt,
-    });
-    setErrors({});
-    setSuccessMessage("");
-  };
-
-  const closeEdit = () => {
-    setEditingProject(null);
-    setErrors({});
-    setSaveConfirmOpen(false);
-  };
-
-  const updateField = (field, value) => {
-    setEditForm((current) => ({ ...current, [field]: value }));
-    if (errors[field] && value.trim()) {
-      setErrors((current) => ({ ...current, [field]: "" }));
-    }
-  };
-
-  const validate = () => {
-    const nextErrors = {};
-    Object.entries(editForm).forEach(([field, value]) => {
-      if (!value.trim()) {
-        nextErrors[field] = emptyError;
-      }
-    });
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleFormSubmit = (event) => {
-    event.preventDefault();
-    if (!validate()) return;
-    setSaveConfirmOpen(true);
-  };
-
-  const applyEdit = () => {
-    if (!editingProject) return;
-    const target = projects.find((p) => p.id === editingProject.id);
-    if (!target) return;
-    const nextLanguages = editForm.languages
-      .split(",")
-      .map((language) => language.trim())
-      .filter(Boolean);
-
-    Object.assign(target, {
-      title: editForm.title.trim(),
-      course: editForm.course.trim(),
-      courseCode: editForm.courseCode.trim(),
-      description: editForm.description.trim(),
-      languages: nextLanguages,
-      createdAt: editForm.createdAt.trim(),
-    });
-    emitDummyUpdate();
-    closeEdit();
-    setSuccessMessage("Edits were made successfully");
-  };
-
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
+  // ── render ────────────────────────────────────────────────────────
   return (
     <div>
       <PageHeader
         title="My Projects"
         subtitle="Manage and track your submitted projects"
         action={
-<<<<<<< HEAD
           <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:flex-wrap">
             {myProjects.length > 0 && (
               <Input
@@ -858,169 +859,256 @@ export default function Projects() {
             )}
             {user?.role === "student" && (
               <div className="flex gap-3">
-                <Button variant="secondary" onClick={openThesisUpload}>Upload Thesis Draft</Button>
-                <Button variant="gold" onClick={openCreate}>+ New Project</Button>
+                <Button variant="secondary" onClick={openThesisUpload}>
+                  Upload Thesis Draft
+                </Button>
+                <Button variant="gold" onClick={openCreate}>
+                  + New Project
+                </Button>
               </div>
             )}
-=======
-          <div className="flex flex-wrap items-center gap-2 justify-end">
-            {user?.role === "student" && (
-              <Button type="button" variant="secondary" onClick={() => navigate("/")}>
-                Back
-              </Button>
-            )}
-            <Button variant="gold">+ New Project</Button>
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
           </div>
         }
       />
 
-<<<<<<< HEAD
-      {/* Req 21 — list of all my projects */}
-      <div className="flex flex-col gap-4">
+      {/* Language insights + collaborator charts */}
+      {user?.role === "student" && myProjects.length > 0 && (
+        <div className="space-y-4 mb-8">
+          <Card>
+            <h2 className="font-display text-base text-text-primary mb-1">
+              Programming languages across projects
+            </h2>
+            <p className="text-xs text-text-secondary font-sans mb-4 leading-snug">
+              Percentages reflect how often each language appears across your project stack lists
+              (sums to 100% of all language mentions).
+            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+              <MiniDonutChart
+                segments={languageInsights.sorted.map((seg, i) => ({
+                  key: seg.key,
+                  label: seg.language,
+                  value: seg.value,
+                  color: CHART_COLORS[i % CHART_COLORS.length],
+                }))}
+                size={150}
+              />
+              <ul className="flex-1 space-y-2 min-w-0">
+                {languageInsights.sorted.map((seg) => (
+                  <li
+                    key={seg.language}
+                    className="flex items-center justify-between gap-3 text-sm font-sans"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="h-2 w-2 rounded-full shrink-0"
+                        style={{ backgroundColor: CHART_COLORS[seg.sliceIndex % CHART_COLORS.length] }}
+                        aria-hidden
+                      />
+                      <span className="text-text-primary truncate">{seg.language}</span>
+                    </span>
+                    <span className="text-text-secondary font-mono tabular-nums shrink-0">
+                      {seg.pct}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="font-display text-base text-text-primary mb-1">
+              Top collaborators per project
+            </h2>
+            <p className="text-xs text-text-secondary font-sans mb-4">
+              Teammates listed on each of your projects (excluding you).
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {myProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="rounded-lg border border-border bg-bg-elevated/40 px-4 py-3"
+                >
+                  <h3 className="font-display text-sm text-text-primary mb-2 line-clamp-2">
+                    {project.title}
+                  </h3>
+                  <div className="flex flex-wrap gap-1">
+                    {project.team.filter((m) => m !== user?.name).map((collaborator) => (
+                      <Badge key={collaborator} variant="blue" className="text-xs">
+                        {collaborator}
+                      </Badge>
+                    ))}
+                    {project.team.filter((m) => m !== user?.name).length === 0 && (
+                      <span className="text-xs text-text-secondary font-sans">
+                        No other collaborators listed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Project cards list */}
+      <div className="flex flex-col gap-4 mb-8">
         {myProjects.length > 0 ? (
           myProjectsFiltered.length > 0 ? (
-          myProjectsFiltered.map((project) => (
-            <Card
-              key={project.id}
-              hover
-              className="cursor-pointer"
-              onClick={() => viewProject(project.id)}
-            >
-              <div className="flex items-start justify-between gap-4">
-                {/* Left */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h3 className="font-display text-lg text-text-primary">{project.title}</h3>
-                    <Badge variant="blue">{project.courseCode}</Badge>
-
-                    {/* Req 20 & 22 — visibility badge + quick toggle */}
-                    <Badge variant={project.visibility === "public" ? "success" : "default"}>
-                      {project.visibility === "public" ? "🌐 public" : "🔒 private"}
-                    </Badge>
-                    {project.owner !== user?.name && (
-                      <Badge variant="gold">{user?.role === "instructor" ? "Instructor" : "Collaborator"}</Badge>
-                    )}
-                  </div>
-
-                  <p className="text-text-secondary text-sm font-sans mb-2">{project.course}</p>
-
-                  {project.description && (
-                    <p className="text-text-secondary text-sm font-sans mb-3 max-w-xl line-clamp-2">
-                      {project.description}
-                    </p>
-                  )}
-
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {project.languages.map((lang) => (
-                      <Badge key={lang}>{lang}</Badge>
-                    ))}
-                  </div>
-
-                  {project.courseCode === "BP" && (
-                    <div className="mt-4 max-w-xl rounded-md border border-border bg-bg-elevated/60 px-3 py-3">
-                      {project.thesisDrafts?.length ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {project.thesisDrafts.map((draft) => (
-                            <div key={draft.id} className="rounded-md border border-border bg-bg-surface px-3 py-2">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  {draft.isFinal && <Badge variant="success">Final</Badge>}
-                                  <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
-                                </div>
-                                <a
-                                  href={getDocumentUrl(draft.fileName)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-accent-blue text-sm font-mono truncate hover:underline"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {draft.fileName}
-                                </a>
-                              </div>
-                              <div className="mt-2 flex items-center gap-2">
-                                <Badge variant={draft.visibility === "public" ? "blue" : "default"}>
-                                  {draft.visibility === "public" ? "public" : "private"}
-                                </Badge>
-                                <span className="text-text-secondary text-[11px] font-mono">{draft.uploadedAt}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-text-secondary text-xs font-sans">No thesis drafts uploaded yet.</p>
+            myProjectsFiltered.map((project) => (
+              <Card
+                key={project.id}
+                hover
+                className="cursor-pointer"
+                onClick={() => viewProject(project.id)}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  {/* Left */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-display text-lg text-text-primary">{project.title}</h3>
+                      <Badge variant="blue">{project.courseCode}</Badge>
+                      <Badge variant={project.visibility === "public" ? "success" : "default"}>
+                        {project.visibility === "public" ? "🌐 public" : "🔒 private"}
+                      </Badge>
+                      {project.owner !== user?.name && (
+                        <Badge variant="gold">
+                          {user?.role === "instructor" ? "Instructor" : "Collaborator"}
+                        </Badge>
                       )}
                     </div>
-                  )}
 
-                  <div className="flex items-center gap-4 mt-3 flex-wrap">
-                    {project.github && (
-                      <a
-                        href={project.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-accent-blue text-xs font-mono hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        GitHub ↗
-                      </a>
+                    <p className="text-text-secondary text-sm font-sans mb-2">{project.course}</p>
+
+                    {project.description && (
+                      <p className="text-text-secondary text-sm font-sans mb-3 max-w-xl line-clamp-2">
+                        {project.description}
+                      </p>
                     )}
-                    {project.demoVideo && (
-                      <a
-                        href={project.demoVideo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-accent-gold text-xs font-mono hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Demo Video ▶
-                      </a>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {project.languages.map((lang) => (
+                        <Badge key={lang}>{lang}</Badge>
+                      ))}
+                    </div>
+
+                    {project.courseCode === "BP" && (
+                      <div className="mt-4 max-w-xl rounded-md border border-border bg-bg-elevated/60 px-3 py-3">
+                        {project.thesisDrafts?.length ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {project.thesisDrafts.map((draft) => (
+                              <div
+                                key={draft.id}
+                                className="rounded-md border border-border bg-bg-surface px-3 py-2"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    {draft.isFinal && <Badge variant="success">Final</Badge>}
+                                    <p className="text-text-primary text-sm font-sans truncate">
+                                      {draft.title || draft.fileName}
+                                    </p>
+                                  </div>
+                                  <a
+                                    href={getDocumentUrl(draft.fileName)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-accent-blue text-sm font-mono truncate hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {draft.fileName}
+                                  </a>
+                                </div>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <Badge variant={draft.visibility === "public" ? "blue" : "default"}>
+                                    {draft.visibility === "public" ? "public" : "private"}
+                                  </Badge>
+                                  <span className="text-text-secondary text-[11px] font-mono">
+                                    {draft.uploadedAt}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-text-secondary text-xs font-sans">
+                            No thesis drafts uploaded yet.
+                          </p>
+                        )}
+                      </div>
                     )}
-                    {project.report && (
-                      <a
-                        href={getDocumentUrl(project.report)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-accent-blue text-sm font-mono hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        View PDF: {project.report}
-                      </a>
+
+                    <div className="flex items-center gap-4 mt-3 flex-wrap">
+                      {project.github && (
+                        <a
+                          href={project.github}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent-blue text-xs font-mono hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          GitHub ↗
+                        </a>
+                      )}
+                      {project.demoVideo && (
+                        <a
+                          href={project.demoVideo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent-gold text-xs font-mono hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Demo Video ▶
+                        </a>
+                      )}
+                      {project.report && (
+                        <a
+                          href={getDocumentUrl(project.report)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent-blue text-sm font-mono hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          View PDF: {project.report}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right */}
+                  <div className="flex flex-col items-end gap-3 shrink-0">
+                    <Stars rating={project.rating} />
+                    <p className="font-mono text-xs text-text-secondary">Created {project.createdAt}</p>
+                    {user?.role === "student" && project.owner === user?.name && (
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          variant="gold"
+                          size="sm"
+                          className="rounded-md border border-accent-gold/50 bg-accent-gold/15 text-accent-gold hover:bg-accent-gold/25"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openProjectTasks(project.id);
+                          }}
+                        >
+                          Tasks
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 w-10 px-0 text-xl leading-none"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setModalNotice(null);
+                            setOptionsProjectId(project.id);
+                          }}
+                          aria-label="Project options"
+                        >
+                          ⋮
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
-
-                {/* Right */}
-                <div className="flex flex-col items-end gap-3 shrink-0">
-                  <Stars rating={project.rating} />
-                  <p className="font-mono text-xs text-text-secondary">
-                    Created {project.createdAt}
-                  </p>
-                  {user?.role === "student" && project.owner === user?.name && (
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <Button
-                        variant="gold"
-                        size="sm"
-                        className="rounded-md border border-accent-gold/50 bg-accent-gold/15 text-accent-gold hover:bg-accent-gold/25"
-                        onClick={(e) => { e.stopPropagation(); openProjectTasks(project.id); }}
-                      >
-                        Tasks
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 w-10 px-0 text-xl leading-none"
-                        onClick={(e) => { e.stopPropagation(); setModalNotice(null); setOptionsProjectId(project.id); }}
-                        aria-label="Project options"
-                      >
-                        ⋮
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))
+              </Card>
+            ))
           ) : (
             <Card>
               <p className="text-text-secondary font-sans">
@@ -1037,7 +1125,104 @@ export default function Projects() {
         )}
       </div>
 
-      {/* Create modal */}
+      {/* Projects table */}
+      {myProjects.length > 0 && (
+        <Card className="p-0 overflow-hidden mb-8">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] text-left border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-bg-base">
+                  {["Projects", "Course", "Status", "Rating", "Created", "Actions"].map((h, i) => (
+                    <th
+                      key={h}
+                      className={`px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal ${
+                        i === 0 ? "min-w-[10rem]" : i === 5 ? "text-right w-[11rem]" : "text-center"
+                      }`}
+                    >
+                      {h === "Projects" ? `Projects (${myProjects.length})` : h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {myProjects.map((project) => (
+                  <tr
+                    key={project.id}
+                    className="border-b border-border last:border-0 hover:bg-bg-elevated/20 transition-colors cursor-pointer align-middle"
+                    onClick={() => viewProject(project.id)}
+                    role="link"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        viewProject(project.id);
+                      }
+                    }}
+                  >
+                    <td className="px-4 py-4">
+                      <p className="font-display text-sm text-text-primary break-words">
+                        {project.title}
+                      </p>
+                      <p className="text-text-secondary text-xs font-sans mt-1 line-clamp-2 max-w-md">
+                        {project.description}
+                      </p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {project.languages.map((lang) => (
+                          <Badge key={lang}>{lang}</Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <Badge variant="blue">{project.courseCode}</Badge>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <Badge variant={project.flagged ? "danger" : "success"}>
+                        {project.flagged ? "Flagged" : "Not flagged"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <Stars rating={project.rating} />
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <span className="font-mono text-xs text-text-secondary whitespace-nowrap">
+                        {project.createdAt}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div
+                        className="flex flex-wrap justify-end gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => openTableEdit(e, project)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            viewProject(project.id);
+                          }}
+                        >
+                          View
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* ── Modals ──────────────────────────────────────────────────── */}
+
+      {/* Create */}
       <Modal isOpen={modal?.mode === "create"} onClose={closeModal} title="Create New Project">
         <ProjectForm
           form={form}
@@ -1049,7 +1234,7 @@ export default function Projects() {
         />
       </Modal>
 
-      {/* Edit modal */}
+      {/* Edit (card-view full form) */}
       <Modal isOpen={modal?.mode === "edit"} onClose={closeModal} title="Edit Project">
         <ProjectForm
           form={form}
@@ -1061,18 +1246,110 @@ export default function Projects() {
         />
       </Modal>
 
-      <Modal isOpen={Boolean(tasksProject)} onClose={() => { setTasksProjectId(null); setTaskError(""); }} title="Project Tasks">
+      {/* Edit (table-row inline form) */}
+      <Modal isOpen={Boolean(editingProject)} onClose={closeTableEdit} title="Edit Project">
+        <form className="flex flex-col gap-4" onSubmit={handleTableEditSubmit} noValidate>
+          <div>
+            <Input
+              label="Project Title"
+              value={editForm.title}
+              onChange={(e) => updateEditField("title", e.target.value)}
+            />
+            {editFormErrors.title && (
+              <p className="text-danger text-xs font-sans mt-1">{editFormErrors.title}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Input
+                label="Course"
+                value={editForm.course}
+                onChange={(e) => updateEditField("course", e.target.value)}
+              />
+              {editFormErrors.course && (
+                <p className="text-danger text-xs font-sans mt-1">{editFormErrors.course}</p>
+              )}
+            </div>
+            <div>
+              <Input
+                label="Course Code"
+                value={editForm.courseCode}
+                onChange={(e) => updateEditField("courseCode", e.target.value)}
+              />
+              {editFormErrors.courseCode && (
+                <p className="text-danger text-xs font-sans mt-1">{editFormErrors.courseCode}</p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-text-secondary font-sans">Description</label>
+            <textarea
+              value={editForm.description}
+              onChange={(e) => updateEditField("description", e.target.value)}
+              className="mt-1.5 min-h-24 w-full bg-bg-elevated border border-border rounded-lg px-4 py-2.5
+                         text-text-primary text-sm font-sans placeholder:text-text-secondary/50
+                         focus:outline-none focus:border-accent-blue transition-colors resize-none"
+            />
+            {editFormErrors.description && (
+              <p className="text-danger text-xs font-sans mt-1">{editFormErrors.description}</p>
+            )}
+          </div>
+
+          <div>
+            <Input
+              label="Languages"
+              value={editForm.languages}
+              onChange={(e) => updateEditField("languages", e.target.value)}
+              placeholder="React, Node.js, MongoDB"
+            />
+            {editFormErrors.languages && (
+              <p className="text-danger text-xs font-sans mt-1">{editFormErrors.languages}</p>
+            )}
+          </div>
+
+          <div>
+            <Input
+              label="Creation Date"
+              type="date"
+              value={editForm.createdAt}
+              onChange={(e) => updateEditField("createdAt", e.target.value)}
+            />
+            {editFormErrors.createdAt && (
+              <p className="text-danger text-xs font-sans mt-1">{editFormErrors.createdAt}</p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={closeTableEdit}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="gold">
+              Done
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Tasks modal */}
+      <Modal
+        isOpen={Boolean(tasksProject)}
+        onClose={() => { setTasksProjectId(null); setTaskError(""); }}
+        title="Project Tasks"
+      >
         {tasksProject && (() => {
           const projectCollaborators = getProjectCollaborators(tasksProject);
           const tasks = tasksProject.tasks || [];
-
           return (
             <div className="flex flex-col gap-5">
               <div className="rounded-lg border border-border bg-bg-elevated px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-text-primary text-sm font-sans">{tasksProject.title}</p>
-                    <p className="text-text-secondary text-xs font-mono">{tasks.length} task{tasks.length === 1 ? "" : "s"}</p>
+                    <p className="text-text-secondary text-xs font-mono">
+                      {tasks.length} task{tasks.length === 1 ? "" : "s"}
+                    </p>
                   </div>
                   <Badge variant="blue">Tasks</Badge>
                 </div>
@@ -1102,15 +1379,18 @@ export default function Projects() {
                   />
                   {tasksProject.courseCode !== "BP" && (
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-sm text-text-secondary font-sans">Assigned Collaborator</label>
+                      <label className="text-sm text-text-secondary font-sans">
+                        Assigned Collaborator
+                      </label>
                       <select
                         value={taskForm.assignee}
                         onChange={(e) => handleTaskField("assignee", e.target.value)}
-                        className="bg-bg-elevated border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                        className="bg-bg-elevated border border-border rounded-lg px-3 py-2.5
+                                   text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
                       >
                         <option value="">Select collaborator</option>
-                        {projectCollaborators.map((collaborator) => (
-                          <option key={collaborator} value={collaborator}>{collaborator}</option>
+                        {projectCollaborators.map((c) => (
+                          <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
                     </div>
@@ -1120,7 +1400,8 @@ export default function Projects() {
                     <select
                       value={taskForm.status}
                       onChange={(e) => handleTaskField("status", e.target.value)}
-                      className="bg-bg-elevated border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                      className="bg-bg-elevated border border-border rounded-lg px-3 py-2.5
+                                 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
                     >
                       <option value="pending">pending</option>
                       <option value="postponed">postponed</option>
@@ -1128,8 +1409,10 @@ export default function Projects() {
                     </select>
                   </div>
                 </div>
-                {taskError && <p className="text-danger text-xs font-sans mt-3">{taskError}</p>}
-                <div className="mt-4 flex items-center gap-3">
+                {taskError && (
+                  <p className="text-danger text-xs font-sans mt-3">{taskError}</p>
+                )}
+                <div className="mt-4">
                   <Button size="sm" variant="gold" onClick={(e) => createTask(e, tasksProject)}>
                     Create Task
                   </Button>
@@ -1137,68 +1420,80 @@ export default function Projects() {
               </div>
 
               <div className="flex flex-col gap-3">
-                {tasks.length > 0 ? tasks.map((task) => (
-                  <div key={task.id} className="rounded-lg border border-border bg-bg-elevated px-4 py-4">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div>
-                        <p className="text-text-primary text-sm font-sans">{task.title}</p>
-                        <p className="text-text-secondary text-xs font-mono">Deadline {task.deadline || "not set"}</p>
+                {tasks.length > 0 ? (
+                  tasks.map((task) => (
+                    <div key={task.id} className="rounded-lg border border-border bg-bg-elevated px-4 py-4">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <p className="text-text-primary text-sm font-sans">{task.title}</p>
+                          <p className="text-text-secondary text-xs font-mono">
+                            Deadline {task.deadline || "not set"}
+                          </p>
+                        </div>
+                        <Badge variant={taskStatusVariant[task.status] || "default"}>
+                          {task.status}
+                        </Badge>
                       </div>
-                      <Badge variant={taskStatusVariant[task.status] || "default"}>{task.status}</Badge>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <Input
-                        label="Name"
-                        value={task.title}
-                        onChange={(e) => updateTaskField(tasksProject, task.id, "title", e.target.value)}
-                      />
-                      <Input
-                        label="Deadline"
-                        type="date"
-                        value={task.deadline}
-                        onChange={(e) => updateTaskField(tasksProject, task.id, "deadline", e.target.value)}
-                      />
-                      <Input
-                        label="Description"
-                        value={task.description}
-                        onChange={(e) => updateTaskField(tasksProject, task.id, "description", e.target.value)}
-                        className="sm:col-span-2"
-                      />
-                      {tasksProject.courseCode !== "BP" && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Input
+                          label="Name"
+                          value={task.title}
+                          onChange={(e) => updateTaskField(tasksProject, task.id, "title", e.target.value)}
+                        />
+                        <Input
+                          label="Deadline"
+                          type="date"
+                          value={task.deadline}
+                          onChange={(e) => updateTaskField(tasksProject, task.id, "deadline", e.target.value)}
+                        />
+                        <Input
+                          label="Description"
+                          value={task.description}
+                          onChange={(e) => updateTaskField(tasksProject, task.id, "description", e.target.value)}
+                          className="sm:col-span-2"
+                        />
+                        {tasksProject.courseCode !== "BP" && (
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-sm text-text-secondary font-sans">Assignee</label>
+                            <select
+                              value={task.assignee}
+                              onChange={(e) => updateTaskField(tasksProject, task.id, "assignee", e.target.value)}
+                              className="bg-bg-surface border border-border rounded-lg px-3 py-2.5
+                                         text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                            >
+                              <option value="">Unassigned</option>
+                              {projectCollaborators.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-sm text-text-secondary font-sans">Assignee</label>
+                          <label className="text-sm text-text-secondary font-sans">Status</label>
                           <select
-                            value={task.assignee}
-                            onChange={(e) => updateTaskField(tasksProject, task.id, "assignee", e.target.value)}
-                            className="bg-bg-surface border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                            value={task.status}
+                            onChange={(e) => updateTaskStatus(tasksProject, task.id, e.target.value)}
+                            className="bg-bg-surface border border-border rounded-lg px-3 py-2.5
+                                       text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
                           >
-                            <option value="">Unassigned</option>
-                            {projectCollaborators.map((collaborator) => (
-                              <option key={collaborator} value={collaborator}>{collaborator}</option>
-                            ))}
+                            <option value="pending">pending</option>
+                            <option value="postponed">postponed</option>
+                            <option value="completed">completed</option>
                           </select>
                         </div>
-                      )}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-sm text-text-secondary font-sans">Status</label>
-                        <select
-                          value={task.status}
-                          onChange={(e) => updateTaskStatus(tasksProject, task.id, e.target.value)}
-                          className="bg-bg-surface border border-border rounded-lg px-3 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={(e) => requestDeleteTask(e, tasksProject, task)}
                         >
-                          <option value="pending">pending</option>
-                          <option value="postponed">postponed</option>
-                          <option value="completed">completed</option>
-                        </select>
+                          Remove Task
+                        </Button>
                       </div>
                     </div>
-                    <div className="mt-3 flex justify-end">
-                      <Button size="sm" variant="danger" onClick={(e) => requestDeleteTask(e, tasksProject, task)}>
-                        Remove Task
-                      </Button>
-                    </div>
-                  </div>
-                )) : (
+                  ))
+                ) : (
                   <p className="text-text-secondary text-sm font-sans">No tasks created yet.</p>
                 )}
               </div>
@@ -1207,8 +1502,12 @@ export default function Projects() {
         })()}
       </Modal>
 
-      {/* Req 23 — thesis draft upload */}
-      <Modal isOpen={Boolean(optionsProject)} onClose={() => setOptionsProjectId(null)} title="Project Options">
+      {/* Options modal */}
+      <Modal
+        isOpen={Boolean(optionsProject)}
+        onClose={() => setOptionsProjectId(null)}
+        title="Project Options"
+      >
         {optionsProject && (() => {
           const invitations = optionsProject.instructorInvitations || [];
           const collaboratorInvitations = optionsProject.collaboratorInvitations || [];
@@ -1218,6 +1517,7 @@ export default function Projects() {
 
           return (
             <div className="flex flex-col gap-5">
+              {/* Visibility toggle */}
               <div>
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
@@ -1233,37 +1533,53 @@ export default function Projects() {
                   onClick={() => toggleProjectPortfolio(optionsProject)}
                   className="w-full"
                 >
-                  {optionsProject.visibility === "public" ? "Hide from portfolio" : "Show on portfolio"}
+                  {optionsProject.visibility === "public"
+                    ? "Hide from portfolio"
+                    : "Show on portfolio"}
                 </Button>
               </div>
 
+              {/* Thesis final draft selector */}
               {optionsProject.courseCode === "BP" && (
                 <div className="border-t border-border pt-4">
-                  <h3 className="font-display text-base text-text-primary mb-3">Thesis Final Draft</h3>
+                  <h3 className="font-display text-base text-text-primary mb-3">
+                    Thesis Final Draft
+                  </h3>
                   {optionsProject.thesisDrafts?.length ? (
                     <div className="flex flex-col gap-3">
                       {optionsProject.thesisDrafts.map((draft) => (
                         <div key={draft.id} className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
+                            <p className="text-text-primary text-sm font-sans truncate">
+                              {draft.title || draft.fileName}
+                            </p>
                             <a
                               href={getDocumentUrl(draft.fileName)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-accent-blue text-sm font-mono truncate hover:underline"
                             >
-                              {draft.fileName} - {draft.visibility === "public" ? "public" : "private"}
+                              {draft.fileName} -{" "}
+                              {draft.visibility === "public" ? "public" : "private"}
                             </a>
                           </div>
                           {draft.isFinal ? (
                             <div className="flex items-center gap-2 shrink-0">
                               <Badge variant="success">Final Draft</Badge>
-                              <Button size="sm" variant="danger" onClick={(e) => cancelFinalDraft(e, optionsProject)}>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={(e) => cancelFinalDraft(e, optionsProject)}
+                              >
                                 Cancel
                               </Button>
                             </div>
                           ) : (
-                            <Button size="sm" variant="secondary" onClick={(e) => markFinalDraft(e, optionsProject, draft.id)}>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={(e) => markFinalDraft(e, optionsProject, draft.id)}
+                            >
                               Make final draft
                             </Button>
                           )}
@@ -1271,107 +1587,138 @@ export default function Projects() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-text-secondary text-sm font-sans">No thesis drafts uploaded yet.</p>
+                    <p className="text-text-secondary text-sm font-sans">
+                      No thesis drafts uploaded yet.
+                    </p>
                   )}
                 </div>
               )}
 
+              {/* Collaborator invitations */}
               {optionsProject.courseCode !== "BP" && (
-              <div className="border-t border-border pt-4">
-                <h3 className="font-display text-base text-text-primary mb-3">Collaborator Invitations</h3>
+                <div className="border-t border-border pt-4">
+                  <h3 className="font-display text-base text-text-primary mb-3">
+                    Collaborator Invitations
+                  </h3>
 
-                {projectCollaborators.length > 0 && (
-                  <div className="flex flex-col gap-2 mb-4">
-                    {projectCollaborators.map((collaborator) => (
-                      <div key={collaborator} className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-elevated px-3 py-2">
-                        <p className="text-text-primary text-sm font-sans truncate">{collaborator}</p>
-                        <Button size="sm" variant="danger" onClick={(e) => requestRemoveCollaborator(e, optionsProject, collaborator)}>
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {eligibleCollaborators.length > 0 ? (
-                  <div className="flex gap-3 mb-4">
-                    <select
-                      value={selectedCollaborator[optionsProject.id] || ""}
-                      onChange={(e) => setSelectedCollaborator((previous) => ({
-                        ...previous,
-                        [optionsProject.id]: e.target.value,
-                      }))}
-                      className="flex-1 bg-bg-elevated border border-border rounded-lg px-3 py-2 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
-                    >
-                      <option value="">Select collaborator</option>
-                      {eligibleCollaborators.map((collaborator) => (
-                        <option key={collaborator.id} value={collaborator.id}>
-                          {collaborator.name}
-                        </option>
-                      ))}
-                    </select>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={(e) => inviteCollaborator(e, optionsProject)}
-                      disabled={!selectedCollaborator[optionsProject.id]}
-                    >
-                      Invite
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-text-secondary text-sm font-sans mb-4">
-                    All available collaborators have been invited or added.
-                  </p>
-                )}
-
-                {collaboratorInvitations.length > 0 ? (
-                  <div className="flex flex-col gap-3">
-                    {collaboratorInvitations.map((invite) => (
-                      <div key={invite.id} className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-text-primary text-sm font-sans truncate">{invite.collaboratorName}</p>
-                          <p className="text-text-secondary text-xs font-mono truncate">
-                            {invite.email} - invited {invite.sentAt}
+                  {projectCollaborators.length > 0 && (
+                    <div className="flex flex-col gap-2 mb-4">
+                      {projectCollaborators.map((collaborator) => (
+                        <div
+                          key={collaborator}
+                          className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-elevated px-3 py-2"
+                        >
+                          <p className="text-text-primary text-sm font-sans truncate">
+                            {collaborator}
                           </p>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={(e) =>
+                              requestRemoveCollaborator(e, optionsProject, collaborator)
+                            }
+                          >
+                            Remove
+                          </Button>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <Badge variant={invitationStatusVariant[invite.status] || "default"}>
-                            {invite.status}
-                          </Badge>
-                          {invite.status === "no reply" && (
-                            <Button size="sm" variant="danger" onClick={(e) => requestCancelInvitation(e, optionsProject, invite.id, "collaborator")}>
-                              Cancel
-                            </Button>
-                          )}
+                      ))}
+                    </div>
+                  )}
+
+                  {eligibleCollaborators.length > 0 ? (
+                    <div className="flex gap-3 mb-4">
+                      <select
+                        value={selectedCollaborator[optionsProject.id] || ""}
+                        onChange={(e) =>
+                          setSelectedCollaborator((prev) => ({
+                            ...prev,
+                            [optionsProject.id]: e.target.value,
+                          }))
+                        }
+                        className="flex-1 bg-bg-elevated border border-border rounded-lg px-3 py-2
+                                   text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                      >
+                        <option value="">Select collaborator</option>
+                        {eligibleCollaborators.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => inviteCollaborator(e, optionsProject)}
+                        disabled={!selectedCollaborator[optionsProject.id]}
+                      >
+                        Invite
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-text-secondary text-sm font-sans mb-4">
+                      All available collaborators have been invited or added.
+                    </p>
+                  )}
+
+                  {collaboratorInvitations.length > 0 ? (
+                    <div className="flex flex-col gap-3">
+                      {collaboratorInvitations.map((inv) => (
+                        <div key={inv.id} className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-text-primary text-sm font-sans truncate">
+                              {inv.collaboratorName}
+                            </p>
+                            <p className="text-text-secondary text-xs font-mono truncate">
+                              {inv.email} - invited {inv.sentAt}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Badge variant={invitationStatusVariant[inv.status] || "default"}>
+                              {inv.status}
+                            </Badge>
+                            {inv.status === "no reply" && (
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={(e) =>
+                                  requestCancelInvitation(e, optionsProject, inv.id, "collaborator")
+                                }
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-text-secondary text-sm font-sans">No collaborator invitations sent yet.</p>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-text-secondary text-sm font-sans">
+                      No collaborator invitations sent yet.
+                    </p>
+                  )}
+                </div>
               )}
 
+              {/* Instructor invitations */}
               <div className="border-t border-border pt-4">
-                <h3 className="font-display text-base text-text-primary mb-3">Instructor Invitations</h3>
+                <h3 className="font-display text-base text-text-primary mb-3">
+                  Instructor Invitations
+                </h3>
 
                 {eligibleInstructors.length > 0 ? (
                   <div className="flex gap-3 mb-4">
                     <select
                       value={selectedInstructor[optionsProject.id] || ""}
-                      onChange={(e) => setSelectedInstructor((previous) => ({
-                        ...previous,
-                        [optionsProject.id]: e.target.value,
-                      }))}
-                      className="flex-1 bg-bg-elevated border border-border rounded-lg px-3 py-2 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+                      onChange={(e) =>
+                        setSelectedInstructor((prev) => ({
+                          ...prev,
+                          [optionsProject.id]: e.target.value,
+                        }))
+                      }
+                      className="flex-1 bg-bg-elevated border border-border rounded-lg px-3 py-2
+                                 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
                     >
                       <option value="">Select course instructor</option>
-                      {eligibleInstructors.map((instructor) => (
-                        <option key={instructor.id} value={instructor.id}>
-                          {instructor.name}
-                        </option>
+                      {eligibleInstructors.map((ins) => (
+                        <option key={ins.id} value={ins.id}>{ins.name}</option>
                       ))}
                     </select>
                     <Button
@@ -1391,20 +1738,28 @@ export default function Projects() {
 
                 {invitations.length > 0 ? (
                   <div className="flex flex-col gap-3">
-                    {invitations.map((invite) => (
-                      <div key={invite.id} className="flex items-center justify-between gap-3">
+                    {invitations.map((inv) => (
+                      <div key={inv.id} className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-text-primary text-sm font-sans truncate">{invite.instructorName}</p>
+                          <p className="text-text-primary text-sm font-sans truncate">
+                            {inv.instructorName}
+                          </p>
                           <p className="text-text-secondary text-xs font-mono truncate">
-                            {invite.email} - invited {invite.sentAt}
+                            {inv.email} - invited {inv.sentAt}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <Badge variant={invitationStatusVariant[invite.status] || "default"}>
-                            {invite.status}
+                          <Badge variant={invitationStatusVariant[inv.status] || "default"}>
+                            {inv.status}
                           </Badge>
-                          {invite.status === "no reply" && (
-                            <Button size="sm" variant="danger" onClick={(e) => requestCancelInvitation(e, optionsProject, invite.id, "instructor")}>
+                          {inv.status === "no reply" && (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              onClick={(e) =>
+                                requestCancelInvitation(e, optionsProject, inv.id, "instructor")
+                              }
+                            >
                               Cancel
                             </Button>
                           )}
@@ -1413,10 +1768,13 @@ export default function Projects() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-text-secondary text-sm font-sans">No instructor invitations sent yet.</p>
+                  <p className="text-text-secondary text-sm font-sans">
+                    No instructor invitations sent yet.
+                  </p>
                 )}
               </div>
 
+              {/* Edit / Delete */}
               <div className="border-t border-border pt-4 flex flex-col gap-2">
                 <Button
                   variant="secondary"
@@ -1441,11 +1799,18 @@ export default function Projects() {
         })()}
       </Modal>
 
-      <Modal isOpen={Boolean(thesisEditProject)} onClose={closeThesisEditModal} title="Edit thesis (PDF drafts)">
+      {/* Thesis PDF editor modal */}
+      <Modal
+        isOpen={Boolean(thesisEditProject)}
+        onClose={closeThesisEditModal}
+        title="Edit thesis (PDF drafts)"
+      >
         {thesisEditProject && (
           <div className="flex flex-col gap-5">
             <p className="text-text-secondary text-sm font-sans">
-              Manage thesis PDFs for <span className="text-text-primary font-medium">{thesisEditProject.title}</span>. This is separate from editing a standard course project.
+              Manage thesis PDFs for{" "}
+              <span className="text-text-primary font-medium">{thesisEditProject.title}</span>.
+              This is separate from editing a standard course project.
             </p>
 
             {(thesisEditProject.thesisDrafts || []).length > 0 ? (
@@ -1458,7 +1823,9 @@ export default function Projects() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {draft.isFinal && <Badge variant="success">Final</Badge>}
-                        <p className="text-text-primary text-sm font-sans truncate">{draft.title || draft.fileName}</p>
+                        <p className="text-text-primary text-sm font-sans truncate">
+                          {draft.title || draft.fileName}
+                        </p>
                       </div>
                       <a
                         href={getDocumentUrl(draft.fileName)}
@@ -1481,7 +1848,9 @@ export default function Projects() {
                 ))}
               </div>
             ) : (
-              <p className="text-text-secondary text-sm font-sans">No PDFs yet. Add one below.</p>
+              <p className="text-text-secondary text-sm font-sans">
+                No PDFs yet. Add one below.
+              </p>
             )}
 
             <div className="rounded-lg border border-border bg-bg-surface px-4 py-4">
@@ -1489,7 +1858,9 @@ export default function Projects() {
               <Input
                 label="Draft title"
                 value={thesisEditAdd.title}
-                onChange={(e) => setThesisEditAdd((prev) => ({ ...prev, title: e.target.value }))}
+                onChange={(e) =>
+                  setThesisEditAdd((prev) => ({ ...prev, title: e.target.value }))
+                }
                 placeholder="e.g. Thesis Draft 2"
               />
               <div className="mt-3">
@@ -1503,7 +1874,9 @@ export default function Projects() {
                   }}
                 />
               </div>
-              {thesisEditError && <p className="text-danger text-xs font-sans mt-2">{thesisEditError}</p>}
+              {thesisEditError && (
+                <p className="text-danger text-xs font-sans mt-2">{thesisEditError}</p>
+              )}
               <div className="mt-4">
                 <Button type="button" size="sm" variant="gold" onClick={addThesisDraftInEditor}>
                   Add PDF to thesis
@@ -1518,7 +1891,12 @@ export default function Projects() {
         )}
       </Modal>
 
-      <Modal isOpen={thesisModal?.mode === "upload"} onClose={closeThesisModal} title="Upload Thesis Draft">
+      {/* Thesis upload modal */}
+      <Modal
+        isOpen={thesisModal?.mode === "upload"}
+        onClose={closeThesisModal}
+        title="Upload Thesis Draft"
+      >
         <div className="flex flex-col gap-4">
           <div className="rounded-lg border border-accent-gold/30 bg-accent-gold/10 px-4 py-3">
             <p className="text-accent-gold text-sm font-sans">
@@ -1544,7 +1922,9 @@ export default function Projects() {
           />
 
           {thesisForm.fileName && (
-            <p className="text-text-secondary text-sm font-mono">Selected: {thesisForm.fileName}</p>
+            <p className="text-text-secondary text-sm font-mono">
+              Selected: {thesisForm.fileName}
+            </p>
           )}
 
           {thesisError && <p className="text-danger text-xs font-sans">{thesisError}</p>}
@@ -1556,6 +1936,7 @@ export default function Projects() {
         </div>
       </Modal>
 
+      {/* Edit confirm (card-view) */}
       <Modal
         isOpen={editConfirm}
         onClose={() => setEditConfirm(false)}
@@ -1567,12 +1948,17 @@ export default function Projects() {
             <span className="text-text-primary font-semibold">{modal?.project?.title}</span>?
           </p>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setEditConfirm(false)}>Review Again</Button>
-            <Button variant="gold" onClick={handleUpdate}>Confirm Edit</Button>
+            <Button variant="secondary" onClick={() => setEditConfirm(false)}>
+              Review Again
+            </Button>
+            <Button variant="gold" onClick={handleUpdate}>
+              Confirm Edit
+            </Button>
           </div>
         </div>
       </Modal>
 
+      {/* Generic confirm action */}
       <Modal
         isOpen={Boolean(confirmAction)}
         onClose={() => setConfirmAction(null)}
@@ -1595,7 +1981,7 @@ export default function Projects() {
         </div>
       </Modal>
 
-      {/* Delete confirm modal */}
+      {/* Delete confirm */}
       <Modal
         isOpen={Boolean(deleteConfirm)}
         onClose={() => setDeleteConfirm(null)}
@@ -1604,8 +1990,8 @@ export default function Projects() {
         <div className="flex flex-col gap-4">
           <p className="text-text-secondary font-sans text-sm">
             Are you sure you want to delete{" "}
-            <span className="text-text-primary font-semibold">{deleteConfirm?.title}</span>?
-            This cannot be undone.
+            <span className="text-text-primary font-semibold">{deleteConfirm?.title}</span>? This
+            cannot be undone.
           </p>
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
@@ -1613,11 +1999,29 @@ export default function Projects() {
           </div>
         </div>
       </Modal>
+
+      {/* Save confirm (table-row edit) */}
+      <ConfirmActionModal
+        isOpen={saveConfirmOpen}
+        action="save these changes to your project"
+        variant="gold"
+        onClose={() => setSaveConfirmOpen(false)}
+        onConfirm={() => {
+          applyTableEdit();
+          setSaveConfirmOpen(false);
+        }}
+      />
+
+      {/* Toasts */}
       {modalNotice?.message && (
         <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
           <div className="flex items-center justify-between gap-4">
             <p className="text-success text-sm font-sans">{modalNotice.message}</p>
-            <button type="button" className="text-success text-xs font-semibold" onClick={() => setModalNotice(null)}>
+            <button
+              type="button"
+              className="text-success text-xs font-semibold"
+              onClick={() => setModalNotice(null)}
+            >
               Dismiss
             </button>
           </div>
@@ -1627,254 +2031,20 @@ export default function Projects() {
         <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
           <div className="flex items-center justify-between gap-4">
             <p className="text-success text-sm font-sans">{successMsg}</p>
-            <button type="button" className="text-success text-xs font-semibold" onClick={() => setSuccessMsg("")}>
+            <button
+              type="button"
+              className="text-success text-xs font-semibold"
+              onClick={() => setSuccessMsg("")}
+            >
               Dismiss
             </button>
           </div>
         </div>
       )}
-=======
       {successMessage && (
         <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
       )}
-
-      {user?.role === "student" && myProjects.length > 0 && (
-        <div className="space-y-4 mb-8">
-          <Card>
-            <h2 className="font-display text-base text-text-primary mb-1">Programming languages across projects</h2>
-            <p className="text-xs text-text-secondary font-sans mb-4 leading-snug">
-              Percentages reflect how often each language appears across your project stack lists (sums to 100% of all language mentions).
-            </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-              <MiniDonutChart
-                segments={languageInsights.sorted.map((segment, i) => ({
-                  key: segment.key,
-                  label: segment.language,
-                  value: segment.value,
-                  color: CHART_COLORS[i % CHART_COLORS.length],
-                }))}
-                size={150}
-              />
-              <ul className="flex-1 space-y-2 min-w-0">
-                {languageInsights.sorted.map((segment) => (
-                  <li key={segment.language} className="flex items-center justify-between gap-3 text-sm font-sans">
-                    <span className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="h-2 w-2 rounded-full shrink-0"
-                        style={{ backgroundColor: CHART_COLORS[segment.sliceIndex % CHART_COLORS.length] }}
-                        aria-hidden
-                      />
-                      <span className="text-text-primary truncate">{segment.language}</span>
-                    </span>
-                    <span className="text-text-secondary font-mono tabular-nums shrink-0">{segment.pct}%</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </Card>
-          <Card>
-            <h2 className="font-display text-base text-text-primary mb-1">Top collaborators per project</h2>
-            <p className="text-xs text-text-secondary font-sans mb-4">Teammates listed on each of your projects (excluding you).</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {myProjects.map((project) => (
-                <div key={project.id} className="rounded-lg border border-border bg-bg-elevated/40 px-4 py-3">
-                  <h3 className="font-display text-sm text-text-primary mb-2 line-clamp-2">{project.title}</h3>
-                  <div className="flex flex-wrap gap-1">
-                    {project.team
-                      .filter((member) => member !== user?.name)
-                      .map((collaborator) => (
-                        <Badge key={collaborator} variant="blue" className="text-xs">
-                          {collaborator}
-                        </Badge>
-                      ))}
-                    {project.team.filter((member) => member !== user?.name).length === 0 && (
-                      <span className="text-xs text-text-secondary font-sans">No other collaborators listed</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {myProjects.length > 0 ? (
-        <Card className="p-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border bg-bg-base">
-                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal min-w-[10rem]">
-                    Projects ({myProjects.length})
-                  </th>
-                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal w-[7rem]">
-                    Course
-                  </th>
-                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[8rem]">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[6rem]">
-                    Rating
-                  </th>
-                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[8.5rem]">
-                    Created
-                  </th>
-                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-right w-[11rem]">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {myProjects.map((project) => (
-                  <tr
-                    key={project.id}
-                    className="border-b border-border last:border-0 hover:bg-bg-elevated/20 transition-colors cursor-pointer align-middle"
-                    onClick={() => viewProject(project.id)}
-                    role="link"
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        viewProject(project.id);
-                      }
-                    }}
-                  >
-                    <td className="px-4 py-4">
-                      <p className="font-display text-sm text-text-primary break-words">{project.title}</p>
-                      <p className="text-text-secondary text-xs font-sans mt-1 line-clamp-2 max-w-md">{project.description}</p>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {project.languages.map((language) => (
-                          <Badge key={language}>{language}</Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <Badge variant="blue">{project.courseCode}</Badge>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <Badge variant={project.flagged ? "danger" : "success"}>
-                        {project.flagged ? "Flagged" : "Not flagged"}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <Stars rating={project.rating} />
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <span className="font-mono text-xs text-text-secondary whitespace-nowrap">{project.createdAt}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="secondary" size="sm" onClick={(event) => openEdit(event, project)}>
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            viewProject(project.id);
-                          }}
-                        >
-                          View
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      ) : (
-        <Card>
-          <p className="text-text-secondary font-sans">
-            {user ? "You do not have any projects yet." : "No active user is available."}
-          </p>
-        </Card>
-      )}
-
-      <Modal isOpen={Boolean(editingProject)} onClose={closeEdit} title="Edit Project">
-        <form className="flex flex-col gap-4" onSubmit={handleFormSubmit} noValidate>
-          <div>
-            <Input
-              label="Project Title"
-              value={editForm.title}
-              onChange={(event) => updateField("title", event.target.value)}
-            />
-            {errors.title && <p className="text-danger text-xs font-sans mt-1">{errors.title}</p>}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Input
-                label="Course"
-                value={editForm.course}
-                onChange={(event) => updateField("course", event.target.value)}
-              />
-              {errors.course && <p className="text-danger text-xs font-sans mt-1">{errors.course}</p>}
-            </div>
-            <div>
-              <Input
-                label="Course Code"
-                value={editForm.courseCode}
-                onChange={(event) => updateField("courseCode", event.target.value)}
-              />
-              {errors.courseCode && <p className="text-danger text-xs font-sans mt-1">{errors.courseCode}</p>}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm text-text-secondary font-sans">Description</label>
-            <textarea
-              value={editForm.description}
-              onChange={(event) => updateField("description", event.target.value)}
-              className="mt-1.5 min-h-24 w-full bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans placeholder:text-text-secondary/50 focus:outline-none focus:border-accent-blue transition-colors resize-none"
-            />
-            {errors.description && <p className="text-danger text-xs font-sans mt-1">{errors.description}</p>}
-          </div>
-
-          <div>
-            <Input
-              label="Languages"
-              value={editForm.languages}
-              onChange={(event) => updateField("languages", event.target.value)}
-              placeholder="React, Node.js, MongoDB"
-            />
-            {errors.languages && <p className="text-danger text-xs font-sans mt-1">{errors.languages}</p>}
-          </div>
-
-          <div>
-            <Input
-              label="Creation Date"
-              type="date"
-              value={editForm.createdAt}
-              onChange={(event) => updateField("createdAt", event.target.value)}
-            />
-            {errors.createdAt && <p className="text-danger text-xs font-sans mt-1">{errors.createdAt}</p>}
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={closeEdit}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="gold">
-              Done
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      <ConfirmActionModal
-        isOpen={saveConfirmOpen}
-        action="save these changes to your project"
-        variant="gold"
-        onClose={() => setSaveConfirmOpen(false)}
-        onConfirm={() => {
-          applyEdit();
-          setSaveConfirmOpen(false);
-        }}
-      />
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
     </div>
   );
 }
+

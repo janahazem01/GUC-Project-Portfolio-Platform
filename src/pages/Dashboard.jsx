@@ -1,16 +1,9 @@
-<<<<<<< HEAD
-import { useContext } from "react";
-import { Card, Badge, Stars, Button, PageHeader } from "../components/ui";
-import { AuthContext } from "../context/AuthContext";
-import { projects, getVisibleNotifications } from "../data/dummy";
-=======
 import { useContext, useMemo } from "react";
 import { Card, Badge, Stars, Button, PageHeader } from "../components/ui";
 import { ColumnBarChart } from "../components/viz/Charts.jsx";
 import { CHART_COLORS } from "../components/viz/chartColors.js";
 import { AuthContext } from "../context/AuthContext";
 import { internships, dummyUsers, projects, getVisibleNotifications } from "../data/dummy";
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
 
 function StatCard({ label, value }) {
   return (
@@ -43,8 +36,6 @@ export default function Dashboard() {
     admin: "Administrator",
   };
 
-<<<<<<< HEAD
-=======
   const employerCompany = user?.companyName?.trim();
 
   const employerTalentInsights = useMemo(() => {
@@ -87,7 +78,6 @@ export default function Dashboard() {
     return { uniqueCompleted, barBuckets, offeredTotal, totalListingsPublished, applicationVolume };
   }, [employerCompany]);
 
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
   return (
     <div>
       <PageHeader
@@ -95,8 +85,6 @@ export default function Dashboard() {
         subtitle={roleLabel[user?.role] || "Administrator"}
       />
 
-<<<<<<< HEAD
-=======
       {user?.role === "employer" && employerTalentInsights && (
         <div className="mb-8 space-y-4">
           <div>
@@ -179,7 +167,6 @@ export default function Dashboard() {
         </div>
       )}
 
->>>>>>> 9f4b2424982437589b183a75a7db7369e10fa687
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <StatCard label="Total Projects" value={myProjects.length} />
