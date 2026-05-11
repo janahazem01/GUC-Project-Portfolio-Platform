@@ -271,7 +271,7 @@
 //         <div className="shrink-0 flex items-center gap-3 px-4 py-5 border-b border-border overflow-hidden">
 //           <span className="text-accent-gold font-mono text-lg font-medium shrink-0">GP</span>
 //           {!collapsed && (
-//             <span className="font-display text-sm text-text-primary truncate min-w-0">GUC Portfolio</span>
+//             <span className="font-display text-sm text-text-primary truncate min-w-0">GUC Portal</span>
 //           )}
 //         </div>
 
@@ -657,6 +657,8 @@ import {
   markAllNotificationsReadForUser,
   markNotificationReadForUser,
   subscribeDummyUpdates,
+  portfolios,
+  instructorDirectory,
 } from "../../data/dummy";
 import { readDoNotDisturb, writeDoNotDisturb } from "../../utils/doNotDisturb";
 
@@ -691,23 +693,75 @@ function playNotificationChime() {
   }
 }
 
-const allNavItems = [
-  { label: "Dashboard",   icon: "⊞", path: "/", roles: ["student", "instructor", "employer", "admin"] },
-  { label: "Statistics", icon: "📊", path: "/admin/statistics", roles: ["admin"] },
-  { label: (role) => (role === "student" ? "My Projects" : "Projects"), icon: "◈", path: "/projects", roles: ["student", "instructor"] },
-  { label: "Tasks",       icon: "T", path: "/tasks", roles: ["student"] },
-  { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
-  { label: "Instructors", icon: "👨‍🏫", path: "/instructors", roles: ["student", "instructor", "employer", "admin"] },
-  { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor","employer"] },
-  { label: (role) => (role === "admin" ? "Requests" : "Invitations"), icon: "✉", path: "/requests", roles: ["student", "instructor", "admin"] },
-  { label: "Courses",    icon: "▤", path: "/courses", roles: ["admin", "instructor"] },
-  { label: "Messages",    icon: "💬", path: "/messages", roles: ["student", "instructor", "employer"] },
-  { label: "Favorites",   icon: "★", path: "/favorites", roles: ["student", "employer"] },
+const navCategories = [
+  {
+    id: "overview",
+    label: "Overview",
+    items: [
+      { label: "Dashboard", icon: "⊞", path: "/", roles: ["student", "instructor", "employer", "admin"] },
+      { label: "Statistics", icon: "📊", path: "/admin/statistics", roles: ["admin"] },
+    ],
+  },
+  {
+    id: "work",
+    label: "Work",
+    items: [
+      { label: (role) => (role === "student" ? "My Projects" : "Projects"), icon: "◈", path: "/projects", roles: ["student", "instructor"] },
+      { label: "Tasks", icon: "T", path: "/tasks", roles: ["student"] },
+      { label: "Courses", icon: "▤", path: "/courses", roles: ["admin", "instructor"] },
+    ],
+  },
+  {
+    id: "discover",
+    label: "Discover",
+    items: [
+      { label: "Explore", icon: "◎", path: "/explore", roles: ["student", "instructor", "employer", "admin"] },
+      { label: "Instructors", icon: "👨‍🏫", path: "/instructors", roles: ["student", "instructor", "employer", "admin"] },
+      { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor", "employer"] },
+    ],
+  },
+  {
+    id: "connect",
+    label: "Connect",
+    items: [
+      { label: "Messages", icon: "💬", path: "/messages", roles: ["student", "instructor", "employer"] },
+      { label: (role) => (role === "admin" ? "Requests" : "Invitations"), icon: "✉", path: "/requests", roles: ["student", "instructor", "admin"] },
+      { label: "Favorites", icon: "★", path: "/favorites", roles: ["student", "employer"] },
+    ],
+  },
 ];
 
-const getNavItemsForRole = (role) => {
-  return allNavItems.filter((item) => item.roles.includes(role));
-};
+function getNavGroupsForRole(role) {
+  if (!role) return [];
+  return navCategories
+    .map((cat) => ({
+      ...cat,
+      items: cat.items.filter((item) => item.roles.includes(role)),
+    }))
+    .filter((cat) => cat.items.length > 0);
+}
+
+/** Sidebar caret → profile for admins, public portfolio view for other roles */
+function getPortfolioCaretPath(user) {
+  if (!user?.role) return "/profile";
+  if (user.role === "admin") return "/profile";
+  if (user.role === "student") {
+    const portfolio = portfolios.find(
+      (p) =>
+        p.studentEmail === user.email ||
+        p.owner === user.name ||
+        p.studentName === user.name
+    );
+    return portfolio ? `/explore/portfolio/${portfolio.id}` : "/profile";
+  }
+  if (user.role === "instructor") {
+    const row = instructorDirectory.find(
+      (i) => i.email === user.email || i.name === user.name
+    );
+    return row ? `/explore/portfolio/instructor-${row.id}` : "/profile";
+  }
+  return "/profile";
+}
 
 function SidebarTooltip({ collapsed, label }) {
   if (!collapsed) return null;
@@ -746,6 +800,59 @@ function DndNavCornerBadge() {
   );
 }
 
+/** First given name (skips Dr., Prof., …). */
+function sidebarFirstName(name) {
+  if (!name || typeof name !== "string") return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return "";
+  const honorific = /^(dr|prof|professor|mr|mrs|ms)\.?$/i;
+  let i = 0;
+  while (i < parts.length) {
+    const normalized = parts[i].replace(/\.$/, "").toLowerCase();
+    if (honorific.test(normalized)) {
+      i += 1;
+      continue;
+    }
+    break;
+  }
+  return parts[i] || parts[0];
+}
+
+/** Main line next to avatar: role-specific label. */
+function sidebarUserLabel(user) {
+  if (!user) return "";
+  const name = typeof user.name === "string" ? user.name.trim() : "";
+
+  if (user.role === "admin") {
+    return "Admin";
+  }
+
+  if (user.role === "employer") {
+    const company = typeof user.companyName === "string" ? user.companyName.trim() : "";
+    return company || name || "Company";
+  }
+
+  if (user.role === "student") {
+    return sidebarFirstName(name) || name;
+  }
+
+  if (user.role === "instructor") {
+    if (!name) return "";
+    const parts = name.split(/\s+/);
+    const firstTok = parts[0]?.replace(/\.$/, "").toLowerCase();
+    const first = firstTok === "professor" ? "prof" : firstTok;
+    if (first === "dr") {
+      return `Dr. ${sidebarFirstName(name)}`.trim();
+    }
+    if (first === "prof") {
+      return `Prof. ${sidebarFirstName(name)}`.trim();
+    }
+    return sidebarFirstName(name) || name;
+  }
+
+  return name;
+}
+
 function UserMenu({ collapsed }) {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -763,28 +870,65 @@ function UserMenu({ collapsed }) {
     admin: "👨‍💼"
   };
 
+  const caretPath = getPortfolioCaretPath(user);
+  const caretNavState = navigateStateForPath(caretPath);
+
   return (
-    <div className={`shrink-0 border-t border-border flex flex-col gap-1.5 overflow-hidden ${collapsed ? "p-2" : "p-2.5"}`}>
-      <button
-        type="button"
-        onClick={() => navigate("/profile")}
-        className={`group relative flex min-h-10 items-center rounded-lg text-text-primary text-sm w-full hover:bg-bg-elevated transition-colors ${collapsed ? "justify-center px-0 py-2" : "gap-3 px-3 py-1.5 text-left"}`}
+    <div
+      className={`shrink-0 border-t border-border flex flex-col gap-1.5 ${collapsed ? "overflow-hidden p-2" : "overflow-visible p-2.5"}`}
+    >
+      <div
+        className={`flex min-h-10 w-full min-w-0 items-center rounded-lg hover:bg-bg-elevated transition-colors ${collapsed ? "justify-center py-2" : "gap-1 pr-2 pl-1"}`}
       >
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-blue/10 border border-accent-blue/20 overflow-hidden text-lg">
-          {(user?.avatar || user?.logo) ? (
-            <img src={user.avatar || user.logo} alt="Avatar" className="w-full h-full object-cover" />
-          ) : (
-            <span className="leading-none">{roleEmoji[user?.role] || "👤"}</span>
-          )}
-        </div>
-        {!collapsed && (
-          <div className="flex-1 text-left truncate min-w-0">
-            <div className="text-sm font-medium truncate">{user?.name}</div>
-            <div className="text-xs text-text-secondary capitalize">{user?.role}</div>
+        <button
+          type="button"
+          onClick={() => navigate("/profile")}
+          className={`group relative flex min-h-10 min-w-0 flex-1 items-center rounded-lg text-text-primary text-sm text-left transition-colors hover:bg-transparent ${collapsed ? "justify-center px-0 py-2" : "gap-3 px-2 py-1.5"}`}
+        >
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-blue/10 border border-accent-blue/20 overflow-hidden text-lg">
+            {(user?.avatar || user?.logo) ? (
+              <img src={user.avatar || user.logo} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <span className="leading-none">{roleEmoji[user?.role] || "👤"}</span>
+            )}
           </div>
+          {!collapsed && (
+            <div className="flex-1 text-left truncate min-w-0">
+              <div className="text-sm font-medium truncate">{sidebarUserLabel(user)}</div>
+              <div className="text-xs text-text-secondary capitalize">
+                {user?.role === "admin" ? "Administrator" : user?.role}
+              </div>
+            </div>
+          )}
+          <SidebarTooltip collapsed={collapsed} label="Portfolio" />
+        </button>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={() => navigate(caretPath, { state: caretNavState })}
+            className="flex h-8 min-w-[2rem] shrink-0 items-center justify-center rounded-md pl-1 pr-0.5 text-text-secondary transition-colors hover:bg-bg-base hover:text-text-primary"
+            aria-label={user?.role === "admin" ? "Open profile" : "Open portfolio"}
+            title={user?.role === "admin" ? "Profile" : "Portfolio"}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              className="shrink-0 opacity-80"
+              aria-hidden
+            >
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 6l6 6-6 6"
+              />
+            </svg>
+          </button>
         )}
-        <SidebarTooltip collapsed={collapsed} label="Portfolio" />
-      </button>
+      </div>
       
       <button
         type="button"
@@ -827,7 +971,7 @@ export function AppLayout({ children }) {
   const { theme, toggleTheme } = useTheme();
   const { projectList } = useProjects();
   const navigate = useNavigate();
-  const navItems = getNavItemsForRole(user?.role);
+  const navGroups = getNavGroupsForRole(user?.role);
   const location = useLocation();
   const activeNavPath =
     location.state?.activeNav ||
@@ -961,55 +1105,76 @@ export function AppLayout({ children }) {
   return (
     <div className="flex min-h-screen bg-bg-base">
       <aside
-        className={`fixed inset-y-0 left-0 h-screen overflow-hidden bg-bg-surface border-r border-border flex flex-col z-40 select-none
+        className={`fixed inset-y-0 left-0 h-screen overflow-x-clip overflow-y-auto bg-bg-surface border-r border-border flex flex-col z-40 select-none
           transition-all duration-300 ${collapsed ? "w-16" : "w-56"}`}
       >
         {/* Logo */}
         <div className="shrink-0 flex items-center gap-3 px-4 py-5 border-b border-border overflow-hidden">
           <GpMark />
           {!collapsed && (
-            <span className="font-display text-sm text-text-primary truncate min-w-0">GUC Portfolio</span>
+            <span className="font-display text-sm text-text-primary truncate min-w-0">GUC Portal</span>
           )}
         </div>
 
         {/* Nav */}
-        <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto py-4 flex flex-col gap-1 px-2">
-          {navItems.map((item) => {
-            const active = activeNavPath === item.path ||
-              (item.path !== "/" && activeNavPath.startsWith(item.path));
-            const showUnreadDmCount =
-              item.path === "/messages" &&
-              unreadMessagesBadgeLabel !== null &&
-              !dndHidesBadges;
-            const labelText = typeof item.label === "function" ? item.label(user?.role) : item.label;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`group relative flex items-center rounded-lg text-sm font-sans transition-colors ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}
+        <nav
+          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto py-4 flex flex-col px-2"
+          aria-label="Main navigation"
+        >
+          {navGroups.map((group, groupIndex) => (
+            <div key={group.id} className="flex flex-col gap-1">
+              {collapsed && groupIndex > 0 && (
+                <div className="mx-1.5 my-1.5 border-t border-border/50" aria-hidden />
+              )}
+              {!collapsed && (
+                <p
+                  className={`px-3 pb-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted/90 ${
+                    groupIndex === 0 ? "pt-0" : "pt-3"
+                  }`}
+                >
+                  {group.label}
+                </p>
+              )}
+              {group.items.map((item) => {
+                const active =
+                  activeNavPath === item.path ||
+                  (item.path !== "/" && activeNavPath.startsWith(item.path));
+                const showUnreadDmCount =
+                  item.path === "/messages" &&
+                  unreadMessagesBadgeLabel !== null &&
+                  !dndHidesBadges;
+                const labelText =
+                  typeof item.label === "function" ? item.label(user?.role) : item.label;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`group relative flex items-center rounded-lg text-sm font-sans transition-colors ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}
                   ${active
                     ? "bg-accent-gold/10 text-accent-gold border-l-2 border-accent-gold"
                     : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
                   }`}
-              >
-                <span className="relative flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">
-                  <span aria-hidden="true">{item.icon}</span>
-                  {showUnreadDmCount && (
-                    <span
-                      title="Unread messages"
-                      className="absolute -top-1 -right-1 min-h-3.5 min-w-[0.875rem] px-[3px] bg-danger rounded-full text-[9px] text-white flex items-center justify-center font-mono leading-none"
-                      aria-label="Unread messages"
-                    >
-                      {unreadMessagesBadgeLabel}
+                  >
+                    <span className="relative flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">
+                      <span aria-hidden="true">{item.icon}</span>
+                      {showUnreadDmCount && (
+                        <span
+                          title="Unread messages"
+                          className="absolute -top-1 -right-1 min-h-3.5 min-w-[0.875rem] px-[3px] bg-danger rounded-full text-[9px] text-white flex items-center justify-center font-mono leading-none"
+                          aria-label="Unread messages"
+                        >
+                          {unreadMessagesBadgeLabel}
+                        </span>
+                      )}
+                      {dndHidesBadges && item.path === "/messages" && <DndNavCornerBadge />}
                     </span>
-                  )}
-                  {dndHidesBadges && item.path === "/messages" && <DndNavCornerBadge />}
-                </span>
-                {!collapsed && <span className="truncate">{labelText}</span>}
-                <SidebarTooltip collapsed={collapsed} label={labelText} />
-              </Link>
-            );
-          })}
+                    {!collapsed && <span className="truncate">{labelText}</span>}
+                    <SidebarTooltip collapsed={collapsed} label={labelText} />
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Bottom controls */}

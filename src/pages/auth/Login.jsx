@@ -1,294 +1,210 @@
-// import { useState, useContext } from "react";
-// import { useNavigate } from "react-router-dom";
-// import { Button, Input, SuccessToast } from "../../components/ui";
-// import { AuthContext } from "../../context/AuthContext";
-
-// function GpMark({ className = "" }) {
-//   return (
-//     <div
-//       className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-accent-gold/60 bg-gradient-to-br from-accent-gold/25 via-bg-elevated to-bg-base shadow-lg shadow-black/30 ${className}`}
-//       aria-hidden
-//     >
-//       <span className="font-display text-xl font-semibold tracking-tight text-accent-gold leading-none">G</span>
-//       <span className="font-display text-xl font-semibold tracking-tight text-text-primary leading-none -ml-0.5">P</span>
-//     </div>
-//   );
-// }
-
-// export default function Login() {
-//   const [email, setEmail] = useState("");
-//   const [password, setPassword] = useState("");
-//   const [error, setError] = useState("");
-//   const [success, setSuccess] = useState("");
-//   const [fieldErrors, setFieldErrors] = useState({});
-//   const { login } = useContext(AuthContext);
-//   const navigate = useNavigate();
-
-//   const validate = () => {
-//     const errors = {};
-//     if (!email.trim()) {
-//       errors.email = "Email is required";
-//     } else if (!/\S+@\S+\.\S+/.test(email)) {
-//       errors.email = "Please enter a valid email address";
-//     }
-//     if (!password) {
-//       errors.password = "Password is required";
-//     }
-//     setFieldErrors(errors);
-//     return Object.keys(errors).length === 0;
-//   };
-
-//   const handleLogin = (e) => {
-//     e.preventDefault();
-//     setError("");
-//     setFieldErrors({});
-
-//     if (!validate()) return;
-
-//     const result = login(email, password);
-//     if (result.success) {
-//       setSuccess("Logged in successfully! Redirecting...");
-//       setTimeout(() => {
-//         navigate("/");
-//       }, 1000);
-//     } else {
-//       setError(result.error);
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-bg-base flex">
-//       {/* Left panel */}
-//       <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-bg-surface border-r border-border flex-col justify-between p-12">
-//         <div
-//           className="pointer-events-none absolute inset-0 opacity-[0.12]"
-//           style={{
-//             backgroundImage:
-//               "radial-gradient(circle at 20% 20%, rgb(var(--c-accent-gold)) 0%, transparent 42%), radial-gradient(circle at 80% 10%, rgb(var(--c-accent-blue)) 0%, transparent 38%), linear-gradient(160deg, transparent 40%, rgb(var(--c-bg-base)) 100%)",
-//           }}
-//         />
-//         <div
-//           className="pointer-events-none absolute inset-0 opacity-[0.07]"
-//           style={{
-//             backgroundImage:
-//               "linear-gradient(rgb(var(--c-text-primary)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--c-text-primary)) 1px, transparent 1px)",
-//             backgroundSize: "28px 28px",
-//           }}
-//         />
-
-//         <div className="relative z-10 flex items-start gap-4">
-//           <GpMark />
-//           <div>
-//             <p className="font-mono text-[11px] uppercase tracking-[0.35em] text-accent-gold/90 mb-1">Portal</p>
-//             <p className="font-display text-sm text-text-primary">GUC Portfolio</p>
-//           </div>
-//         </div>
-
-//         <div className="relative z-10">
-//           <h1 className="font-display text-5xl text-text-primary leading-tight mb-4">
-//             Showcase what<br />you&apos;ve built.
-//           </h1>
-//           <p className="text-text-secondary font-sans text-base max-w-sm leading-relaxed">
-//             A home for every GUC project — from first-year labs to bachelor theses.
-//           </p>
-//         </div>
-
-//         {/* Demo credentials — themed panel */}
-//         <div className="relative z-10 rounded-2xl border border-accent-gold/25 bg-gradient-to-br from-bg-base/90 via-bg-elevated/80 to-[rgb(12,18,32)]/95 p-5 shadow-inner overflow-hidden">
-//           <div
-//             className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-accent-gold/15 blur-2xl"
-//             aria-hidden
-//           />
-//           <div
-//             className="pointer-events-none absolute -left-10 bottom-0 h-24 w-24 rounded-full bg-accent-blue/10 blur-2xl"
-//             aria-hidden
-//           />
-//           <div className="relative flex items-center gap-3 mb-3">
-//             <GpMark className="!h-10 !w-10 !rounded-xl" />
-//             <p className="font-display text-sm text-text-primary">Demo access</p>
-//           </div>
-//           <p className="font-bold text-accent-gold text-xs font-mono mb-3 tracking-wide">Credentials</p>
-//           <div className="space-y-1.5 text-text-secondary text-xs font-mono leading-relaxed">
-//             <p>📚 Student: ahmed.elsayed@student.guc.edu.eg</p>
-//             <p>👨‍💼 Admin: admin@guc.edu.eg</p>
-//             <p>🎓 Instructor: dr.sara@guc.edu.eg</p>
-//             <p>🏢 Employer: recruiter@techcompany.com</p>
-//             <p className="pt-2 border-t border-border/60 mt-3">
-//               Password: <span className="text-accent-blue font-semibold">password</span>
-//             </p>
-//           </div>
-//         </div>
-
-//         <p className="relative z-10 text-text-secondary/50 font-mono text-xs">GUC Portfolio Platform © 2026</p>
-//       </div>
-
-//       {/* Right panel */}
-//       <div className="flex-1 flex items-center justify-center p-8 bg-bg-base">
-//         <div className="w-full max-w-sm lg:hidden flex justify-center mb-8">
-//           <GpMark className="!h-12 !w-12" />
-//         </div>
-//         <div className="w-full max-w-sm">
-//           <h2 className="font-display text-2xl text-text-primary mb-1">Welcome back</h2>
-//           <p className="text-text-secondary text-sm font-sans mb-8">Sign in to your account</p>
-
-//           {error && (
-//             <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded mb-4 font-sans">
-//               {error}
-//             </div>
-//           )}
-
-//           <form onSubmit={handleLogin} className="flex flex-col gap-4" noValidate>
-//             <Input
-//               label="Email"
-//               type="email"
-//               placeholder="you@gmail.com"
-//               value={email}
-//               onChange={(e) => setEmail(e.target.value)}
-//               error={fieldErrors.email}
-//             />
-//             <Input
-//               label="Password"
-//               type="password"
-//               placeholder="••••••••"
-//               value={password}
-//               onChange={(e) => setPassword(e.target.value)}
-//               error={fieldErrors.password}
-//             />
-//             <a href="/forgot-password" className="text-accent-blue text-xs font-sans hover:underline self-end -mt-2">
-//               Forgot password?
-//             </a>
-//             <Button variant="gold" type="submit" className="w-full justify-center">Sign In</Button>
-//           </form>
-
-//           <p className="text-text-secondary text-sm font-sans mt-6 text-center">
-//             New here?{" "}
-//             <a href="/register" className="text-accent-blue hover:underline">Create an account</a>
-//           </p>
-//         </div>
-//       </div>
-//       <SuccessToast message={success} onClose={() => setSuccess("")} />
-//     </div>
-//   );
-// }
-import { useState, useContext } from "react";
+import { useState, useEffect, useContext, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Input, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
-/* ─── GP Icon ─────────────────────────────────────────────────────────────── */
-function GpMark({ className = "", size = "md" }) {
-  const sizes = {
-    sm: "h-8 w-8 rounded-lg",
-    md: "h-12 w-12 rounded-xl",
-    lg: "h-14 w-14 rounded-2xl",
-  };
-  const textSizes = {
-    sm: "text-sm",
-    md: "text-base",
-    lg: "text-lg",
-  };
+/** Faint gold “dust” + bottom chart hints — deterministic positions */
+function LoginHeroAmbience() {
+  const gid = useId().replace(/:/g, "");
+  const fadeId = `login-hero-fade-${gid}`;
+  const specks = [
+    [8, 12],
+    [22, 28],
+    [45, 8],
+    [72, 18],
+    [88, 42],
+    [15, 55],
+    [38, 72],
+    [55, 48],
+    [78, 65],
+    [92, 78],
+    [28, 88],
+    [60, 92],
+  ];
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-0 z-[1]" aria-hidden>
+        {specks.map(([x, y], i) => (
+          <span
+            key={`s-${i}`}
+            className="absolute h-[3px] w-[3px] rounded-full bg-gradient-to-br from-amber-100 to-accent-gold shadow-[0_0_4px_rgba(255,245,220,0.9),0_0_10px_rgb(var(--c-accent-gold))] light:!bg-border/55 light:shadow-[0_0_8px_rgb(var(--c-border)_/_0.35)]"
+            style={{ left: `${x}%`, top: `${y}%`, opacity: 0.35 + (i % 5) * 0.05 }}
+          />
+        ))}
+      </div>
+      <svg
+        className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1] h-28 w-full opacity-[0.14] light:opacity-[0.1]"
+        viewBox="0 0 400 80"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <path
+          d="M0 55 L40 48 L80 52 L120 38 L160 44 L200 30 L240 36 L280 22 L320 28 L360 18 L400 12 V80 H0 Z"
+          fill={`url(#${fadeId})`}
+        />
+        <path
+          d="M0 48 L50 42 L100 46 L150 34 L200 40 L250 28 L300 32 L350 24 L400 20"
+          fill="none"
+          stroke={`url(#login-line-metal-${gid})`}
+          strokeWidth="1.2"
+          strokeOpacity="0.9"
+        />
+        <defs>
+          <linearGradient id={fadeId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgb(var(--c-accent-gold))" stopOpacity="0.08" />
+            <stop offset="100%" stopColor="rgb(var(--c-bg-base))" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`login-line-metal-${gid}`} x1="0" y1="0" x2="400" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#3d3020" stopOpacity="0.5" />
+            <stop offset="35%" stopColor="rgb(var(--c-accent-gold))" stopOpacity="0.75" />
+            <stop offset="50%" stopColor="#fdf6e3" stopOpacity="0.5" />
+            <stop offset="65%" stopColor="rgb(var(--c-accent-gold))" stopOpacity="0.75" />
+            <stop offset="100%" stopColor="#3d3020" stopOpacity="0.45" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </>
+  );
+}
 
+/** Split hero — semantic colors; `light:` polishes for light theme */
+function LoginWelcomePanel({ className = "" }) {
   return (
     <div
-      className={`inline-flex shrink-0 items-center justify-center ${sizes[size]} bg-accent-gold ${className}`}
-      aria-hidden
+      className={`relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-bg-base ${className}`}
     >
-      <span className={`font-display font-bold tracking-tight text-bg-base leading-none ${textSizes[size]}`}>
-        GP
-      </span>
-    </div>
-  );
-}
+      <div
+        className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgb(var(--c-accent-gold)_/_0.09),transparent_55%)] light:bg-[radial-gradient(ellipse_115%_85%_at_50%_-10%,rgb(var(--c-accent-gold)_/_0.08),transparent_55%)]"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 z-[2] opacity-30 light:hidden"
+        style={{
+          backgroundImage: `radial-gradient(rgb(var(--c-accent-gold) / 0.12) 1px, transparent 1px)`,
+          backgroundSize: "32px 32px",
+        }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 z-[2] hidden opacity-[0.22] light:block"
+        style={{
+          backgroundImage: `radial-gradient(rgb(var(--c-border) / 0.55) 1px, transparent 1px)`,
+          backgroundSize: "32px 32px",
+        }}
+        aria-hidden
+      />
+      <LoginHeroAmbience />
 
-/* ─── Blueprint / architectural SVG pattern ────────────────────────────────── */
-function BlueprintPattern() {
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.055]"
-      aria-hidden
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        {/* Fine grid */}
-        <pattern id="fine" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgb(var(--c-accent-gold))" strokeWidth="0.4" />
-        </pattern>
-        {/* Major grid */}
-        <pattern id="major" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-          <rect width="100" height="100" fill="url(#fine)" />
-          <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgb(var(--c-accent-gold))" strokeWidth="1" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#major)" />
+      {/* Brushed metal light sweep */}
+      <div className="login-metal-sheen" aria-hidden />
+      <div className="login-metal-sheen login-metal-sheen--subtle" aria-hidden />
 
-      {/* Cross-hairs */}
-      <circle cx="50%" cy="30%" r="60" fill="none" stroke="rgb(var(--c-accent-gold))" strokeWidth="0.6" strokeDasharray="4 6" />
-      <circle cx="50%" cy="30%" r="110" fill="none" stroke="rgb(var(--c-accent-gold))" strokeWidth="0.4" strokeDasharray="2 8" />
-      <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgb(var(--c-accent-gold))" strokeWidth="0.4" strokeDasharray="6 10" />
-      <line x1="0" y1="30%" x2="100%" y2="30%" stroke="rgb(var(--c-accent-gold))" strokeWidth="0.4" strokeDasharray="6 10" />
+      {/* Dark: metallic gold rail — light: minimal border */}
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 z-[4] w-[3px] bg-gradient-to-b from-transparent via-[rgb(var(--c-accent-gold))] to-transparent opacity-90 shadow-[0_0_14px_rgb(var(--c-accent-gold)),0_0_28px_rgb(var(--c-accent-gold)_/_0.45),inset_0_0_6px_rgba(255,250,235,0.5)] light:hidden"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-y-[8%] right-0 z-[4] w-px bg-gradient-to-b from-white/25 via-white/10 to-transparent opacity-70 light:hidden"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 z-[4] hidden w-px bg-border light:block"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-y-[8%] right-0 z-[4] hidden w-px bg-gradient-to-b from-transparent via-black/[0.08] to-transparent light:block"
+        aria-hidden
+      />
 
-      {/* Corner brackets */}
-      <path d="M 16 4 L 4 4 4 16" fill="none" stroke="rgb(var(--c-accent-gold))" strokeWidth="1.5" strokeLinecap="square" />
-      <path d="M calc(100% - 16px) 4 L calc(100% - 4px) 4 calc(100% - 4px) 16" fill="none" stroke="rgb(var(--c-accent-gold))" strokeWidth="1.5" strokeLinecap="square" />
-      <path d="M 16 calc(100% - 4px) L 4 calc(100% - 4px) 4 calc(100% - 16px)" fill="none" stroke="rgb(var(--c-accent-gold))" strokeWidth="1.5" strokeLinecap="square" />
-      <path d="M calc(100% - 16px) calc(100% - 4px) L calc(100% - 4px) calc(100% - 4px) calc(100% - 4px) calc(100% - 16px)" fill="none" stroke="rgb(var(--c-accent-gold))" strokeWidth="1.5" strokeLinecap="square" />
-    </svg>
-  );
-}
+      <div className="relative z-20 flex min-h-0 w-full flex-1 flex-col justify-center px-8 py-12 sm:px-10 lg:px-12 xl:px-16 lg:py-16">
+        <div className="mx-auto w-full max-w-xl">
+          <header className="text-left">
+            <div className="inline-flex rounded-full bg-gradient-to-br from-[#d4b87a] via-[rgb(var(--c-accent-gold))] to-[#4a3820] p-[1.5px] shadow-[0_4px_24px_rgb(var(--c-accent-gold)_/_0.25),inset_0_1px_0_rgba(255,255,255,0.35)] light:shadow-[0_2px_16px_rgb(var(--c-accent-gold)_/_0.18),inset_0_1px_0_rgba(255,255,255,0.5)]">
+              <div className="flex items-center gap-3 rounded-full border border-white/5 bg-bg-surface/85 px-4 py-2.5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.35)] backdrop-blur-md light:border-border light:bg-bg-surface light:shadow-[inset_0_1px_2px_rgba(255,255,255,0.85)]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-[#f2e0b8] via-[rgb(var(--c-accent-gold))] to-[#5a4422] font-display text-[11px] font-bold leading-none text-[#0a0c0f] shadow-[inset_0_2px_3px_rgba(255,255,255,0.45),inset_0_-2px_4px_rgba(0,0,0,0.35)] light:to-[rgb(var(--c-bg-elevated))] light:shadow-[inset_0_1px_2px_rgba(255,255,255,0.6)]">
+                  GP
+                </span>
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.35em] text-text-primary/95 drop-shadow-sm">
+                  GUC Portal
+                </span>
+              </div>
+            </div>
 
-/* ─── Demo credentials panel ───────────────────────────────────────────────── */
-function DemoPanel() {
-  return (
-    <div className="relative z-10 rounded-xl border border-accent-gold/30 bg-bg-base overflow-hidden">
-      {/* Blueprint background inside panel */}
-      <BlueprintPattern />
+            <h1 className="mt-12 font-display text-[3rem] font-semibold leading-[1.05] tracking-tight sm:text-[3.5rem] lg:mt-14 lg:text-[4rem] xl:text-[4.25rem]">
+              <span className="block bg-gradient-to-br from-[#faf3e3] via-[rgb(var(--c-accent-gold))] to-[#4d3d24] bg-clip-text text-transparent drop-shadow-[0_2px_16px_rgba(200,169,110,0.35)] light:from-[#5a4828] light:via-[rgb(var(--c-accent-gold))] light:to-[#8a723e] light:drop-shadow-[0_1px_12px_rgba(155,120,62,0.22)]">
+                Learn.
+              </span>
+              <span className="mt-2 block bg-gradient-to-br from-[#faf3e3] via-[rgb(var(--c-accent-gold))] to-[#4d3d24] bg-clip-text text-transparent drop-shadow-[0_2px_16px_rgba(200,169,110,0.35)] light:from-[#5a4828] light:via-[rgb(var(--c-accent-gold))] light:to-[#8a723e] light:drop-shadow-[0_1px_12px_rgba(155,120,62,0.22)] sm:mt-2.5">
+                Teach.
+              </span>
+              <span className="mt-2 block bg-gradient-to-br from-[#c5e3ff] via-[rgb(var(--c-accent-blue))] to-[#1a4a7c] bg-clip-text text-transparent drop-shadow-[0_2px_14px_rgba(74,143,212,0.35)] light:from-[#1a4a72] light:via-[rgb(var(--c-accent-blue))] light:to-[#3d7ab8] light:drop-shadow-[0_1px_10px_rgba(42,108,176,0.2)] sm:mt-2.5">
+                Hire.
+              </span>
+            </h1>
 
-      {/* Top bar */}
-      <div className="relative flex items-center gap-2 border-b border-accent-gold/20 px-4 py-2.5 bg-accent-gold/[0.06]">
-        <GpMark size="sm" />
-        <div>
-          <p className="font-mono text-[15px] uppercase tracking-[0.3em] text-accent-gold/80 leading-none mb-0.5">GUC Portfolio</p>
-          <p className="font-mono text-[15px] text-text-muted">Demo access credentials</p>
-        </div>
-        <div className="ml-auto flex gap-1">
-          <span className="h-2 w-2 rounded-full bg-danger/60" />
-          <span className="h-2 w-2 rounded-full bg-warning/60" />
-          <span className="h-2 w-2 rounded-full bg-success/60" />
-        </div>
-      </div>
+            <p className="mt-10 max-w-lg font-sans text-lg leading-relaxed text-text-secondary sm:mt-12 sm:text-xl">
+              One platform connecting students, instructors, and employers ready to hire talent.
+            </p>
+          </header>
 
-      {/* Credentials table */}
-      <div className="relative p-4 space-y-2">
-        {[
-          { role: "Student", icon: "📚", email: "ahmed.elsayed@student.guc.edu.eg" },
-          { role: "Admin", icon: "👨‍💼", email: "admin@guc.edu.eg" },
-          { role: "Instructor", icon: "🎓", email: "dr.sara@guc.edu.eg" },
-          { role: "Employer", icon: "🏢", email: "recruiter@techcompany.com" },
-        ].map(({ role, icon, email }) => (
-          <div key={role} className="flex items-center gap-3 py-1">
-            <span className="text-sm w-5 shrink-0 text-center">{icon}</span>
-            <span className="text-sm text-[15px] text-accent-gold w-16 shrink-0">{role}</span>
-            <span className="text-sm text-[15px] text-text-secondary truncate">{email}</span>
+          <div className="mt-14 grid grid-cols-3 gap-3 sm:mt-16 sm:gap-4">
+            {[
+              { n: "42k", l: "Active students" },
+              { n: "1.8k", l: "Instructors" },
+              { n: "320", l: "Partner companies" },
+            ].map(({ n, l }) => (
+              <div
+                key={l}
+                className="rounded-xl bg-gradient-to-br from-[#c9a86a] via-[rgb(var(--c-accent-gold))] to-[#2a2218] p-px shadow-[0_6px_28px_rgb(var(--c-accent-gold)_/_0.22),inset_0_1px_0_rgba(255,255,255,0.25)] light:from-amber-200/90 light:to-[rgb(var(--c-bg-elevated))] light:shadow-[0_4px_22px_rgb(var(--c-accent-gold)_/_0.12),inset_0_1px_0_rgba(255,255,255,0.5)] sm:rounded-2xl"
+              >
+                <div className="rounded-[11px] bg-gradient-to-b from-bg-surface/95 to-bg-base px-3 py-4 text-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.06),inset_0_-3px_10px_rgba(0,0,0,0.5)] backdrop-blur-sm light:shadow-[inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_4px_rgba(0,0,0,0.06)] sm:rounded-[15px] sm:px-4 sm:py-5">
+                  <p className="font-display text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl lg:text-[2.35rem]">
+                    <span className="bg-gradient-to-b from-[#fff6e5] via-[rgb(var(--c-accent-gold))] to-[#5c4a28] bg-clip-text text-transparent [filter:drop-shadow(0_1px_0_rgba(255,255,255,0.12))] light:from-[#4a3d24] light:to-[#9b7c42]">
+                      {n}
+                    </span>
+                  </p>
+                  <p className="mt-2 font-sans text-[11px] font-medium leading-snug text-text-primary/90 sm:text-xs">
+                    {l}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-        <div className="pt-2 mt-1 border-t border-border/50 flex items-center gap-3">
-          <span className="text-sm text-[15px] text-text-muted">Password</span>
-          <span className="text-sm text-[15px] text-accent-blue font-semibold tracking-wider">password</span>
         </div>
       </div>
     </div>
   );
 }
 
-/* ─── Login page ───────────────────────────────────────────────────────────── */
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [isSuccessExit, setIsSuccessExit] = useState(false);
+  const [isHeroFullscreen, setIsHeroFullscreen] = useState(false);
+  const [expandHero, setExpandHero] = useState(false);
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+
+  const SLIDE_MS = 700;
+  const EXPAND_MS = 500;
+
+  useEffect(() => {
+    if (!isHeroFullscreen) {
+      setExpandHero(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setExpandHero(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isHeroFullscreen]);
 
   const validate = () => {
     const errors = {};
@@ -312,76 +228,66 @@ export default function Login() {
     const result = login(email, password);
     if (result.success) {
       setSuccess("Logged in successfully! Redirecting...");
-      setTimeout(() => navigate("/"), 1000);
+      setIsSuccessExit(true);
+      window.setTimeout(() => setIsHeroFullscreen(true), SLIDE_MS);
+      window.setTimeout(() => navigate("/"), SLIDE_MS + EXPAND_MS + 120);
     } else {
       setError(result.error);
     }
   };
 
+  const slideHero =
+    isSuccessExit && !isHeroFullscreen
+      ? "translate-y-full lg:translate-y-0 lg:translate-x-full"
+      : "";
+  const easeSlide =
+    "transition-transform duration-[700ms] ease-in-out will-change-transform";
+
+  const heroFullscreenClasses = expandHero
+    ? "max-lg:inset-0 max-lg:min-h-dvh max-lg:w-full lg:left-0 lg:top-0 lg:h-[100dvh] lg:w-full"
+    : "max-lg:inset-0 max-lg:min-h-dvh max-lg:w-full lg:left-1/2 lg:top-0 lg:h-[100dvh] lg:w-1/2";
+
+  const heroOuter = isHeroFullscreen
+    ? `fixed z-[60] transition-[left,width] duration-500 ease-in-out ${heroFullscreenClasses}`
+    : `relative z-[2] w-full shrink-0 lg:w-1/2 lg:min-h-screen ${easeSlide} ${slideHero}`;
+
+  const heroPanelRadius = isHeroFullscreen
+    ? "rounded-none !border-0"
+    : "rounded-b-3xl border-b border-accent-gold/20 lg:rounded-b-none lg:rounded-r-3xl lg:border-b-0 lg:border-r lg:border-accent-gold/35 light:border-border";
+
+  const heroPanelMinH = isHeroFullscreen
+    ? "min-h-dvh"
+    : "min-h-[40vh] lg:min-h-screen";
+
   return (
-    <div className="min-h-screen bg-bg-base flex">
-      {/* ── Left panel ── */}
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-bg-surface border-r border-border flex-col justify-between p-12">
-        {/* Architectural grid background */}
-        <BlueprintPattern />
-
-        {/* Solid vertical accent stripe */}
-        <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-1 bg-accent-gold" aria-hidden />
-
-        {/* Logo row */}
-        <div className="relative z-10 flex items-center gap-3">
-          <GpMark size="lg" />
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-accent-gold/90 mb-0.5">Portal</p>
-            <p className="font-display text-sm text-text-primary">GUC Portfolio</p>
-          </div>
-        </div>
-
-        {/* Hero text */}
-        <div className="relative z-10">
-          {/* Decorative measure line */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-px w-8 bg-accent-gold" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent-gold/70">Showcase</span>
-          </div>
-          <h1 className="font-display text-5xl text-text-primary leading-tight mb-4">
-            Showcase what<br />you&apos;ve built.
-          </h1>
-          <p className="text-text-secondary font-sans text-base max-w-sm leading-relaxed">
-            A home for every GUC project — from first-year labs to bachelor theses.
-          </p>
-        </div>
-
-        {/* Demo credentials */}
-        <DemoPanel />
-
-        <p className="relative z-10 text-text-muted font-mono text-[10px] tracking-widest">
-          GUC PORTFOLIO PLATFORM © 2026
-        </p>
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-bg-base lg:flex-row">
+      <div className={heroOuter}>
+        <LoginWelcomePanel
+          className={`h-full w-full ${heroPanelMinH} ${heroPanelRadius}`}
+        />
       </div>
 
-      {/* ── Right panel ── */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-bg-base">
-        <div className="w-full max-w-sm">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex justify-center mb-8">
-            <GpMark size="lg" />
-          </div>
-
-          <h2 className="font-display text-2xl text-text-primary mb-1">Welcome back</h2>
-          <p className="text-text-secondary text-sm font-sans mb-8">Sign in to your account</p>
+      <div className="relative z-[1] flex flex-1 items-center justify-center bg-bg-base px-6 py-12 sm:px-10 lg:min-h-screen lg:border-l-0 lg:py-16 lg:pl-14 lg:pr-12">
+        <div className="mx-auto w-full max-w-sm">
+          <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.35em] text-text-muted lg:hidden">
+            GUC Portal
+          </p>
+          <h2 className="font-display text-3xl font-semibold text-text-primary">Sign in</h2>
+          <p className="mt-2 font-sans text-sm text-text-secondary">
+            Use your PORTAL-affiliated credentials
+          </p>
 
           {error && (
-            <div className="bg-danger/10 border border-danger/30 text-danger text-sm p-3 rounded-lg mb-4 font-sans">
+            <div className="mt-6 rounded-lg border border-danger/30 bg-danger/10 p-3 font-sans text-sm text-danger">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="flex flex-col gap-4" noValidate>
+          <form onSubmit={handleLogin} className="mt-10 flex flex-col gap-5" noValidate>
             <Input
               label="Email"
               type="email"
-              placeholder="you@gmail.com"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               error={fieldErrors.email}
@@ -394,22 +300,38 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               error={fieldErrors.password}
             />
-            <a href="/forgot-password" className="text-accent-blue text-xs font-sans hover:underline self-end -mt-2">
+            <a
+              href="/forgot-password"
+              className="-mt-1 self-end font-sans text-xs text-accent-blue hover:underline"
+            >
               Forgot password?
             </a>
-            <Button variant="gold" type="submit" className="w-full justify-center">
+            <Button variant="gold" type="submit" className="w-full justify-center py-3 text-[15px]">
               Sign In
             </Button>
           </form>
 
-          <p className="text-text-secondary text-sm font-sans mt-6 text-center">
+          <p className="mt-8 text-center font-sans text-sm text-text-secondary">
             New here?{" "}
-            <a href="/register" className="text-accent-blue hover:underline">Create an account</a>
+            <a href="/register" className="text-accent-blue hover:underline">
+              Create an account
+            </a>
           </p>
         </div>
       </div>
 
       <SuccessToast message={success} onClose={() => setSuccess("")} />
+
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        aria-pressed={!isDark}
+        title={isDark ? "Light mode" : "Dark mode"}
+        className="fixed bottom-6 right-6 z-[80] flex h-12 w-12 items-center justify-center rounded-full border border-border bg-bg-surface text-xl leading-none text-text-primary shadow-[0_8px_28px_rgba(0,0,0,0.12)] transition-[background-color,box-shadow,color] hover:bg-bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-gold light:shadow-[0_6px_20px_rgba(0,0,0,0.08)]"
+      >
+        <span aria-hidden>{isDark ? "☀" : "☽"}</span>
+      </button>
     </div>
   );
 }

@@ -82,7 +82,7 @@ export default function Instructors() {
                   <p className="text-text-secondary text-sm">{instructor.email}</p>
                 </div>
               </div>
-              <p className="text-text-secondary text-sm mb-4 flex-grow italic">
+              <p className="flex-grow break-words text-sm italic leading-relaxed text-text-secondary mb-4">
                 {instructor.bio}
               </p>
               <div className="space-y-3">

@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, Button, Card, ConfirmActionModal, PageHeader, Stars, SuccessToast } from "../../components/ui";
-import { portfolios, projects } from "../../data/dummy";
+import { portfolios } from "../../data/dummy";
+import { useProjects } from "../../context/ProjectsContext";
 import { useFavorites } from "../../hooks/useFavorites";
 
 function SectionHeader({ title, count }) {
@@ -15,6 +16,7 @@ function SectionHeader({ title, count }) {
 
 export default function Favorites() {
   const navigate = useNavigate();
+  const { projectList } = useProjects();
   const {
     canUseFavorites,
     favoriteProjectIds,
@@ -26,8 +28,8 @@ export default function Favorites() {
   const [successMessage, setSuccessMessage] = useState("");
 
   const projectById = useMemo(
-    () => new Map(projects.map((project) => [project.id, project])),
-    []
+    () => new Map(projectList.map((project) => [project.id, project])),
+    [projectList]
   );
 
   const favoriteProjects = useMemo(
@@ -44,6 +46,12 @@ export default function Favorites() {
 
   const viewProject = (projectId) => {
     navigate(`/projects/${projectId}`, { state: { activeNav: "/favorites" } });
+  };
+
+  const viewPortfolio = (portfolioId) => {
+    navigate(`/explore/portfolio/${portfolioId}`, {
+      state: { activeNav: "/favorites", fromExploreMode: "portfolios" },
+    });
   };
 
   const requestRemoveProject = (project) => {
@@ -166,7 +174,20 @@ export default function Favorites() {
               .filter(Boolean);
 
             return (
-              <Card key={portfolio.id}>
+              <Card
+                key={portfolio.id}
+                hover
+                className="cursor-pointer"
+                role="link"
+                tabIndex={0}
+                onClick={() => viewPortfolio(portfolio.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    viewPortfolio(portfolio.id);
+                  }
+                }}
+              >
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="min-w-0">
                     <h3 className="font-display text-base text-text-primary mb-1">
@@ -184,13 +205,32 @@ export default function Favorites() {
                 </div>
 
                 <div className="border-t border-border pt-4">
-                  <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                     <p className="text-text-secondary text-xs font-sans">
                       {portfolioProjects.length} linked project{portfolioProjects.length === 1 ? "" : "s"}
                     </p>
-                    <Button variant="danger" size="sm" onClick={() => requestRemovePortfolio(portfolio)}>
-                      Remove
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          viewPortfolio(portfolio.id);
+                        }}
+                      >
+                        View portfolio
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          requestRemovePortfolio(portfolio);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-2">
@@ -198,7 +238,10 @@ export default function Favorites() {
                       <button
                         key={project.id}
                         type="button"
-                        onClick={() => viewProject(project.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          viewProject(project.id);
+                        }}
                         className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left transition-colors hover:border-accent-blue/40"
                       >
                         <span className="text-text-primary text-sm font-sans truncate">{project.title}</span>

@@ -5,6 +5,23 @@ import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
 import { courses, dummyUsers, instructorDirectory, portfolios } from "../../data/dummy";
 
+/** Merge directory row with auth user record so public instructor pages show office hours, LinkedIn, courses, etc. */
+function mergeInstructorPublicView(instructor) {
+  if (!instructor) return null;
+  const account = dummyUsers.find(
+    (u) => u.role === "instructor" && u.email === instructor.email
+  );
+  return {
+    ...(account || {}),
+    ...instructor,
+    id: account?.id ?? instructor.id,
+    name: instructor.name,
+    email: instructor.email,
+    role: "instructor",
+    coursesTaught: account?.coursesTaught ?? instructor.coursesTaught,
+  };
+}
+
 function StudentProfile({ user, updateUser, myProjects, isReadOnly, onBackToPortfolios }) {
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -391,7 +408,7 @@ function InstructorProfile({ user, updateUser, myCourses, isReadOnly }) {
           <h1 className="font-display text-3xl text-text-primary mb-1">{user?.name}</h1>
           <p className="text-text-secondary font-sans text-sm mb-3">{user?.email}</p>
           <p className="text-accent-blue font-mono text-xs mb-4">{user?.officeHours || "No office hours set"}</p>
-          <p className="text-text-secondary text-sm mb-4 max-w-2xl">{user?.bio}</p>
+          <p className="max-w-2xl break-words text-sm leading-relaxed text-text-secondary mb-4">{user?.bio}</p>
           <div className="flex gap-2 flex-wrap">
             {user?.researchInterests?.map((interest) => (
               <Badge key={interest} variant="blue">{interest}</Badge>
@@ -413,7 +430,7 @@ function InstructorProfile({ user, updateUser, myCourses, isReadOnly }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-2">
         <Card>
           <h2 className="font-display text-lg text-text-primary mb-4">Education</h2>
           <div className="flex flex-col gap-2">
@@ -439,7 +456,7 @@ function InstructorProfile({ user, updateUser, myCourses, isReadOnly }) {
         subtitle={`${myCourses.length} linked course${myCourses.length !== 1 ? "s" : ""}`}
       />
 
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
         {myCourses.map((course) => (
           <Card key={course.id} hover>
             <Badge variant="blue" className="mb-3">{course.code}</Badge>
@@ -591,18 +608,25 @@ function InstructorProfile({ user, updateUser, myCourses, isReadOnly }) {
 
 function InstructorDirectoryPreview() {
   const navigate = useNavigate();
+  const { user: currentUser } = useContext(AuthContext);
   return (
     <Card>
       <h2 className="font-display text-lg text-text-primary mb-4">Instructor Directory Preview</h2>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {instructorDirectory.map((instructor) => (
           <div 
             key={instructor.id} 
             className="p-4 rounded-lg border border-border bg-bg-elevated hover:border-accent-gold/40 transition-colors cursor-pointer group"
-            onClick={() => navigate(`/profile/${instructor.id + 100}`)}
+            onClick={() => {
+              if (currentUser?.email === instructor.email) {
+                navigate("/profile");
+              } else {
+                navigate(`/explore/portfolio/instructor-${instructor.id}`);
+              }
+            }}
           >
             <p className="text-text-primary font-medium mb-1 group-hover:text-accent-gold transition-colors">{instructor.name}</p>
-            <p className="text-text-secondary text-xs mb-2 line-clamp-2">{instructor.bio}</p>
+            <p className="text-text-secondary mb-2 text-sm leading-relaxed break-words">{instructor.bio}</p>
             <div className="flex flex-wrap gap-2">
               {instructor.coursesTaught.map((courseId) => {
                 const course = courses.find((item) => item.id === courseId);
@@ -1047,13 +1071,9 @@ export default function Profile() {
     if (portfolioId) {
       if (String(portfolioId).startsWith("instructor-")) {
         const instructorId = String(portfolioId).replace("instructor-", "");
-        const instructor = instructorDirectory.find(i => String(i.id) === instructorId);
-        if (instructor) {
-          return {
-            ...instructor,
-            role: "instructor"
-          };
-        }
+        const instructor = instructorDirectory.find((i) => String(i.id) === instructorId);
+        const merged = mergeInstructorPublicView(instructor);
+        if (merged) return merged;
       }
 
       const portfolio = portfolios.find((p) => String(p.id) === String(portfolioId));
@@ -1075,13 +1095,11 @@ export default function Profile() {
         };
       }
 
-      const instructor = instructorDirectory.find(i => String(i.id + 100) === String(portfolioId));
-      if (instructor) {
-        return {
-          ...instructor,
-          role: "instructor"
-        };
-      }
+      const instructorLegacy = instructorDirectory.find(
+        (i) => String(i.id + 100) === String(portfolioId)
+      );
+      const mergedLegacy = mergeInstructorPublicView(instructorLegacy);
+      if (mergedLegacy) return mergedLegacy;
       return authUser;
     }
     return authUser;

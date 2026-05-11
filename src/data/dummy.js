@@ -347,14 +347,14 @@ export const projects = [
   },
   {
     id: 3,
-    title: "GUC Portfolio Platform",
+    title: "GUC Portal Platform",
     course: "Bachelor Project",
     courseCode: "BP",
     owner: "Sara Mahmoud",
     supervisor: "Dr. Sara Abdelhamid",
     status: "In Progress",
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
-    demo: "https://guc-portfolio-platform.example.com",
+    demo: "https://guc-portal-platform.example.com",
     report: "GUC_Portfolio_Platform_Report.pdf",
     reportUrl: "https://example.com/reports/GUC_Portfolio_Platform_Report.pdf",
     demoVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -382,7 +382,7 @@ export const projects = [
     ],
     resources: [
       { label: "Project Repository", url: "https://github.com/Software-Engineering-Spring-2026/SE_Team27" },
-      { label: "Live Project", url: "https://guc-portfolio-platform.example.com" },
+      { label: "Live Project", url: "https://guc-portal-platform.example.com" },
       { label: "Final Report", url: "#" },
     ],
     platformActive: false,
@@ -398,7 +398,7 @@ export let projectAppeals = [
   {
     id: 1,
     projectId: 3,
-    projectTitle: "GUC Portfolio Platform",
+    projectTitle: "GUC Portal Platform",
     studentName: "Sara Mahmoud",
     studentEmail: "sara.mahmoud@student.guc.edu.eg",
     message:
@@ -450,7 +450,7 @@ export const portfolios = [
     owner: "Sara Mahmoud",
     studentName: "Sara Mahmoud",
     studentEmail: "sara.mahmoud@student.guc.edu.eg",
-    title: "GUC Portfolio Platform",
+    title: "GUC Portal Platform",
     headline: "BI",
     skills: ["React", "FastAPI", "PostgreSQL"],
     projectIds: [3],

@@ -49,3 +49,69 @@ body {
 ::-webkit-scrollbar-track { background: rgb(var(--c-bg-base)); }
 ::-webkit-scrollbar-thumb { background: rgb(var(--c-border)); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-text-secondary)); }
+
+/* Login hero — slow metallic light sweep over gold chrome */
+@keyframes login-metal-sweep {
+  0% {
+    transform: translate3d(-60%, 0, 0) rotate(12deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate3d(180%, 0, 0) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+/* Dark: brushed gold sheen — warm highlights */
+.login-metal-sheen {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 25;
+  mix-blend-mode: soft-light;
+  opacity: 0.42;
+}
+
+.login-metal-sheen::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -30%;
+  width: 55%;
+  height: 140%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 248, 230, 0.06) 42%,
+    rgba(255, 235, 195, 0.14) 50%,
+    rgba(255, 248, 230, 0.06) 58%,
+    transparent 100%
+  );
+  animation: login-metal-sweep 9s ease-in-out infinite;
+}
+
+.login-metal-sheen--subtle {
+  opacity: 0.28;
+  mix-blend-mode: overlay;
+}
+
+.login-metal-sheen--subtle::before {
+  animation-duration: 11s;
+  animation-delay: 2.5s;
+  width: 45%;
+  left: -25%;
+}
+
+html[data-theme="light"] .login-metal-sheen {
+  mix-blend-mode: multiply;
+  opacity: 0.12;
+}
+
+html[data-theme="light"] .login-metal-sheen--subtle {
+  mix-blend-mode: soft-light;
+  opacity: 0.08;
+}

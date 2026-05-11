@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, PageHeader } from "../../components/ui";
-import { courses, dummyUsers, projects, subscribeDummyUpdates } from "../../data/dummy";
+import { AuthContext } from "../../context/AuthContext";
+import { courses, dummyUsers, instructorDirectory, projects, subscribeDummyUpdates } from "../../data/dummy";
 
 export default function CourseDetail() {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useContext(AuthContext);
   const [revision, setRevision] = useState(0);
 
   useEffect(() => subscribeDummyUpdates(() => setRevision((r) => r + 1)), []);
@@ -75,7 +77,16 @@ export default function CourseDetail() {
                 <li 
                   key={inst.id} 
                   className="flex items-center justify-between p-3 rounded-lg border border-border bg-bg-elevated hover:border-accent-gold/40 transition-colors group cursor-pointer"
-                  onClick={() => navigate(`/profile/${inst.id + 100}`)}
+                  onClick={() => {
+                    if (currentUser?.email === inst.email) {
+                      navigate("/profile");
+                      return;
+                    }
+                    const row = instructorDirectory.find((d) => d.email === inst.email);
+                    if (row) {
+                      navigate(`/explore/portfolio/instructor-${row.id}`);
+                    }
+                  }}
                 >
                   <div className="flex flex-col">
                     <span className="font-display text-sm text-text-primary group-hover:text-accent-gold transition-colors">{inst.name}</span>

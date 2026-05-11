@@ -30,5 +30,9 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function lightVariantPlugin({ addVariant }) {
+      addVariant("light", 'html[data-theme="light"] &');
+    },
+  ],
 };

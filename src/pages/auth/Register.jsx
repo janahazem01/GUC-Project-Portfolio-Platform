@@ -113,7 +113,7 @@ export default function Register() {
     <div className="min-h-screen bg-bg-base flex items-center justify-center p-6">
       <div className="max-w-md w-full bg-bg-surface border border-border rounded-lg p-6">
         <h2 className="font-display text-2xl text-text-primary mb-2">Create an account</h2>
-        <p className="text-text-secondary text-sm mb-6">Register to join the GUC portfolio platform.</p>
+        <p className="text-text-secondary text-sm mb-6">Register to join GUC Portal.</p>
 
         {error && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded mb-4">{error}</div>}
 
