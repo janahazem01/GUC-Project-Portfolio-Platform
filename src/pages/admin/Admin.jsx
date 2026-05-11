@@ -64,6 +64,18 @@ const shortcuts = [
     path: "/admin/employers",
   },
   { title: "Approvals", subtitle: "Pending employer docs", icon: "✓", path: "/admin/approvals" },
+  {
+    title: "Requests",
+    subtitle: "Instructor course link / unlink",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-6 w-6 text-text-secondary" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 4h16v16H4z" />
+        <path d="M8 8h8" />
+        <path d="M8 12h5" />
+      </svg>
+    ),
+    path: "/requests",
+  },
   { title: "Appeals", subtitle: "Student flag appeals", icon: "✉", path: "/admin/appeals" },
   { title: "Flagged", subtitle: "Reported projects", icon: "!", path: "/admin/flagged" },
   {
@@ -112,7 +124,7 @@ export default function Admin() {
       new CustomEvent("portfolio-toast-notification", {
         detail: {
           title: "Instructor course request (demo)",
-          body: "Dr. Aya Salama requested to link to CSEN401 — Software Engineering. Open Instructor Requests from the admin shortcuts to review it.",
+          body: "Dr. Aya Salama requested to link to CSEN401 — Software Engineering. Open Requests in the sidebar to review it.",
           dismissSessionKey: dismissKey,
         },
       })

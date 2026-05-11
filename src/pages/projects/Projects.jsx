@@ -17,6 +17,7 @@ import { CHART_COLORS } from "../../components/viz/chartColors.js";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
 import { courses, dummyUsers, instructorDirectory } from "../../data/dummy";
+import { resolveGithubHref } from "../../utils/githubRepo";
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const REQUIRED = "This field cannot be left empty";
@@ -120,7 +121,7 @@ function readPdfFile(file, onLoaded) {
 }
 
 // ─── ProjectForm (outside page so it never remounts) ─────────────────────────
-function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }) {
+function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel, readmeEditable = true }) {
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -172,8 +173,9 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
         {errors.languages && <p className="text-danger text-xs font-sans mt-1">{errors.languages}</p>}
       </div>
 
+      {readmeEditable && (
       <div>
-        <label className="text-sm text-text-secondary font-sans">Project Description</label>
+        <label className="text-sm text-text-secondary font-sans">README (project intro)</label>
         <textarea
           value={form.description}
           onChange={(e) => onChange("description", e.target.value)}
@@ -183,6 +185,7 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel }
                      focus:outline-none focus:border-accent-blue transition-colors resize-none"
         />
       </div>
+      )}
 
       <div>
         <Input
@@ -465,6 +468,7 @@ export default function Projects() {
   const validateEditForm = () => {
     const nextErrors = {};
     Object.entries(editForm).forEach(([field, value]) => {
+      if (field === "description" && editingProject?.owner !== user?.name) return;
       if (!value.trim()) nextErrors[field] = REQUIRED;
     });
     setEditFormErrors(nextErrors);
@@ -483,7 +487,10 @@ export default function Projects() {
       title: editForm.title.trim(),
       course: editForm.course.trim(),
       courseCode: editForm.courseCode.trim(),
-      description: editForm.description.trim(),
+      description:
+        editingProject.owner === user?.name
+          ? editForm.description.trim()
+          : editingProject.description,
       languages: editForm.languages
         .split(",")
         .map((l) => l.trim())
@@ -531,7 +538,7 @@ export default function Projects() {
       solution: "",
       features: [],
       outcomes: [],
-      resources: [{ label: "Project Repository", url: form.github.trim() }],
+      resources: [{ label: "Project Repository", url: resolveGithubHref(form.github.trim()) }],
       tasks: [],
     });
     setForm(blankForm());
@@ -548,12 +555,13 @@ export default function Projects() {
 
   const handleUpdate = () => {
     const course = courses.find((c) => c.id === Number(form.courseId));
+    const canEditReadme = modal.project.owner === user?.name;
     updateProject(modal.project.id, {
       title: form.title.trim(),
       course: course?.name || modal.project.course,
       courseCode: course?.code || modal.project.courseCode,
       github: form.github.trim(),
-      description: form.description.trim(),
+      description: canEditReadme ? form.description.trim() : modal.project.description,
       report: form.report.trim() || modal.project.report,
       reportUrl: form.reportFileUrl || modal.project.reportUrl || null,
       demoVideo: form.demoVideo.trim() || modal.project.demoVideo,
@@ -1141,7 +1149,7 @@ export default function Projects() {
                     <div className="flex items-center gap-4 mt-3 flex-wrap">
                       {project.github && (
                         <a
-                          href={project.github}
+                          href={resolveGithubHref(project.github)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-accent-blue text-xs font-mono hover:underline"
@@ -1372,6 +1380,7 @@ export default function Projects() {
           onSubmit={requestUpdateConfirmation}
           onCancel={closeModal}
           submitLabel="Save Changes"
+          readmeEditable={modal?.project?.owner === user?.name}
         />
       </Modal>
 
@@ -1413,16 +1422,24 @@ export default function Projects() {
           </div>
 
           <div>
-            <label className="text-sm text-text-secondary font-sans">Description</label>
-            <textarea
-              value={editForm.description}
-              onChange={(e) => updateEditField("description", e.target.value)}
-              className="mt-1.5 min-h-24 w-full bg-bg-elevated border border-border rounded-lg px-4 py-2.5
-                         text-text-primary text-sm font-sans placeholder:text-text-secondary/50
-                         focus:outline-none focus:border-accent-blue transition-colors resize-none"
-            />
-            {editFormErrors.description && (
-              <p className="text-danger text-xs font-sans mt-1">{editFormErrors.description}</p>
+            {editingProject?.owner === user?.name ? (
+              <>
+                <label className="text-sm text-text-secondary font-sans">README (project intro)</label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => updateEditField("description", e.target.value)}
+                  className="mt-1.5 min-h-24 w-full bg-bg-elevated border border-border rounded-lg px-4 py-2.5
+                             text-text-primary text-sm font-sans placeholder:text-text-secondary/50
+                             focus:outline-none focus:border-accent-blue transition-colors resize-none"
+                />
+                {editFormErrors.description && (
+                  <p className="text-danger text-xs font-sans mt-1">{editFormErrors.description}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-text-secondary text-xs font-sans">
+                Only the project owner can edit the README from this form.
+              </p>
             )}
           </div>
 

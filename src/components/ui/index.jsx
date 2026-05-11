@@ -1,5 +1,7 @@
 // Shared primitive UI components
 
+import { useEffect } from "react";
+
 export function Card({ children, className = "", hover = false, ...props }) {
   return (
     <div
@@ -180,6 +182,12 @@ export function ConfirmActionModal({ isOpen, action, onClose, onConfirm, variant
 }
 
 export function SuccessToast({ message, onClose }) {
+  useEffect(() => {
+    if (!message) return undefined;
+    const t = window.setTimeout(() => onClose?.(), 2000);
+    return () => window.clearTimeout(t);
+  }, [message, onClose]);
+
   if (!message) return null;
 
   return (

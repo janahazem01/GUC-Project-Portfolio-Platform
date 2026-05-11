@@ -5,12 +5,10 @@ import { AuthContext } from "../../context/AuthContext";
 import {
   adminClearProjectFlag,
   adminHideFlaggedProject,
-  applyInstructorCourseRequestDecision,
   dummyUsers,
   employerApplications,
   getFlaggedProjects,
   getProjectAppeals,
-  instructorCourseRequests,
   projects,
   setProjectPlatformActive,
   subscribeDummyUpdates,
@@ -30,7 +28,6 @@ const pageTitles = {
   employers: ["Employers", "Employer accounts registered on the platform."],
   approvals: ["Approvals", "Employer verification requests and statuses."],
   flagged: ["Flagged Projects", "Reported or flagged project records."],
-  requests: ["Instructor Requests", "Link and unlink requests from course instructors."],
   appeals: ["Student Appeals", "Short appeals submitted after projects are flagged for review."],
 };
 
@@ -80,7 +77,6 @@ export default function AdminDataPage() {
   const [actionFeedbackMessage, setActionFeedbackMessage] = useState("");
   const [projectDeactivateTarget, setProjectDeactivateTarget] = useState(null);
   const [projectActivateTarget, setProjectActivateTarget] = useState(null);
-  const [instructorRequestConfirm, setInstructorRequestConfirm] = useState(null);
   const [flaggedActionConfirm, setFlaggedActionConfirm] = useState(null);
   const [appealFilter, setAppealFilter] = useState("all");
   const [viewingCompanyDocs, setViewingCompanyDocs] = useState(null);
@@ -172,6 +168,10 @@ export default function AdminDataPage() {
 
   const page = pageTitles[section] || ["Admin Console", "Platform data and systems management."];
 
+  if (section === "requests") {
+    return <Navigate to="/requests" replace />;
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4">
       <PageHeader
@@ -180,7 +180,7 @@ export default function AdminDataPage() {
         action={
           <Button
             variant="secondary"
-            onClick={() => navigate(section === "requests" ? "/" : -1)}
+            onClick={() => navigate(-1)}
           >
             Back
           </Button>
@@ -461,64 +461,6 @@ export default function AdminDataPage() {
         </Card>
       )}
 
-      {section === "requests" && (
-        <Card className="p-0 overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b border-border bg-bg-elevated/40">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="blue">
-                {instructorCourseRequests.length} pending
-              </Badge>
-              <p className="text-text-secondary text-sm font-sans">
-                Accept to apply course links. Reject to decline without linking changes.
-              </p>
-            </div>
-          </div>
-          <DataHeader
-            columns={["Instructor", "Email", "Course", "Type", "Requested", "Actions"]}
-            style={{ gridTemplateColumns: "1.3fr 1.6fr 1.1fr 0.95fr 0.95fr 1.2fr" }}
-            alignments={["text-left", "text-left", "text-left", "text-center", "text-center", "text-center"]}
-          />
-          {instructorCourseRequests.length === 0 ? (
-            <div className="px-4 py-6 text-sm font-sans text-text-secondary border-b border-border">
-              No pending instructor requests.
-            </div>
-          ) : (
-            instructorCourseRequests.map((request) => (
-              <DataRow
-                key={request.id}
-                columns={6}
-                style={{ gridTemplateColumns: "1.3fr 1.6fr 1.1fr 0.95fr 0.95fr 1.2fr" }}
-              >
-                <p className="text-sm text-text-primary font-semibold truncate">{request.instructorName}</p>
-                <p className="text-sm text-text-secondary font-sans truncate">{request.instructorEmail}</p>
-                <div className="min-w-0 text-left">
-                  <p className="text-sm text-text-primary font-sans truncate">{request.courseCode}</p>
-                  <p className="text-xs text-text-secondary font-sans truncate">{request.courseName}</p>
-                </div>
-                <div className="flex justify-center">
-                  <Badge variant={request.type === "unlink" ? "warning" : "success"}>
-                    {request.type === "unlink" ? "Unlink" : "Link"}
-                  </Badge>
-                </div>
-                <p className="text-sm text-text-secondary font-mono text-center">{request.requestedAt}</p>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button size="sm" onClick={() => setInstructorRequestConfirm({ id: request.id, accept: true })}>
-                    Accept
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => setInstructorRequestConfirm({ id: request.id, accept: false })}
-                  >
-                    Reject
-                  </Button>
-                </div>
-              </DataRow>
-            ))
-          )}
-        </Card>
-      )}
-
       {section === "flagged" && (
         <>
           <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -686,24 +628,6 @@ export default function AdminDataPage() {
           const title = projectActivateTarget.title;
           setProjectActivateTarget(null);
           setActionFeedbackMessage(`${title} was activated successfully.`);
-          setActionFeedbackOpen(true);
-        }}
-      />
-
-      <ConfirmActionModal
-        isOpen={instructorRequestConfirm !== null}
-        action={
-          instructorRequestConfirm?.accept
-            ? "accept this instructor course request"
-            : "reject this instructor course request"
-        }
-        variant={instructorRequestConfirm?.accept ? "gold" : "danger"}
-        onClose={() => setInstructorRequestConfirm(null)}
-        onConfirm={() => {
-          if (!instructorRequestConfirm) return;
-          applyInstructorCourseRequestDecision(instructorRequestConfirm.id, instructorRequestConfirm.accept);
-          setInstructorRequestConfirm(null);
-          setActionFeedbackMessage("This step was completed successfully.");
           setActionFeedbackOpen(true);
         }}
       />

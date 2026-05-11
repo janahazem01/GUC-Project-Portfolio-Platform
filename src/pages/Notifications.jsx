@@ -2,6 +2,7 @@ import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, Button, Card, Modal, PageHeader } from "../components/ui";
 import { AuthContext } from "../context/AuthContext";
+import { useDoNotDisturb } from "../hooks/useDoNotDisturb";
 import { useProjects } from "../context/ProjectsContext";
 import {
   getNotificationActionPath,
@@ -47,6 +48,7 @@ function navigateStateForPath(path) {
 export default function Notifications() {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const dndBlur = useDoNotDisturb(user);
   const { projectList, updateProject } = useProjects();
 
   const [readState, setReadState] = useState(() => loadReadState(user));
@@ -256,7 +258,11 @@ export default function Notifications() {
         </span>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div
+        className={`flex flex-col gap-3 transition-[filter] ${
+          dndBlur ? "blur-[11px] saturate-50 opacity-85 pointer-events-none select-none" : ""
+        }`}
+      >
         {notifications.length > 0 ? (
           notifications.map((n) => {
             const vis = getNotificationPresentation(n);

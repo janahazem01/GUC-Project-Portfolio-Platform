@@ -2,6 +2,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, PageHeader } from "../components/ui";
 import { AuthContext } from "../context/AuthContext";
+import { useDoNotDisturb } from "../hooks/useDoNotDisturb";
 import {
   getOtherParticipant,
   getThreadById,
@@ -68,6 +69,8 @@ export default function Messages() {
 
   const other = activeThread && user ? getOtherParticipant(activeThread, user) : null;
 
+  const dndBlur = useDoNotDisturb(user);
+
   const send = (event) => {
     event.preventDefault();
     if (!activeThread || !composeText.trim()) return;
@@ -87,7 +90,11 @@ export default function Messages() {
         }
       />
 
-      <div className="flex flex-1 min-h-0 rounded-lg border border-border bg-bg-surface overflow-hidden">
+      <div
+        className={`flex flex-1 min-h-0 rounded-xl border border-border/80 bg-bg-surface/80 shadow-inner overflow-hidden backdrop-blur-sm transition-[filter] ${
+          dndBlur ? "blur-[11px] saturate-50 opacity-85 pointer-events-none select-none" : ""
+        }`}
+      >
         <aside className="w-full max-w-[20rem] border-r border-border flex flex-col shrink-0 bg-bg-base/40">
           <div className="p-3 border-b border-border space-y-2">
             <div className="relative">

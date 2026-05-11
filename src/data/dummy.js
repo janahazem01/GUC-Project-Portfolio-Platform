@@ -610,6 +610,7 @@ export function sendThreadMessage(threadId, senderUser, text) {
     hour: "numeric",
     minute: "2-digit",
   });
+  if (!thread.messages) thread.messages = [];
   thread.messages.push({ id: mid, senderId: senderUser.id, text: trimmed, time: timeLabel });
 
   if (!thread.lastReadMessageIdByUserId) thread.lastReadMessageIdByUserId = {};
@@ -634,6 +635,58 @@ export function sendThreadMessage(threadId, senderUser, text) {
   });
   emitDummyUpdate();
   return { ok: true };
+}
+
+/** Users the current viewer can start a DM with (demo: dummyUsers only, excludes admins + self). */
+export function getDmEligiblePeers(viewer) {
+  if (!viewer?.id) return [];
+  const roles = new Set(["student", "instructor", "employer"]);
+  return dummyUsers.filter(
+    (u) => u.id !== viewer.id && roles.has(u.role) && u.role !== "admin"
+  );
+}
+
+export function findExistingDmThread(viewerId, targetId) {
+  return messageThreads.find(
+    (t) =>
+      t.participants?.length === 2 &&
+      t.participants.some((p) => p.userId === viewerId) &&
+      t.participants.some((p) => p.userId === targetId)
+  );
+}
+
+export function createOrOpenDmThread(viewer, targetUser) {
+  if (!viewer?.id || !targetUser?.id || viewer.id === targetUser.id) {
+    return { ok: false, error: "Invalid participants." };
+  }
+  const roles = ["student", "instructor", "employer"];
+  if (!roles.includes(viewer.role) || !roles.includes(targetUser.role)) {
+    return { ok: false, error: "Messaging is not available for this account type." };
+  }
+  const existing = findExistingDmThread(viewer.id, targetUser.id);
+  if (existing) return { ok: true, threadId: existing.id, created: false };
+
+  const id = `thread-${Date.now()}`;
+  const a = {
+    userId: viewer.id,
+    name: viewer.name,
+    email: viewer.email,
+    role: viewer.role,
+  };
+  const b = {
+    userId: targetUser.id,
+    name: targetUser.name,
+    email: targetUser.email,
+    role: targetUser.role,
+  };
+  messageThreads.push({
+    id,
+    participants: [a, b],
+    messages: [],
+    lastReadMessageIdByUserId: {},
+  });
+  emitDummyUpdate();
+  return { ok: true, threadId: id, created: true };
 }
 
 export const courses = [
@@ -797,7 +850,7 @@ export const notifications = [
     time: "12m ago",
     audience: ["admin"],
     courseLinkMeta: { type: "link", courseCode: "CSEN401", instructorName: "Dr. Aya Salama" },
-    actionPath: "/admin/requests",
+    actionPath: "/requests",
   },
   {
     id: 8,
@@ -808,7 +861,7 @@ export const notifications = [
     time: "1d ago",
     audience: ["admin"],
     courseLinkMeta: { type: "unlink", courseCode: "CSEN901", instructorName: "Dr. Sara Abdelhamid" },
-    actionPath: "/admin/requests",
+    actionPath: "/requests",
   },
   {
     id: 9,
@@ -951,7 +1004,7 @@ export function appendInstructorCourseRequest(payload) {
     read: false,
     time: "Just now",
     audience: ["admin"],
-    actionPath: "/admin/requests",
+    actionPath: "/requests",
     courseLinkMeta: {
       type: row.type,
       courseCode: row.courseCode,
@@ -1154,7 +1207,7 @@ export function getNotificationActionPath(notification) {
       return "/admin/approvals";
     case "course_link_request":
     case "course_unlink_request":
-      return "/admin/requests";
+      return "/requests";
     case "course_link_decision":
     case "course_unlink_decision":
       return "/courses";

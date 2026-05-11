@@ -24,6 +24,7 @@ import {
 } from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
 import { useProjects } from "../../context/ProjectsContext";
+import { resolveGithubHref } from "../../utils/githubRepo";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -230,10 +231,6 @@ export default function ProjectDetails() {
     return getProjectAppeals().filter((appeal) => appeal.projectId === project.id);
   }, [project, moderationRevision]);
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  }, [projectId]);
-
   // Feedback state
   const [projectFeedbackText, setProjectFeedbackText] = useState("");
   const [taskFeedbackText, setTaskFeedbackText] = useState({});
@@ -259,6 +256,9 @@ export default function ProjectDetails() {
   const [appealMessage, setAppealMessage] = useState("");
   const [appealError, setAppealError] = useState("");
 
+  const [readmeEditing, setReadmeEditing] = useState(false);
+  const [readmeDraft, setReadmeDraft] = useState("");
+
   // Admin deactivate modal
   const [adminExploreDeactivateOpen, setAdminExploreDeactivateOpen] = useState(false);
 
@@ -271,6 +271,16 @@ export default function ProjectDetails() {
     savePortfolio,
     removePortfolio,
   } = useFavorites();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!project) return;
+    setReadmeDraft(project.description || "");
+    setReadmeEditing(false);
+  }, [project?.id, project?.description]);
 
   const openDocumentPreview = (document, title) => {
     setDocumentPreview(buildDocumentPreview(document, title));
@@ -298,6 +308,8 @@ export default function ProjectDetails() {
   }
 
   // Derived values
+  const isProjectOwner = project.owner === user?.name;
+
   const isInstructor = user?.role === "instructor";
   const canViewFeedback = canViewInstructorFeedback(project, user);
   const canModerateProject = ["admin", "instructor"].includes(user?.role);
@@ -1017,7 +1029,7 @@ export default function ProjectDetails() {
                   View Project
                 </Button>
               )}
-              <Button variant="ghost" size="sm" onClick={() => openExternal(project.github)}>
+              <Button variant="ghost" size="sm" onClick={() => openExternal(resolveGithubHref(project.github))}>
                 GitHub
               </Button>
             </div>
@@ -1025,11 +1037,55 @@ export default function ProjectDetails() {
 
           <div className="px-8 py-8 flex flex-col gap-8">
             <div>
-              <h1 className="font-display text-4xl text-text-primary mb-4">{project.title}</h1>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h1 className="font-display text-4xl text-text-primary">{project.title}</h1>
+                {isProjectOwner && (
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    {!readmeEditing ? (
+                      <Button size="sm" variant="secondary" onClick={() => setReadmeEditing(true)}>
+                        Edit README
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setReadmeEditing(false);
+                            setReadmeDraft(project.description || "");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="gold"
+                          onClick={() => {
+                            updateProject(project.id, { description: readmeDraft.trim() });
+                            setReadmeEditing(false);
+                            setFeedbackMessage("README updated.");
+                          }}
+                        >
+                          Save README
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
               <div className="border-t border-border pt-4">
-                <p className="text-text-secondary text-sm font-sans leading-6">
-                  {project.description}
-                </p>
+                {readmeEditing && isProjectOwner ? (
+                  <textarea
+                    value={readmeDraft}
+                    onChange={(e) => setReadmeDraft(e.target.value)}
+                    rows={6}
+                    className="w-full min-h-[8rem] bg-bg-elevated border border-border rounded-lg px-4 py-3 text-text-primary text-sm font-sans leading-relaxed focus:outline-none focus:border-accent-blue"
+                  />
+                ) : (
+                  <p className="text-text-secondary text-sm font-sans leading-6">
+                    {project.description}
+                  </p>
+                )}
               </div>
             </div>
 

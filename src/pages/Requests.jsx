@@ -1,7 +1,12 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Card, Button, PageHeader, Badge, Modal } from "../components/ui";
+import { Card, Button, PageHeader, Badge, Modal, ConfirmActionModal } from "../components/ui";
 import { AuthContext } from "../context/AuthContext";
 import { useProjects } from "../context/ProjectsContext";
+import {
+  applyInstructorCourseRequestDecision,
+  instructorCourseRequests,
+  subscribeDummyUpdates,
+} from "../data/dummy";
 
 const statusVariant = {
   accepted: "success",
@@ -50,7 +55,7 @@ function getOutgoingRequests(projectList, user) {
     ]);
 }
 
-export default function Requests() {
+function StudentAndInstructorRequests() {
   const { user } = useContext(AuthContext);
   const { projectList, updateProject } = useProjects();
   const [statusFilter, setStatusFilter] = useState("all");
@@ -119,7 +124,7 @@ export default function Requests() {
   return (
     <div>
       <PageHeader
-        title="Invitations"
+        title="Requests"
         subtitle="Review incoming invitations and track the requests you sent."
       />
 
@@ -254,4 +259,140 @@ export default function Requests() {
       )}
     </div>
   );
+}
+
+function AdminCourseRequestsQueue() {
+  const [, setRev] = useState(0);
+  const [instructorReqConfirm, setInstructorReqConfirm] = useState(null);
+  const [adminNotice, setAdminNotice] = useState("");
+
+  useEffect(() => subscribeDummyUpdates(() => setRev((r) => r + 1)), []);
+
+  useEffect(() => {
+    if (!adminNotice) return undefined;
+    const t = window.setTimeout(() => setAdminNotice(""), 3500);
+    return () => window.clearTimeout(t);
+  }, [adminNotice]);
+
+  return (
+    <div>
+      <PageHeader
+        title="Requests"
+        subtitle="Review instructor requests to link or unlink courses from their profiles. Accept applies catalog changes; reject dismisses the request."
+      />
+
+      <Card className="p-0 overflow-hidden mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b border-border bg-bg-elevated/40">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="blue">{instructorCourseRequests.length} pending</Badge>
+            <p className="text-text-secondary text-sm font-sans">
+              Accept to apply course links. Reject to decline without linking changes.
+            </p>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left border-collapse">
+            <thead>
+              <tr className="border-b border-border bg-bg-base">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal">
+                  Instructor
+                </th>
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal">
+                  Email
+                </th>
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal">
+                  Course
+                </th>
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[6rem]">
+                  Type
+                </th>
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[7rem]">
+                  Requested
+                </th>
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-right w-[11rem]">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {instructorCourseRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-sm font-sans text-text-secondary text-center">
+                    No pending instructor requests.
+                  </td>
+                </tr>
+              ) : (
+                instructorCourseRequests.map((request) => (
+                  <tr key={request.id} className="border-b border-border last:border-0 hover:bg-bg-elevated/20">
+                    <td className="px-4 py-4 text-sm font-semibold text-text-primary">{request.instructorName}</td>
+                    <td className="px-4 py-4 text-sm text-text-secondary font-sans break-all">{request.instructorEmail}</td>
+                    <td className="px-4 py-4">
+                      <p className="text-sm text-text-primary font-sans">{request.courseCode}</p>
+                      <p className="text-xs text-text-secondary font-sans mt-0.5">{request.courseName}</p>
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <Badge variant={request.type === "unlink" ? "warning" : "success"}>
+                        {request.type === "unlink" ? "Unlink" : "Link"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-4 text-center text-sm font-mono text-text-secondary">{request.requestedAt}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button size="sm" onClick={() => setInstructorReqConfirm({ id: request.id, accept: true })}>
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => setInstructorReqConfirm({ id: request.id, accept: false })}
+                        >
+                          Reject
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <ConfirmActionModal
+        isOpen={instructorReqConfirm !== null}
+        action={
+          instructorReqConfirm?.accept
+            ? "accept this instructor course request"
+            : "reject this instructor course request"
+        }
+        variant={instructorReqConfirm?.accept ? "gold" : "danger"}
+        onClose={() => setInstructorReqConfirm(null)}
+        onConfirm={() => {
+          if (!instructorReqConfirm) return;
+          applyInstructorCourseRequestDecision(instructorReqConfirm.id, instructorReqConfirm.accept);
+          setInstructorReqConfirm(null);
+          setAdminNotice("Request processed successfully.");
+        }}
+      />
+
+      {adminNotice && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-success text-sm font-sans">{adminNotice}</p>
+            <button type="button" className="text-success text-xs font-semibold" onClick={() => setAdminNotice("")}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Requests() {
+  const { user } = useContext(AuthContext);
+  if (user?.role === "admin") {
+    return <AdminCourseRequestsQueue />;
+  }
+  return <StudentAndInstructorRequests />;
 }

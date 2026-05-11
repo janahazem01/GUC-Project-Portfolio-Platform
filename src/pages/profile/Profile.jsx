@@ -602,7 +602,7 @@ function InstructorDirectoryPreview() {
   );
 }
 
-function EmployerProfile({ user, updateUser }) {
+function EmployerProfile({ user, updateUser, readOnly = false }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -756,7 +756,9 @@ function EmployerProfile({ user, updateUser }) {
           <p className="text-accent-gold font-mono text-xs mb-4">{user?.address}</p>
           <p className="text-text-secondary text-sm max-w-2xl">{user?.companyBio}</p>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleOpenEdit}>Edit Profile</Button>
+        <Button variant="secondary" size="sm" onClick={handleOpenEdit} disabled={readOnly}>
+          Edit Profile
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-6 mb-6">

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge, Button, Card, Input, Modal, PageHeader, ConfirmActionModal } from "../../components/ui";
+import { AuthContext } from "../../context/AuthContext";
 import {
   courses,
   createCourseRecord,
@@ -10,8 +11,69 @@ import {
   updateCourseRecord,
 } from "../../data/dummy";
 
+function InstructorCoursesReadOnly({ sortedCourses, navigate }) {
+  return (
+    <div className="mx-auto max-w-5xl px-4">
+      <PageHeader
+        title="Courses"
+        subtitle="Catalog reference: course names and codes. Course management is handled by administrators."
+        action={
+          <Button variant="secondary" onClick={() => navigate("/")}>
+            Back
+          </Button>
+        }
+      />
+
+      <Card className="p-0 overflow-hidden">
+        <div className="px-4 py-3 border-b border-border bg-bg-elevated/50">
+          <Badge variant="blue">{sortedCourses.length} courses</Badge>
+          <span className="text-text-secondary text-sm font-sans ml-3">
+            Read-only directory
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-left border-collapse">
+            <thead>
+              <tr className="border-b border-border bg-bg-base">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal">
+                  Course name
+                </th>
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal w-[9rem]">
+                  Code
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedCourses.map((course) => (
+                <tr
+                  key={course.id}
+                  className="border-b border-border last:border-0 hover:bg-bg-elevated/25 transition-colors"
+                >
+                  <td className="px-4 py-4">
+                    <Link
+                      to={`/courses/${course.id}`}
+                      className="font-display text-sm text-accent-blue hover:text-accent-gold hover:underline whitespace-normal break-words"
+                    >
+                      {course.name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-4">
+                    <Badge variant="blue">{course.code}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function CoursesDirectory() {
+  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+
   const [revision, setRevision] = useState(0);
   const bump = () => setRevision((r) => r + 1);
 
@@ -108,6 +170,10 @@ export default function CoursesDirectory() {
 
   const linkedCount = (code) =>
     projects.filter((project) => project.courseCode === code).length;
+
+  if (user?.role === "instructor") {
+    return <InstructorCoursesReadOnly sortedCourses={sortedCourses} navigate={navigate} />;
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4">
