@@ -1,8 +1,24 @@
 import { useState, useMemo, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Badge, PageHeader, Input } from "../../components/ui";
+import { Card, Badge, Button, PageHeader, Input } from "../../components/ui";
 import { instructorDirectory, courses } from "../../data/dummy";
 import { AuthContext } from "../../context/AuthContext";
+
+function taughtCourseText(inst) {
+  return (inst.coursesTaught || [])
+    .map((id) => courses.find((c) => c.id === id))
+    .filter(Boolean)
+    .map((c) => `${c.code} ${c.name}`.toLowerCase())
+    .join(" ");
+}
+
+function instructorMatchesQuery(inst, q) {
+  if (!q) return true;
+  const name = (inst.name || "").toLowerCase();
+  const email = (inst.email || "").toLowerCase();
+  if (name.includes(q) || email.includes(q)) return true;
+  return taughtCourseText(inst).includes(q);
+}
 
 export default function Instructors() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -12,12 +28,14 @@ export default function Instructors() {
 
   const filteredInstructors = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
+    const courseId = filterCourse ? parseInt(filterCourse, 10) : null;
     return instructorDirectory.filter((inst) => {
-      const matchesName = inst.name.toLowerCase().includes(q);
-      const matchesCourse = filterCourse
-        ? inst.coursesTaught.includes(parseInt(filterCourse))
-        : true;
-      return matchesName && matchesCourse;
+      const teachesFilteredCourse =
+        courseId == null || Number.isNaN(courseId)
+          ? true
+          : (inst.coursesTaught || []).includes(courseId);
+      if (!teachesFilteredCourse) return false;
+      return instructorMatchesQuery(inst, q);
     });
   }, [searchQuery, filterCourse]);
 
@@ -25,32 +43,50 @@ export default function Instructors() {
     <div className="space-y-6">
       <PageHeader
         title="Instructor Directory"
-        description="Search for faculty members by name or courses they teach."
+        subtitle="Search by instructor name or course title and code. Use the course filter to narrow the directory."
+        action={
+          currentUser?.role === "admin" ? (
+            <Button variant="secondary" onClick={() => navigate("/")}>
+              Back
+            </Button>
+          ) : null
+        }
       />
 
-      {/* Filters */}
+      {/* Search + course filter */}
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            placeholder="Search instructors by name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <div className="relative">
-            <select
-              className="w-full bg-bg-surface border border-border rounded-md px-3 py-2 pr-10 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-gold appearance-none cursor-pointer"
-              value={filterCourse}
-              onChange={(e) => setFilterCourse(e.target.value)}
-            >
-              <option value="" className="bg-bg-surface">All Courses</option>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id} className="bg-bg-surface">
-                  {course.code} - {course.name}
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6 lg:gap-10">
+          <div className="min-w-0 w-full flex-1 md:flex-[1_1_65%] lg:flex-[1_1_72%]">
+            <Input
+              placeholder="Search by instructor name, email, or course name or code…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <div className="w-full shrink-0 md:w-auto md:min-w-[12.5rem] md:pl-4 lg:pl-10">
+            <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-text-secondary mb-1.5">Filter by course</p>
+            <div className="relative">
+              <select
+                aria-label="Filter directory by course"
+                className="w-full min-w-[12rem] md:max-w-[20rem] bg-bg-surface border border-border rounded-lg px-3 py-2.5 pr-10 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-gold appearance-none cursor-pointer"
+                value={filterCourse}
+                onChange={(e) => setFilterCourse(e.target.value)}
+              >
+                <option value="" className="bg-bg-surface">
+                  All courses
                 </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-text-muted">
-              <span className="text-xs">▼</span>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id} className="bg-bg-surface">
+                    {course.code} — {course.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-muted">
+                <span className="text-xs" aria-hidden>
+                  ▼
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -95,7 +131,7 @@ export default function Instructors() {
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-xs font-mono text-text-muted uppercase tracking-wider mb-2">Teaching</h4>
+                  <h4 className="text-xs font-mono text-text-muted uppercase tracking-wider mb-2">Linked Courses</h4>
                   <div className="flex flex-wrap gap-1">
                     {instructor.coursesTaught.map((courseId) => {
                       const course = courses.find((c) => c.id === courseId);

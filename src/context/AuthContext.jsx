@@ -1,5 +1,5 @@
 import { createContext, useState } from "react";
-import { dummyUsers } from "../data/dummy";
+import { dummyUsers, emitDummyUpdate } from "../data/dummy";
 
 export const AuthContext = createContext();
 
@@ -108,13 +108,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = (payload) => {
-    // payload can be { name, email, password, role } or employer fields like { companyName, companyEmail }
-    const email = payload.email || payload.companyEmail;
+    // payload can be { name, email, password, role } or employer fields like { companyName, companyEmail, uploadedDocs }
+    const email = String(payload.email || payload.companyEmail || "").trim();
     if (!email) return { success: false, error: "Email is required" };
 
     const localUsers = getLocalUsers();
-    const existsInDummy = dummyUsers.find((u) => u.email === email);
-    const existsInLocal = localUsers.find((u) => u.email === email);
+    const emailTaken = (u) =>
+      u &&
+      (u.email === email ||
+        (u.companyEmail && String(u.companyEmail).trim() === email));
+    const existsInDummy = dummyUsers.find(emailTaken);
+    const existsInLocal = localUsers.find(emailTaken);
 
     if (existsInDummy || existsInLocal) {
       return { success: false, error: "Email already registered" };
@@ -128,7 +132,7 @@ export const AuthProvider = ({ children }) => {
         ? "instructor"
         : "employer");
 
-    const newUser = {
+    const baseUser = {
       id: Date.now(),
       role,
       favoriteProjectIds: [],
@@ -137,14 +141,38 @@ export const AuthProvider = ({ children }) => {
       email,
     };
 
+    let newUser = baseUser;
+
+    if (role === "employer") {
+      const companyEmail = String(payload.companyEmail || email).trim();
+      newUser = {
+        ...baseUser,
+        email,
+        companyEmail,
+        companyName: String(payload.companyName || "").trim() || baseUser.companyName,
+        companyBio: payload.companyBio ?? "",
+        address: payload.address ?? "",
+        location: payload.location ?? "",
+        companyPhone: payload.companyPhone ?? "",
+        verificationStatus: "pending",
+        uploadedDocs: Array.isArray(payload.uploadedDocs) ? payload.uploadedDocs : [],
+        status: payload.status ?? "active",
+      };
+    }
+
     const next = [...localUsers, newUser];
     saveLocalUsers(next);
 
     const loggedInUser = { ...newUser };
     delete loggedInUser.password;
+
+    if (role === "employer") {
+      emitDummyUpdate();
+      return { success: true, user: loggedInUser };
+    }
+
     setUser(loggedInUser);
     localStorage.setItem("user", JSON.stringify(loggedInUser));
-
     return { success: true, user: loggedInUser };
   };
 
@@ -154,25 +182,49 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateVerificationStatus = (userEmail, status) => {
-    // 1. Update localStorage "localUsers"
+    if (!userEmail) return;
+
+    const norm = (value) => String(value || "").trim().toLowerCase();
+    const target = norm(userEmail);
+
+    // 1. Update localStorage "localUsers" (match login or company email, case-insensitive)
     const localUsers = getLocalUsers();
-    const updatedLocal = localUsers.map(u => 
-      u.email === userEmail ? { ...u, verificationStatus: status } : u
+    const updatedLocal = localUsers.map((u) =>
+      norm(u.email) === target || norm(u.companyEmail) === target ? { ...u, verificationStatus: status } : u
     );
     saveLocalUsers(updatedLocal);
 
-    // 2. Update localStorage "gucUserOverrides" (for dummy users)
+    // 2. Update localStorage "gucUserOverrides" for every key that refers to the same employer
     const overrides = getUserOverrides();
-    const currentOverride = overrides[userEmail] || {};
-    saveUserOverrides({
-      ...overrides,
-      [userEmail]: { ...currentOverride, verificationStatus: status }
-    });
+    const patch = { verificationStatus: status };
+    const employerRecord = [...dummyUsers, ...localUsers].find(
+      (u) =>
+        u?.role === "employer" &&
+        (norm(u.email) === target || norm(u.companyEmail) === target)
+    );
 
-    // 3. Update current logged in user if they are the target
-    if (user?.email === userEmail) {
-      setUser(prev => ({ ...prev, verificationStatus: status }));
+    const keys = new Set([userEmail]);
+    if (employerRecord?.email) keys.add(employerRecord.email);
+    if (employerRecord?.companyEmail) keys.add(employerRecord.companyEmail);
+
+    const next = { ...overrides };
+    keys.forEach((key) => {
+      if (!key) return;
+      next[key] = { ...(next[key] || {}), ...patch };
+    });
+    saveUserOverrides(next);
+
+    // 3. Update current logged in user if they are the target (either identifier)
+    if (
+      user &&
+      (norm(user.email) === target ||
+        norm(user.companyEmail) === target ||
+        (employerRecord && norm(user.email) === norm(employerRecord.email)))
+    ) {
+      setUser((prev) => (prev ? { ...prev, verificationStatus: status } : prev));
     }
+
+    emitDummyUpdate();
   };
 
   const updateUser = (updatedData) => {

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge, Button, Card, PageHeader, SuccessToast, ConfirmActionModal, Modal } from "../../components/ui";
 import { dummyUsers } from "../../data/dummy";
+import { UserProfileLink } from "../../components/UserProfileLink";
 
 const roleLabels = {
   student: "Student",
@@ -60,7 +61,7 @@ export default function AdminAccountManagement() {
         title="Account Management"
         subtitle="Activate or deactivate user accounts"
         action={
-          <Button variant="secondary" onClick={() => navigate("/admin")}>Back</Button>
+          <Button variant="secondary" onClick={() => navigate("/")}>Back</Button>
         }
       />
 
@@ -137,7 +138,11 @@ export default function AdminAccountManagement() {
         {filteredUsers.map((user) => (
           <div key={user.id} className="grid gap-4 px-4 py-5 items-center border-b border-border last:border-0" style={{ gridTemplateColumns: "2.4fr 2.3fr 1.4fr 1.2fr 1fr" }}>
             <div className="truncate text-left">
-              <p className="text-sm text-text-primary font-semibold truncate">{user.name}</p>
+              <p className="text-sm text-text-primary font-semibold truncate">
+                <UserProfileLink user={user} className="font-semibold text-text-primary">
+                  {user.name}
+                </UserProfileLink>
+              </p>
             </div>
             <div className="truncate text-left">
               <p className="text-sm text-text-secondary font-sans truncate">{user.email}</p>

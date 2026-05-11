@@ -12,6 +12,7 @@ import {
   pushInternshipApplicationReceivedNotification,
 } from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
+import { UserProfileNavSpan } from "../../components/UserProfileLink";
 
 const internshipsStorageKey = "gucEmployerInternships";
 const selectClass = "w-full bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue transition-colors";
@@ -264,7 +265,6 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
   const [selectedInternship, setSelectedInternship] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
-  const [filterAppliedMessage, setFilterAppliedMessage] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
   // Get unique companies and durations for filters
@@ -349,7 +349,7 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
 
   const handleApplyFilters = () => {
     setShowFilterMenu(false);
-    setFilterAppliedMessage(true);
+    setSuccessMessage("Filters applied successfully.");
   };
 
   const requestConfirmation = (action, onConfirm) => {
@@ -739,11 +739,6 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
         onSubmit={handleApplicationSubmit}
       />
 
-      {/* Filter Applied Message */}
-      {filterAppliedMessage && (
-        <SuccessToast message="Filters are applied successfully" onClose={() => setFilterAppliedMessage(false)} />
-      )}
-
       {/* Confirmation Modal */}
       <ConfirmActionModal
         isOpen={Boolean(confirmation)}
@@ -906,6 +901,8 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
       const newInternship = {
         id: Date.now(),
         ...payload,
+        /** Chart + "Posted" use ISO `YYYY-MM-DD`; align with dummy hydrate when only deadline exists in storage. */
+        postedAt: formData.deadline,
         archived: false,
         applications: [],
       };
@@ -1168,7 +1165,14 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
               <div key={application.id} className="rounded-lg border border-border bg-bg-elevated px-4 py-3">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <div>
-                    <p className="text-text-primary text-sm font-sans">{application.studentName}</p>
+                    <p className="text-text-primary text-sm font-sans">
+                      <UserProfileNavSpan
+                        participant={{ name: application.studentName, email: application.studentEmail }}
+                        className="text-text-primary"
+                      >
+                        {application.studentName}
+                      </UserProfileNavSpan>
+                    </p>
                     <p className="text-text-secondary text-xs font-mono">{application.portfolioTitle}</p>
                   </div>
                   <Badge variant="gold">{application.matchScore}% match</Badge>
@@ -1209,7 +1213,14 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
               return (
               <div key={application.id} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(9rem,0.45fr)_minmax(0,1fr)_minmax(0,0.9fr)] gap-4 px-6 py-4 items-center">
                 <div className="min-w-0">
-                  <p className="text-text-primary text-sm font-sans truncate mb-1">{application.studentName}</p>
+                  <p className="text-text-primary text-sm font-sans truncate mb-1">
+                    <UserProfileNavSpan
+                      participant={{ name: application.studentName, email: application.studentEmail }}
+                      className="text-text-primary"
+                    >
+                      {application.studentName}
+                    </UserProfileNavSpan>
+                  </p>
                   <p className="text-text-secondary text-xs font-mono truncate">{application.studentEmail}</p>
                   <p className="text-text-secondary text-xs font-mono truncate">Applied {application.appliedAt}</p>
                 </div>

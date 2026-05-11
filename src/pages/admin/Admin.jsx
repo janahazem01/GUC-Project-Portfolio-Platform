@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Badge, Button, Card, ConfirmActionModal, Input, Modal, PageHeader } from "../../components/ui";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button, Card, ConfirmActionModal, Input, Modal } from "../../components/ui";
+import {
+  IconCoursesAccent,
+  IconInternshipsAccent,
+  IconProjectsAccent,
+  IconUsersAccent,
+  MiniSparkline,
+} from "../../components/admin/AdminMetricVisuals";
 import {
   courses,
   dummyUsers,
@@ -94,6 +101,7 @@ const shortcuts = [
 
 export default function Admin() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [dataRevision, setDataRevision] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -128,6 +136,16 @@ export default function Admin() {
       })
     );
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("modal") !== "create") return;
+    setNewAdminName("");
+    setNewAdminPassword("");
+    setErrors({});
+    setIsConfirmOpen(false);
+    setIsCreateOpen(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const openCreateAdminModal = () => {
     setNewAdminName("");
@@ -212,78 +230,148 @@ export default function Admin() {
     };
   }, [dataRevision, internshipCatalogRev]);
 
+  const pendingCount = telemetry.pendingApprovals;
+
   return (
     <div>
-      <PageHeader
-        title="Admin Dashboard"
-        subtitle="Platform overview — monitor adoption, catalog health, and moderation load at a glance."
-      />
-
-      <Card className="mb-8 p-5 sm:p-6 border-border">
-        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-text-secondary mb-2">Statistics</p>
-            <p className="text-text-secondary text-xs sm:text-sm font-sans max-w-xl leading-snug">
+      <Card className="mb-6 rounded-2xl border border-border bg-gradient-to-br from-bg-surface via-bg-surface to-bg-elevated/25 p-6 sm:p-8 shadow-sm">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <h1 className="font-display text-3xl sm:text-4xl text-text-primary tracking-tight">Statistics</h1>
+            <p className="mt-2 text-sm text-text-secondary font-sans max-w-xl leading-relaxed">
               Quick snapshot of key totals. Use View all for charts, role mix, and the full internship breakdown.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
-            {telemetry.pendingApprovals > 0 && (
-              <Badge variant="warning">{telemetry.pendingApprovals} employer verification pending</Badge>
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            {pendingCount > 0 && (
+              <button
+                type="button"
+                onClick={() => navigate("/admin/approvals")}
+                className="inline-flex items-center gap-2 rounded-full border border-warning/70 bg-warning/5 px-3.5 py-2 text-sm font-sans text-warning transition-colors hover:bg-warning/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-warning/40"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 2v6h6" />
+                  <path d="M9 13h.01M15 13h.01M10 17h4" />
+                </svg>
+                <span>
+                  {pendingCount} employer verification pending
+                </span>
+              </button>
             )}
-            <Button type="button" variant="gold" size="sm" onClick={() => navigate("/admin/statistics")}>
+            <button
+              type="button"
+              className="rounded-full bg-[#f5f0e6] px-5 py-2 text-sm font-medium text-bg-base shadow-sm transition-colors hover:bg-[#ebe4d9] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/50"
+              onClick={() => navigate("/admin/statistics")}
+            >
               View all
-            </Button>
+            </button>
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="rounded-lg border border-border bg-bg-elevated/35 px-3 py-3 sm:px-4">
-            <p className="text-[10px] sm:text-[11px] text-text-secondary font-sans uppercase tracking-wide mb-1">Users (excl. admins)</p>
-            <p className="font-display text-2xl text-text-primary tabular-nums leading-none">{telemetry.roleTotal}</p>
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden rounded-xl border border-accent-blue/45 bg-accent-blue/[0.06] p-4 sm:p-5">
+            <div className="flex justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary">Total users</p>
+                <p className="mt-3 font-display text-4xl tabular-nums leading-none text-text-primary">{telemetry.roleTotal}</p>
+                <p className="mt-2 text-xs uppercase tracking-wide text-text-secondary">(excl. admins)</p>
+              </div>
+              <div className="flex flex-col items-end gap-2 text-accent-blue">
+                <MiniSparkline />
+                <IconUsersAccent />
+              </div>
+            </div>
           </div>
-          <div className="rounded-lg border border-border bg-bg-elevated/35 px-3 py-3 sm:px-4">
-            <p className="text-[10px] sm:text-[11px] text-text-secondary font-sans uppercase tracking-wide mb-1">Projects</p>
-            <p className="font-display text-2xl text-text-primary tabular-nums leading-none">{telemetry.projects}</p>
-            <p className="text-[10px] text-text-secondary font-sans mt-1 tabular-nums">{telemetry.flagged} flagged</p>
+
+          <div className="relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden rounded-xl border border-warning/50 bg-warning/[0.06] p-4 sm:p-5">
+            <div className="flex justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary">Projects overview</p>
+                <p className="mt-3 font-display text-4xl tabular-nums leading-none text-text-primary">{telemetry.projects}</p>
+                {telemetry.flagged > 0 ? (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs font-sans text-danger">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="currentColor" aria-hidden>
+                      <path d="M5 3v18h2V10l4 2V8l4-2v12h2V3L12 6 5 3z" />
+                    </svg>
+                    {telemetry.flagged} Flagged
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-text-secondary">No flagged projects</p>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-2 text-warning">
+                <MiniSparkline />
+                <IconProjectsAccent />
+              </div>
+            </div>
           </div>
-          <div className="rounded-lg border border-border bg-bg-elevated/35 px-3 py-3 sm:px-4">
-            <p className="text-[10px] sm:text-[11px] text-text-secondary font-sans uppercase tracking-wide mb-1">Courses</p>
-            <p className="font-display text-2xl text-text-primary tabular-nums leading-none">{telemetry.courses}</p>
+
+          <div className="relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden rounded-xl border border-success/45 bg-success/[0.06] p-4 sm:p-5">
+            <div className="flex justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary">Courses available</p>
+                <p className="mt-3 font-display text-4xl tabular-nums leading-none text-text-primary">{telemetry.courses}</p>
+                <p className="mt-2 text-xs text-text-secondary">Total active</p>
+              </div>
+              <div className="mt-1 flex flex-col items-end justify-end text-success">
+                <IconCoursesAccent />
+              </div>
+            </div>
           </div>
-          <div className="rounded-lg border border-border bg-bg-elevated/35 px-3 py-3 sm:px-4">
-            <p className="text-[10px] sm:text-[11px] text-text-secondary font-sans uppercase tracking-wide mb-1">Active internships</p>
-            <p className="font-display text-2xl text-text-primary tabular-nums leading-none">{internshipStats.totalActive}</p>
-            <p className="text-[10px] text-text-secondary font-sans mt-1">{internshipStats.distinctEmployers} companies</p>
+
+          <div className="relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden rounded-xl border border-violet-400/45 bg-violet-500/[0.07] p-4 sm:p-5">
+            <div className="flex justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary">Active internships</p>
+                <p className="mt-3 font-display text-4xl tabular-nums leading-none text-text-primary">{internshipStats.totalActive}</p>
+                <p className="mt-2 text-xs text-text-secondary">
+                  at {internshipStats.distinctEmployers} {internshipStats.distinctEmployers === 1 ? "company" : "companies"}
+                </p>
+              </div>
+              <div className="mt-1 flex flex-col items-end justify-end text-violet-400">
+                <IconInternshipsAccent />
+              </div>
+            </div>
           </div>
         </div>
       </Card>
 
       <Card className="mb-8 p-0 overflow-hidden">
         <div className="px-6 py-5 border-b border-border">
-          <h2 className="font-display text-lg text-text-primary">Shortcuts</h2>
-          <p className="text-text-secondary text-sm font-sans">Jump directly to each admin data view.</p>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-text-primary tracking-tight mb-2">
+            Shortcuts
+          </h2>
+          <p className="text-text-secondary text-sm font-sans leading-relaxed">
+            Jump directly to each admin data view.
+          </p>
         </div>
         <div className="grid grid-cols-3">
-          {shortcuts.map((shortcut, index) => (
-            <button
-              key={shortcut.title}
-              type="button"
-              onClick={() => {
-                if (shortcut.action === "createAdmin") return openCreateAdminModal();
-                navigate(shortcut.path);
-              }}
-              className={`min-h-36 px-6 py-6 text-center transition-colors hover:bg-bg-elevated focus:outline-none focus:bg-bg-elevated ${
-                index % 3 !== 2 ? "border-r border-border" : ""
-              } ${index < 3 ? "border-b border-border" : ""}`}
-            >
-              <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-border text-2xl text-text-secondary">
-                {shortcut.icon}
-              </span>
-              <span className="block font-display text-base text-text-primary mb-1">{shortcut.title}</span>
-              <span className="block text-sm text-text-secondary font-sans">{shortcut.subtitle}</span>
-            </button>
-          ))}
+          {shortcuts.map((shortcut, index) => {
+            const shortcutCols = 3;
+            const row = Math.floor(index / shortcutCols);
+            const totalRows = Math.ceil(shortcuts.length / shortcutCols);
+            const dividerBelowRow = row < totalRows - 1;
+            return (
+              <button
+                key={shortcut.title}
+                type="button"
+                onClick={() => {
+                  if (shortcut.action === "createAdmin") return openCreateAdminModal();
+                  navigate(shortcut.path);
+                }}
+                className={`min-h-36 px-6 py-6 text-center transition-colors hover:bg-bg-elevated focus:outline-none focus:bg-bg-elevated ${
+                  index % shortcutCols !== shortcutCols - 1 ? "border-r border-border" : ""
+                } ${dividerBelowRow ? "border-b border-border" : ""}`}
+              >
+                <span className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-border text-2xl text-text-secondary">
+                  {shortcut.icon}
+                </span>
+                <span className="block font-display text-base text-text-primary mb-1">{shortcut.title}</span>
+                <span className="block text-sm text-text-secondary font-sans">{shortcut.subtitle}</span>
+              </button>
+            );
+          })}
         </div>
       </Card>
 

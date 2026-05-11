@@ -4,6 +4,8 @@ import { Badge, Button, Card, ConfirmActionModal, PageHeader, Stars, SuccessToas
 import { portfolios } from "../../data/dummy";
 import { useProjects } from "../../context/ProjectsContext";
 import { useFavorites } from "../../hooks/useFavorites";
+import { UserProfileNavSpan } from "../../components/UserProfileLink";
+import { ProjectTitleLink } from "../../components/ProjectTitleLink";
 
 function SectionHeader({ title, count }) {
   return (
@@ -116,7 +118,9 @@ export default function Favorites() {
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <h3 className="font-display text-base text-text-primary">{project.title}</h3>
+                    <h3 className="font-display text-base text-text-primary">
+                      <ProjectTitleLink project={project} className="font-display text-base text-text-primary" navState={{ activeNav: "/favorites" }} />
+                    </h3>
                     <Badge variant="blue">{project.courseCode}</Badge>
                   </div>
                   <p className="text-text-secondary text-sm font-sans line-clamp-2">{project.description}</p>
@@ -130,7 +134,9 @@ export default function Favorites() {
 
               <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
                 <div className="min-w-0">
-                  <p className="text-xs font-sans text-text-secondary truncate">{project.owner}</p>
+                  <p className="text-xs font-sans text-text-secondary truncate">
+                    <UserProfileNavSpan ownerName={project.owner} className="text-text-secondary" />
+                  </p>
                   <p className="text-xs font-mono text-text-secondary">Created {project.createdAt}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -168,12 +174,7 @@ export default function Favorites() {
       <section>
         <SectionHeader title="Favorite Portfolios" count={favoritePortfolios.length} />
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {favoritePortfolios.length > 0 ? favoritePortfolios.map((portfolio) => {
-            const portfolioProjects = portfolio.projectIds
-              .map((projectId) => projectById.get(projectId))
-              .filter(Boolean);
-
-            return (
+          {favoritePortfolios.length > 0 ? favoritePortfolios.map((portfolio) => (
               <Card
                 key={portfolio.id}
                 hover
@@ -188,73 +189,38 @@ export default function Favorites() {
                   }
                 }}
               >
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="min-w-0">
-                    <h3 className="font-display text-base text-text-primary mb-1">
-                      {portfolio.studentName || portfolio.owner}
-                    </h3>
-                    <p className="text-text-secondary text-sm font-sans">{portfolio.title}</p>
-                    <p className="text-text-secondary text-xs font-mono truncate">{portfolio.studentEmail}</p>
-                  </div>
-                  <Badge variant="blue">{portfolio.contributionScore}</Badge>
+                <div className="min-w-0 space-y-2 mb-6">
+                  <h3 className="font-display text-lg text-text-primary leading-snug">
+                    {portfolio.studentName || portfolio.owner}
+                  </h3>
+                  <p className="text-text-primary text-sm font-sans font-medium leading-snug">{portfolio.title}</p>
+                  <p className="text-text-secondary text-sm font-sans leading-relaxed">{portfolio.headline}</p>
                 </div>
 
-                <p className="text-accent-gold text-xs font-mono mb-3">{portfolio.headline}</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {portfolio.skills.map((skill) => <Badge key={skill}>{skill}</Badge>)}
-                </div>
-
-                <div className="border-t border-border pt-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                    <p className="text-text-secondary text-xs font-sans">
-                      {portfolioProjects.length} linked project{portfolioProjects.length === 1 ? "" : "s"}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          viewPortfolio(portfolio.id);
-                        }}
-                      >
-                        View portfolio
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          requestRemovePortfolio(portfolio);
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    {portfolioProjects.length > 0 ? portfolioProjects.map((project) => (
-                      <button
-                        key={project.id}
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          viewProject(project.id);
-                        }}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left transition-colors hover:border-accent-blue/40"
-                      >
-                        <span className="text-text-primary text-sm font-sans truncate">{project.title}</span>
-                        <span className="text-accent-blue text-xs font-mono shrink-0">View</span>
-                      </button>
-                    )) : (
-                      <p className="text-text-secondary text-sm font-sans">No public projects are linked to this portfolio yet.</p>
-                    )}
-                  </div>
+                <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      viewPortfolio(portfolio.id);
+                    }}
+                  >
+                    View
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      requestRemovePortfolio(portfolio);
+                    }}
+                  >
+                    Remove
+                  </Button>
                 </div>
               </Card>
-            );
-          }) : (
+            )) : (
             <Card className="xl:col-span-2">
               <p className="text-text-secondary text-sm font-sans">No favorite portfolios saved yet.</p>
             </Card>

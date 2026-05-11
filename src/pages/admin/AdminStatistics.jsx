@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Card, PageHeader } from "../../components/ui";
+import { useNavigate } from "react-router-dom";
+import {
+  IconCoursesAccent,
+  IconProjectsAccent,
+  IconUsersAccent,
+  MiniSparkline,
+} from "../../components/admin/AdminMetricVisuals";
+import { Badge, Button, Card, PageHeader } from "../../components/ui";
 import { MiniDonutChart, ColumnBarChart } from "../../components/viz/Charts.jsx";
 import { CHART_COLORS } from "../../components/viz/chartColors.js";
 import {
@@ -31,6 +38,7 @@ function BarChartTitleIcon({ className = "" }) {
  * without modifying `Admin.jsx`.
  */
 export default function AdminStatistics() {
+  const navigate = useNavigate();
   const [dataRevision, setDataRevision] = useState(0);
   const [internshipCatalogRev, setInternshipCatalogRev] = useState(0);
 
@@ -108,6 +116,16 @@ export default function AdminStatistics() {
     };
   }, [dataRevision, internshipCatalogRev]);
 
+  const userRoleDonutSegments = useMemo(
+    () => [
+      { key: "students", label: "Students", value: telemetry.students, color: CHART_COLORS[0] },
+      { key: "employers", label: "Employers", value: telemetry.employers, color: CHART_COLORS[1] },
+      { key: "instructors", label: "Course instructors", value: telemetry.instructors, color: CHART_COLORS[2] },
+    ],
+    [telemetry.students, telemetry.employers, telemetry.instructors]
+  );
+  const userRoleRowCount = userRoleDonutSegments.length;
+
   return (
     <div>
       <PageHeader
@@ -118,12 +136,17 @@ export default function AdminStatistics() {
           </span>
         }
         subtitle="Usage overview and internship catalog metrics — same sources as the dashboard, focused on charts and totals."
+        action={
+          <Button type="button" variant="secondary" onClick={() => navigate("/")}>
+            Back
+          </Button>
+        }
       />
 
       <Card className="mb-8 p-6 border-border">
         <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
-            <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-text-secondary mb-2">Usage overview</p>
+            <p className="text-[15px] font-mono uppercase tracking-[0.28em] text-text-secondary mb-2">Usage overview</p>
             <p className="text-text-secondary text-sm font-sans max-w-2xl leading-relaxed">
               Headcount includes students, employers, and course instructors. Administrator accounts are tracked separately. Charts summarize user mix and how many projects entered the system each month.
             </p>
@@ -135,40 +158,72 @@ export default function AdminStatistics() {
         <div className="space-y-5">
           {/* Row 1: equal-width donut + bar charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
-            <div className="rounded-xl border border-border bg-bg-elevated/40 p-5 flex flex-col items-center min-w-0">
-              <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-text-secondary mb-2 w-full text-left">
+            <div className="rounded-xl border border-border bg-bg-elevated/40 p-5 sm:p-6 min-w-0">
+              <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-text-primary/90 mb-2 w-full text-left">
                 Users by role
               </p>
-              <p className="text-xs text-text-secondary font-sans mb-4 w-full text-left leading-snug">
+              <p className="text-xs text-text-secondary font-sans mb-6 w-full text-left leading-snug max-w-xl">
                 Share of operational roles (excludes administrators).
               </p>
-              <MiniDonutChart
-                size={168}
-                thickness={24}
-                segments={[
-                  { key: "students", label: "Students", value: telemetry.students, color: CHART_COLORS[0] },
-                  { key: "employers", label: "Employers", value: telemetry.employers, color: CHART_COLORS[1] },
-                  { key: "instructors", label: "Instructors", value: telemetry.instructors, color: CHART_COLORS[2] },
-                ]}
-              />
-              <ul className="w-full mt-4 space-y-2 text-sm font-sans">
-                {[
-                  ["Students", telemetry.students],
-                  ["Employers", telemetry.employers],
-                  ["Course instructors", telemetry.instructors],
-                ].map(([label, value], i) => (
-                  <li key={label} className="flex justify-between gap-3 text-text-secondary">
-                    <span className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="h-2 w-2 rounded-full shrink-0"
-                        style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
-                      />
-                      <span className="truncate">{label}</span>
+
+              <div className="md:hidden flex flex-col items-center gap-6">
+                <MiniDonutChart size={188} thickness={26} segments={userRoleDonutSegments} />
+                <ul className="w-full max-w-sm space-y-3.5">
+                  {userRoleDonutSegments.map((seg) => (
+                    <li key={seg.key} className="flex items-center justify-between gap-4 text-sm font-sans">
+                      <span className="flex items-center gap-2.5 min-w-0 text-text-secondary">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgb(255_255_255/0.12)]"
+                          style={{ backgroundColor: seg.color }}
+                          aria-hidden
+                        />
+                        <span className="whitespace-normal break-words leading-snug">{seg.label}</span>
+                      </span>
+                      <span className="font-mono text-text-primary tabular-nums shrink-0">{seg.value}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div
+                className="hidden md:grid items-center gap-x-6 lg:gap-x-8 gap-y-5"
+                style={{
+                  gridTemplateColumns: "auto minmax(0, 1fr) auto",
+                  gridTemplateRows: `repeat(${userRoleRowCount}, minmax(2.5rem, auto))`,
+                }}
+              >
+                {userRoleDonutSegments.map((seg, i) => (
+                  <div
+                    key={`leg-${seg.key}`}
+                    className="flex items-center gap-2.5 pr-1"
+                    style={{ gridColumn: 1, gridRow: i + 1 }}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgb(255_255_255/0.12)]"
+                      style={{ backgroundColor: seg.color }}
+                      aria-hidden
+                    />
+                    <span className="text-sm text-text-secondary font-sans whitespace-normal break-words leading-snug">
+                      {seg.label}
                     </span>
-                    <span className="font-mono text-text-primary tabular-nums">{value}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+                <div
+                  className="flex items-center justify-center py-1"
+                  style={{ gridColumn: 2, gridRow: `1 / span ${userRoleRowCount}` }}
+                >
+                  <MiniDonutChart size={200} thickness={28} segments={userRoleDonutSegments} />
+                </div>
+                {userRoleDonutSegments.map((seg, i) => (
+                  <div
+                    key={`val-${seg.key}`}
+                    className="text-right font-mono text-sm sm:text-[0.95rem] text-text-primary tabular-nums leading-none"
+                    style={{ gridColumn: 3, gridRow: i + 1 }}
+                  >
+                    {seg.value}
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated/40 p-5 flex flex-col min-w-0 w-full">
               <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-text-secondary mb-2">Projects onboarded</p>
@@ -195,38 +250,53 @@ export default function AdminStatistics() {
 
           {/* Row 2: platform totals — full width, horizontal */}
           <div className="rounded-xl border border-border bg-bg-base/40 p-5">
-            <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-text-secondary mb-4">Platform totals</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="rounded-lg border border-border px-4 py-3 bg-bg-elevated/30 flex gap-3 min-w-0">
-                <span className="text-accent-blue text-lg leading-none shrink-0" aria-hidden>
-                  ◎
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-text-secondary font-sans uppercase tracking-wide">Users (excl. admins)</p>
-                  <p className="font-display text-3xl text-text-primary tabular-nums">{telemetry.roleTotal}</p>
-                  <p className="text-[11px] text-text-secondary font-sans mt-1 leading-snug">Students + employers + instructors.</p>
+            <p className="text-[15px] font-mono uppercase tracking-[0.2em] text-text-secondary mb-4">Platform totals</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden rounded-xl border border-accent-blue/45 bg-accent-blue/[0.06] p-4 sm:p-5">
+                <div className="flex justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary">Users (excl. admins)</p>
+                    <p className="mt-3 font-display text-3xl tabular-nums leading-none text-text-primary sm:text-4xl">{telemetry.roleTotal}</p>
+                    <p className="mt-2 text-[11px] font-sans leading-snug text-text-secondary">Students + employers + instructors.</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2 text-accent-blue">
+                    <MiniSparkline />
+                    <IconUsersAccent />
+                  </div>
                 </div>
               </div>
-              <div className="rounded-lg border border-border px-4 py-3 bg-bg-elevated/30 flex gap-3 min-w-0">
-                <span className="text-accent-gold text-lg leading-none shrink-0" aria-hidden>
-                  ◈
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-text-secondary font-sans uppercase tracking-wide">Projects</p>
-                  <p className="font-display text-3xl text-text-primary tabular-nums">{telemetry.projects}</p>
-                  <p className="text-[11px] text-text-secondary font-sans mt-1 leading-snug">
-                    {telemetry.flagged} flagged for review right now.
-                  </p>
+              <div className="relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden rounded-xl border border-warning/50 bg-warning/[0.06] p-4 sm:p-5">
+                <div className="flex justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary">Projects</p>
+                    <p className="mt-3 font-display text-3xl tabular-nums leading-none text-text-primary sm:text-4xl">{telemetry.projects}</p>
+                    {telemetry.flagged > 0 ? (
+                      <p className="mt-2 flex items-center gap-1.5 text-[11px] font-sans text-danger">
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="currentColor" aria-hidden>
+                          <path d="M5 3v18h2V10l4 2V8l4-2v12h2V3L12 6 5 3z" />
+                        </svg>
+                        {telemetry.flagged} flagged for review right now.
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-text-secondary font-sans">No flagged projects</p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2 text-warning">
+                    <MiniSparkline />
+                    <IconProjectsAccent />
+                  </div>
                 </div>
               </div>
-              <div className="rounded-lg border border-border px-4 py-3 bg-bg-elevated/30 flex gap-3 min-w-0">
-                <span className="text-success text-lg leading-none shrink-0" aria-hidden>
-                  ▤
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[11px] text-text-secondary font-sans uppercase tracking-wide">Courses</p>
-                  <p className="font-display text-3xl text-text-primary tabular-nums">{telemetry.courses}</p>
-                  <p className="text-[11px] text-text-secondary font-sans mt-1 leading-snug">Published catalog entries.</p>
+              <div className="relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden rounded-xl border border-success/45 bg-success/[0.06] p-4 sm:p-5">
+                <div className="flex justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary">Courses</p>
+                    <p className="mt-3 font-display text-3xl tabular-nums leading-none text-text-primary sm:text-4xl">{telemetry.courses}</p>
+                    <p className="mt-2 text-[11px] text-text-secondary font-sans leading-snug">Published catalog entries.</p>
+                  </div>
+                  <div className="mt-1 flex flex-col items-end justify-end text-success">
+                    <IconCoursesAccent />
+                  </div>
                 </div>
               </div>
             </div>
@@ -240,7 +310,7 @@ export default function AdminStatistics() {
         <div className="mt-8 pt-6 border-t border-border">
           <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
             <div className="min-w-0">
-              <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-text-secondary mb-2">Internship listings (employers)</p>
+              <p className="text-[15px] font-mono uppercase tracking-[0.28em] text-text-secondary mb-2">Internship listings (employers)</p>
               <p className="text-xs text-text-secondary font-sans max-w-2xl leading-relaxed">
                 Active listings exclude archived postings. Counts follow the same catalog employers manage on Internships (including saved browser data).
               </p>

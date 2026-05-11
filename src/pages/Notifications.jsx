@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Badge, Button, Card, Modal, PageHeader } from "../components/ui";
+import { Badge, Button, Card, Modal, PageHeader, Toast } from "../components/ui";
+import { ProjectTitleLink } from "../components/ProjectTitleLink";
 import { AuthContext } from "../context/AuthContext";
 import { useDoNotDisturb } from "../hooks/useDoNotDisturb";
 import { useProjects } from "../context/ProjectsContext";
@@ -64,13 +65,6 @@ export default function Notifications() {
     );
     return unsubscribe;
   }, []);
-
-  // Toast auto-dismiss
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = window.setTimeout(() => setToast(""), 3500);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
 
   // ── Invitation notifications derived from projectList ──────────────────────
 
@@ -236,7 +230,7 @@ export default function Notifications() {
         subtitle="Unread items stay highlighted. Invitation requests appear here; respond directly from this page."
         action={
           <div className="flex flex-wrap items-center gap-2 justify-end">
-            <Button variant="secondary" size="sm" onClick={() => navigate("/")}>
+            <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
               Back
             </Button>
             <Button
@@ -322,7 +316,17 @@ export default function Notifications() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-sans text-sm font-semibold text-text-primary leading-normal break-words">
-                          {n.title || "Notification"}
+                          {n.targetProjectId != null ? (
+                            <ProjectTitleLink
+                              projectId={n.targetProjectId}
+                              className="font-sans text-sm font-semibold text-text-primary leading-normal break-words"
+                              navState={navigateStateForPath(`/projects/${n.targetProjectId}`)}
+                            >
+                              {n.title || "Notification"}
+                            </ProjectTitleLink>
+                          ) : (
+                            n.title || "Notification"
+                          )}
                         </p>
                         <p className="font-sans text-sm text-text-secondary mt-1.5 leading-relaxed break-words">
                           {n.text}
@@ -444,21 +448,7 @@ export default function Notifications() {
         </div>
       </Modal>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-success text-sm font-sans">{toast}</p>
-            <button
-              type="button"
-              className="text-success text-xs font-semibold"
-              onClick={() => setToast("")}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
+      <Toast message={toast} onClose={() => setToast("")} durationMs={4000} variant="success" />
     </div>
   );
 }

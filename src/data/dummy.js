@@ -115,7 +115,12 @@ export const dummyUsers = [
     logo: null,
     verificationStatus: "approved", // pending | approved | rejected
     uploadedDocs: [
-      { id: 1, name: "tax_certificate.pdf", uploadedAt: "2026-03-15" },
+      {
+        id: 1,
+        name: "tax_certificate.pdf",
+        uploadedAt: "2026-03-15",
+        url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      },
     ],
     avatar: null,
     status: "active",
@@ -179,8 +184,18 @@ export const employerApplications = [
     companyBio: "Bug reporting and mobile observability platform.",
     verificationStatus: "pending",
     uploadedDocs: [
-      { id: 1, name: "instabug_tax_certificate.pdf", uploadedAt: "2026-05-01" },
-      { id: 2, name: "instabug_trade_register.pdf", uploadedAt: "2026-05-01" },
+      {
+        id: 1,
+        name: "instabug_tax_certificate.pdf",
+        uploadedAt: "2026-05-01",
+        url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      },
+      {
+        id: 2,
+        name: "instabug_trade_register.pdf",
+        uploadedAt: "2026-05-01",
+        url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      },
     ],
   },
   {
@@ -193,7 +208,12 @@ export const employerApplications = [
     companyBio: "Automotive technology and software engineering teams.",
     verificationStatus: "pending",
     uploadedDocs: [
-      { id: 1, name: "valeo_tax_certificate.pdf", uploadedAt: "2026-05-02" },
+      {
+        id: 1,
+        name: "valeo_tax_certificate.pdf",
+        uploadedAt: "2026-05-02",
+        url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      },
     ],
   },
   {
@@ -206,7 +226,12 @@ export const employerApplications = [
     companyBio: "On-demand delivery and logistics startup.",
     verificationStatus: "pending",
     uploadedDocs: [
-      { id: 1, name: "rabbit_tax_certificate.pdf", uploadedAt: "2026-05-02" },
+      {
+        id: 1,
+        name: "rabbit_tax_certificate.pdf",
+        uploadedAt: "2026-05-02",
+        url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      },
     ],
   },
 ];
@@ -222,8 +247,9 @@ export const projects = [
     status: "Completed",
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
     demo: "https://smart-campus-navigator.example.com",
-    report: "Smart_Campus_Navigator_Report.pdf",
-    reportUrl: "https://example.com/reports/Smart_Campus_Navigator_Report.pdf",
+    demoVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    reportDescription:
+      "Final report covers requirements, architecture, testing, and deployment of the campus navigation system.",
     languages: ["React", "Node.js", "MongoDB"],
     team: ["Ahmed El-Sayed", "Youssef Ahmed", "Mariam Hassan"],
     rating: 4.5,
@@ -250,7 +276,6 @@ export const projects = [
     resources: [
       { label: "Project Repository", url: "https://github.com/Software-Engineering-Spring-2026/SE_Team27" },
       { label: "Live Project", url: "https://smart-campus-navigator.example.com" },
-      { label: "Final Report", url: "#" },
     ],
     instructorInvitations: [
       {
@@ -298,8 +323,8 @@ export const projects = [
     status: "Reviewed",
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
     demo: "https://arabic-sentiment.example.com",
-    report: "Arabic_NLP_Sentiment_Report.pdf",
-    reportUrl: "https://example.com/reports/Arabic_NLP_Sentiment_Report.pdf",
+    reportDescription:
+      "Report documents dataset construction, model architecture, evaluation metrics, and ethical considerations for dialectal Arabic sentiment.",
     demoVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     languages: ["Python", "TensorFlow", "Flask"],
     team: ["Ahmed El-Sayed"],
@@ -326,7 +351,6 @@ export const projects = [
     resources: [
       { label: "Project Repository", url: "https://github.com/Software-Engineering-Spring-2026/SE_Team27" },
       { label: "Live Project", url: "https://arabic-sentiment.example.com" },
-      { label: "Final Report", url: "#" },
     ],
     instructorInvitations: [
       {
@@ -355,8 +379,8 @@ export const projects = [
     status: "In Progress",
     github: "https://github.com/Software-Engineering-Spring-2026/SE_Team27",
     demo: "https://guc-portal-platform.example.com",
-    report: "GUC_Portfolio_Platform_Report.pdf",
-    reportUrl: "https://example.com/reports/GUC_Portfolio_Platform_Report.pdf",
+    reportDescription:
+      "Interim report outlines stakeholder analysis, system design, RBAC model, and roadmap for the GUC portfolio platform.",
     demoVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     languages: ["React", "FastAPI", "PostgreSQL"],
     team: ["Sara Mahmoud", "Omar Tarek", "Laila Mostafa"],
@@ -383,7 +407,53 @@ export const projects = [
     resources: [
       { label: "Project Repository", url: "https://github.com/Software-Engineering-Spring-2026/SE_Team27" },
       { label: "Live Project", url: "https://guc-portal-platform.example.com" },
-      { label: "Final Report", url: "#" },
+    ],
+    tasks: [
+      {
+        id: 1,
+        title: "Create room search",
+        description: "This task involves developing the core search algorithm for room allocation.",
+        assignee: "Sara Mahmoud",
+        status: "completed",
+        deadline: "2026-03-20",
+        createdAt: "2026-01-18",
+      },
+      {
+        id: 2,
+        title: "Database System",
+        description: "Model and implement the primary database schema for projects and users.",
+        assignee: "Sara Mahmoud",
+        status: "pending",
+        deadline: "2026-04-02",
+        createdAt: "2026-01-19",
+      },
+      {
+        id: 3,
+        title: "Auth & roles",
+        description: "Wire role-based access for students, instructors, and employers.",
+        assignee: "Sara Mahmoud",
+        status: "postponed",
+        deadline: "2026-04-15",
+        createdAt: "2026-01-20",
+      },
+      {
+        id: 4,
+        title: "Discovery filters",
+        description: "Add filtering and sorting to the explore experience.",
+        assignee: "Sara Mahmoud",
+        status: "pending",
+        deadline: "2026-05-01",
+        createdAt: "2026-02-01",
+      },
+      {
+        id: 5,
+        title: "Employer profiles",
+        description: "Surface employer-facing profile summary cards for hiring.",
+        assignee: "Sara Mahmoud",
+        status: "completed",
+        deadline: "2026-03-10",
+        createdAt: "2026-02-05",
+      },
     ],
     platformActive: false,
     flagged: true,
@@ -1525,35 +1595,44 @@ export function getInternshipCatalogSnapshot() {
 export const adminApproveEmployer = (id) => {
   const application = employerApplications.find((app) => app.id === id);
   if (!application) return { ok: false, error: "Application not found" };
+  if (application.verificationStatus === "approved") return { ok: true };
+  if (application.verificationStatus === "rejected") return { ok: false, error: "Application was rejected" };
 
   application.verificationStatus = "approved";
-  
-  // Also create a new dummy user for this company so they can log in
-  const newUser = {
-    id: dummyUsers.length + 1,
-    name: application.name + " Admin",
-    email: application.companyEmail,
-    password: "password",
-    role: "employer",
-    companyName: application.name,
-    companyBio: application.companyBio,
-    address: application.address,
-    location: application.location,
-    companyEmail: application.companyEmail,
-    verificationStatus: "approved",
-    uploadedDocs: application.uploadedDocs,
-    status: "active",
-  };
-  
-  dummyUsers.push(newUser);
-  notifyDummyUpdates();
+
+  const email = application.companyEmail;
+  const alreadyRegistered = dummyUsers.some(
+    (u) => u.role === "employer" && (u.email === email || u.companyEmail === email)
+  );
+
+  if (!alreadyRegistered) {
+    const newUser = {
+      id: dummyUsers.length + 1,
+      name: application.name + " Admin",
+      email: application.companyEmail,
+      password: "password",
+      role: "employer",
+      companyName: application.name,
+      companyBio: application.companyBio,
+      address: application.address,
+      location: application.location,
+      companyEmail: application.companyEmail,
+      verificationStatus: "approved",
+      uploadedDocs: application.uploadedDocs,
+      status: "active",
+    };
+    dummyUsers.push(newUser);
+  }
+  emitDummyUpdate();
   return { ok: true };
 };
 
 export const adminRejectEmployer = (id) => {
   const application = employerApplications.find((app) => app.id === id);
   if (!application) return { ok: false, error: "Application not found" };
+  if (application.verificationStatus === "rejected") return { ok: true };
+  if (application.verificationStatus === "approved") return { ok: false, error: "Application is already approved" };
   application.verificationStatus = "rejected";
-  notifyDummyUpdates();
+  emitDummyUpdate();
   return { ok: true };
 };

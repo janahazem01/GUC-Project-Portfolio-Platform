@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Input, Modal, PageHeader } from "../../components/ui";
+import { Button, Card, Input, PageHeader, Toast } from "../../components/ui";
 import { dummyUsers } from "../../data/dummy";
 
 export default function AdminCreateAdmin() {
@@ -8,8 +8,7 @@ export default function AdminCreateAdmin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
-  const [showModal, setShowModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
+  const [actionToast, setActionToast] = useState(null); // { message, variant }
 
   const validateForm = () => {
     const newErrors = {};
@@ -21,7 +20,10 @@ export default function AdminCreateAdmin() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      setActionToast({ message: "Please fill in username and password.", variant: "error" });
+      return;
+    }
 
     // Simulate adding new admin
     const newAdmin = {
@@ -36,12 +38,14 @@ export default function AdminCreateAdmin() {
     };
     dummyUsers.push(newAdmin);
 
-    setSuccessMessage("New admin account created successfully!");
-    setShowModal(true);
+    setActionToast({
+      message: "New admin account created successfully. Open Admin → Users from the sidebar when you are ready.",
+      variant: "success",
+    });
   };
 
   const handleCancel = () => {
-    navigate("/admin");
+    navigate("/");
   };
 
   return (
@@ -51,7 +55,7 @@ export default function AdminCreateAdmin() {
           <div>
             <PageHeader title="Create Admin Account" subtitle="Add a new administrator to the platform" />
           </div>
-          <Button variant="secondary" onClick={() => navigate("/admin")}>Back to Dashboard</Button>
+          <Button variant="secondary" onClick={() => navigate("/")}>Back to Dashboard</Button>
         </div>
 
         <Card className="p-10 shadow-xl">
@@ -77,13 +81,12 @@ export default function AdminCreateAdmin() {
         </Card>
       </div>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Success">
-        <p className="text-text-secondary text-sm mb-6">{successMessage}</p>
-        <div className="flex justify-end gap-3">
-          <Button onClick={() => navigate("/admin/users")}>View Users</Button>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Close</Button>
-        </div>
-      </Modal>
+      <Toast
+        message={actionToast?.message || ""}
+        variant={actionToast?.variant || "success"}
+        onClose={() => setActionToast(null)}
+        durationMs={5200}
+      />
     </div>
   );
 }

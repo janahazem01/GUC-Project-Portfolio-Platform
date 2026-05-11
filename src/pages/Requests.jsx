@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Card, Button, PageHeader, Badge, Modal, ConfirmActionModal } from "../components/ui";
+import { useNavigate } from "react-router-dom";
+import { Card, Button, PageHeader, Badge, Modal, ConfirmActionModal, Toast } from "../components/ui";
 import { AuthContext } from "../context/AuthContext";
 import { useProjects } from "../context/ProjectsContext";
 import {
@@ -7,6 +8,8 @@ import {
   instructorCourseRequests,
   subscribeDummyUpdates,
 } from "../data/dummy";
+import { UserProfileLink } from "../components/UserProfileLink";
+import { ProjectTitleLink } from "../components/ProjectTitleLink";
 
 const statusVariant = {
   accepted: "success",
@@ -56,6 +59,7 @@ function getOutgoingRequests(projectList, user) {
 }
 
 function StudentAndInstructorRequests() {
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const { projectList, updateProject } = useProjects();
   const [statusFilter, setStatusFilter] = useState("all");
@@ -72,12 +76,6 @@ function StudentAndInstructorRequests() {
     () => outgoingRequests.filter((request) => statusFilter === "all" || request.status === statusFilter),
     [outgoingRequests, statusFilter]
   );
-
-  useEffect(() => {
-    if (!notice) return undefined;
-    const timer = window.setTimeout(() => setNotice(""), 3500);
-    return () => window.clearTimeout(timer);
-  }, [notice]);
 
   const respondToRequest = (request, status) => {
     const key = request.type === "collaborator" ? "collaboratorInvitations" : "instructorInvitations";
@@ -126,6 +124,11 @@ function StudentAndInstructorRequests() {
       <PageHeader
         title="Invitations"
         subtitle="Review invitations you received and track the invitations you sent."
+        action={
+          <Button variant="secondary" onClick={() => navigate(-1)}>
+            Back
+          </Button>
+        }
       />
 
       <Card className="mb-6">
@@ -156,9 +159,15 @@ function StudentAndInstructorRequests() {
               {filteredIncoming.map((request) => (
                 <div key={`${request.type}-${request.project.id}-${request.id}`} className="py-4 flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-text-primary text-sm font-sans truncate">{request.project.title}</p>
+                    <p className="text-text-primary text-sm font-sans truncate">
+                      <ProjectTitleLink project={request.project} className="text-text-primary font-sans" navState={{ activeNav: "/requests" }} stopPropagation={false} />
+                    </p>
                     <p className="text-text-secondary text-xs font-mono mt-1">
-                      {request.type} request from {request.project.owner} - sent {request.sentAt}
+                      {request.type} request from{" "}
+                      <UserProfileLink ownerName={request.project.owner} className="text-text-secondary font-mono">
+                        {request.project.owner}
+                      </UserProfileLink>{" "}
+                      - sent {request.sentAt}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -189,9 +198,20 @@ function StudentAndInstructorRequests() {
               {filteredOutgoing.map((request) => (
                 <div key={`${request.type}-${request.project.id}-${request.id}`} className="py-4 flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-text-primary text-sm font-sans truncate">{request.recipientName}</p>
+                    <p className="text-text-primary text-sm font-sans truncate">
+                      <UserProfileLink ownerName={request.recipientName} className="text-text-primary">
+                        {request.recipientName}
+                      </UserProfileLink>
+                    </p>
                     <p className="text-text-secondary text-xs font-mono mt-1">
-                      {request.type} request for {request.project.title} - sent {request.sentAt}
+                      {request.type} request for{" "}
+                      <ProjectTitleLink
+                        project={request.project}
+                        className="text-text-secondary font-mono text-xs"
+                        navState={{ activeNav: "/requests" }}
+                        stopPropagation={false}
+                      />{" "}
+                      - sent {request.sentAt}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -247,38 +267,29 @@ function StudentAndInstructorRequests() {
         </div>
       </Modal>
 
-      {notice && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-success text-sm font-sans">{notice}</p>
-            <button type="button" className="text-success text-xs font-semibold" onClick={() => setNotice("")}>
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
+      <Toast message={notice} onClose={() => setNotice("")} durationMs={4000} variant="success" />
     </div>
   );
 }
 
 function AdminCourseRequestsQueue() {
+  const navigate = useNavigate();
   const [, setRev] = useState(0);
   const [instructorReqConfirm, setInstructorReqConfirm] = useState(null);
   const [adminNotice, setAdminNotice] = useState("");
 
   useEffect(() => subscribeDummyUpdates(() => setRev((r) => r + 1)), []);
 
-  useEffect(() => {
-    if (!adminNotice) return undefined;
-    const t = window.setTimeout(() => setAdminNotice(""), 3500);
-    return () => window.clearTimeout(t);
-  }, [adminNotice]);
-
   return (
     <div>
       <PageHeader
         title="Requests"
         subtitle="Review instructor requests to link or unlink courses from their profiles. Accept applies catalog changes; reject dismisses the request."
+        action={
+          <Button variant="secondary" onClick={() => navigate("/")}>
+            Back
+          </Button>
+        }
       />
 
       <Card className="p-0 overflow-hidden mb-6">
@@ -291,25 +302,25 @@ function AdminCourseRequestsQueue() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left border-collapse">
+          <table className="w-full min-w-[800px] text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-bg-base">
-                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal whitespace-nowrap">
                   Instructor
                 </th>
-                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal whitespace-nowrap">
                   Email
                 </th>
-                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal whitespace-nowrap">
                   Course
                 </th>
-                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[6rem]">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[6rem] whitespace-nowrap">
                   Type
                 </th>
-                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[7rem]">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[7rem] whitespace-nowrap">
                   Requested
                 </th>
-                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-right w-[11rem]">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center whitespace-nowrap">
                   Actions
                 </th>
               </tr>
@@ -324,20 +335,45 @@ function AdminCourseRequestsQueue() {
               ) : (
                 instructorCourseRequests.map((request) => (
                   <tr key={request.id} className="border-b border-border last:border-0 hover:bg-bg-elevated/20">
-                    <td className="px-4 py-4 text-sm font-semibold text-text-primary">{request.instructorName}</td>
-                    <td className="px-4 py-4 text-sm text-text-secondary font-sans break-all">{request.instructorEmail}</td>
-                    <td className="px-4 py-4">
-                      <p className="text-sm text-text-primary font-sans">{request.courseCode}</p>
-                      <p className="text-xs text-text-secondary font-sans mt-0.5">{request.courseName}</p>
+                    <td className="px-4 py-2.5 align-middle max-w-[12rem]">
+                      <div className="min-w-0 text-sm font-semibold text-text-primary" title={request.instructorName}>
+                        <UserProfileLink
+                          participant={{ name: request.instructorName, email: request.instructorEmail }}
+                          className="font-semibold text-text-primary inline-block max-w-full truncate align-bottom"
+                        >
+                          {request.instructorName}
+                        </UserProfileLink>
+                      </div>
                     </td>
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-4 py-2.5 align-middle max-w-[14rem]">
+                      <div
+                        className="min-w-0 truncate text-sm text-text-secondary font-sans whitespace-nowrap"
+                        title={request.instructorEmail}
+                      >
+                        {request.instructorEmail}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 align-middle min-w-0 max-w-[20rem]">
+                      <div className="flex flex-nowrap items-center gap-2 min-w-0">
+                        <span className="text-sm font-semibold text-text-primary font-sans shrink-0 tabular-nums">
+                          {request.courseCode}
+                        </span>
+                        <span className="text-text-secondary shrink-0" aria-hidden>
+                          ·
+                        </span>
+                        <span className="text-sm text-text-secondary font-sans truncate min-w-0">{request.courseName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 align-middle text-center whitespace-nowrap">
                       <Badge variant={request.type === "unlink" ? "warning" : "success"}>
                         {request.type === "unlink" ? "Unlink" : "Link"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-4 text-center text-sm font-mono text-text-secondary">{request.requestedAt}</td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap justify-end gap-2">
+                    <td className="px-4 py-2.5 align-middle text-center text-sm font-mono text-text-secondary whitespace-nowrap">
+                      {request.requestedAt}
+                    </td>
+                    <td className="px-4 py-2.5 align-middle text-center whitespace-nowrap">
+                      <div className="inline-flex flex-nowrap items-center justify-center gap-2">
                         <Button size="sm" onClick={() => setInstructorReqConfirm({ id: request.id, accept: true })}>
                           Accept
                         </Button>
@@ -375,16 +411,7 @@ function AdminCourseRequestsQueue() {
         }}
       />
 
-      {adminNotice && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-success text-sm font-sans">{adminNotice}</p>
-            <button type="button" className="text-success text-xs font-semibold" onClick={() => setAdminNotice("")}>
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
+      <Toast message={adminNotice} onClose={() => setAdminNotice("")} durationMs={4000} variant="success" />
     </div>
   );
 }

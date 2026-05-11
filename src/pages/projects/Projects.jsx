@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -8,15 +8,18 @@ import {
   PageHeader,
   Modal,
   Input,
-  SuccessToast,
   ConfirmActionModal,
   DocumentPreviewModal,
+  Toast,
 } from "../../components/ui";
 import { LanguageDistributionBar } from "../../components/viz/Charts.jsx";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
 import { courses, dummyUsers, instructorDirectory } from "../../data/dummy";
 import { resolveGithubHref } from "../../utils/githubRepo";
+import { canAccessProject } from "../../utils/projectAccess";
+import { UserProfileLink } from "../../components/UserProfileLink";
+import { ProjectTitleLink } from "../../components/ProjectTitleLink";
 
 // ─── constants ───────────────────────────────────────────────────────────────
 const REQUIRED = "This field cannot be left empty";
@@ -41,8 +44,7 @@ const blankForm = () => ({
   courseId: "",
   github: "",
   description: "",
-  report: "",
-  reportFileUrl: "",
+  reportDescription: "",
   languages: "",
   demoVideo: "",
   visibility: "public",
@@ -58,34 +60,17 @@ const blankTaskForm = () => ({
   deadline: "",
 });
 
-function validateProjectForm(form) {
+function validateProjectForm(form, { readmeEditable = true } = {}) {
   const errs = {};
   if (!form.title.trim()) errs.title = REQUIRED;
   if (!form.courseId) errs.courseId = REQUIRED;
   if (!form.github.trim()) errs.github = REQUIRED;
   if (!form.languages.trim()) errs.languages = REQUIRED;
+  if (readmeEditable && !form.description.trim()) errs.description = REQUIRED;
+  if (!form.demoVideo.trim()) errs.demoVideo = REQUIRED;
+  if (!form.reportDescription.trim()) errs.reportDescription = REQUIRED;
+  if (!form.visibility) errs.visibility = REQUIRED;
   return errs;
-}
-
-function canAccessProject(project, user) {
-  if (!user?.name) return false;
-  if (project.owner === user.name) return true;
-  if (user.role === "instructor" && project.supervisor === user.name) return true;
-  if ((project.team || []).includes(user.name)) return true;
-
-  if (user.role === "instructor") {
-    return (project.instructorInvitations || []).some(
-      (inv) =>
-        inv.status === "accepted" &&
-        (inv.email === user.email || inv.instructorName === user.name)
-    );
-  }
-
-  return (project.collaboratorInvitations || []).some(
-    (inv) =>
-      inv.status === "accepted" &&
-      (inv.email === user.email || inv.collaboratorName === user.name)
-  );
 }
 
 function getCourseIdByCode(courseCode) {
@@ -112,7 +97,6 @@ function readPdfFile(file, onLoaded) {
     onLoaded({ fileName: "", fileUrl: "" });
     return;
   }
-
   const reader = new FileReader();
   reader.onload = () => onLoaded({ fileName: file.name, fileUrl: reader.result || "" });
   reader.onerror = () => onLoaded({ fileName: file.name, fileUrl: "" });
@@ -174,7 +158,7 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel, 
 
       {readmeEditable && (
       <div>
-        <label className="text-sm text-text-secondary font-sans">README (project intro)</label>
+        <label className="text-sm text-text-secondary font-sans">README (project intro) *</label>
         <textarea
           value={form.description}
           onChange={(e) => onChange("description", e.target.value)}
@@ -183,48 +167,33 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel, 
                      text-text-primary text-sm font-sans placeholder:text-text-secondary/50
                      focus:outline-none focus:border-accent-blue transition-colors resize-none"
         />
+        {errors.description && <p className="text-danger text-xs font-sans mt-1">{errors.description}</p>}
       </div>
       )}
 
       <div>
         <Input
-          label="Demo Video URL"
+          label="Demo Video URL *"
           value={form.demoVideo}
           onChange={(e) => onChange("demoVideo", e.target.value)}
           placeholder="https://youtube.com/..."
         />
-        <p className="text-text-secondary text-xs font-sans mt-1">Optional</p>
+        {errors.demoVideo && <p className="text-danger text-xs font-sans mt-1">{errors.demoVideo}</p>}
       </div>
 
       <div>
-        <label className="text-sm text-text-secondary font-sans">Project Report PDF</label>
-        <Input
-          type="file"
-          accept=".pdf,application/pdf"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            readPdfFile(file, (nextFile) => {
-              onChange("report", nextFile.fileName);
-              onChange("reportFileUrl", nextFile.fileUrl);
-            });
-          }}
+        <label className="text-sm text-text-secondary font-sans">Project report summary *</label>
+        <textarea
+          value={form.reportDescription}
+          onChange={(e) => onChange("reportDescription", e.target.value)}
+          placeholder="Describe the scope, methodology, and outcomes of the project report."
+          className="mt-1.5 min-h-24 w-full bg-bg-elevated border border-border rounded-lg px-4 py-2.5
+                     text-text-primary text-sm font-sans placeholder:text-text-secondary/50
+                     focus:outline-none focus:border-accent-blue transition-colors resize-none"
         />
-        {form.report && (
-          <div className="mt-2 flex items-center gap-3">
-            <span className="text-text-secondary text-xs font-mono">Attached: {form.report}</span>
-            <button
-              type="button"
-              className="text-accent-blue text-xs font-semibold hover:underline"
-              onClick={() => {
-                onChange("report", "");
-                onChange("reportFileUrl", "");
-              }}
-            >
-              Remove file
-            </button>
-          </div>
+        {errors.reportDescription && (
+          <p className="text-danger text-xs font-sans mt-1">{errors.reportDescription}</p>
         )}
-        <p className="text-text-secondary text-xs font-sans mt-1">Optional PDF attachment for the project report.</p>
       </div>
 
       <div>
@@ -250,6 +219,7 @@ function ProjectForm({ form, errors, onChange, onSubmit, onCancel, submitLabel, 
         <p className="text-text-secondary text-xs font-sans mt-1">
           Public projects appear on your portfolio.
         </p>
+        {errors.visibility && <p className="text-danger text-xs font-sans mt-1">{errors.visibility}</p>}
       </div>
 
       <p className="text-text-secondary text-xs font-sans">
@@ -279,23 +249,9 @@ export default function Projects() {
   const [form, setForm] = useState(blankForm());
   const [errors, setErrors] = useState({});
 
-  // edit-in-table state (second implementation's inline edit modal)
-  const [editingProject, setEditingProject] = useState(null);
-  const [editForm, setEditForm] = useState({
-    title: "",
-    course: "",
-    courseCode: "",
-    description: "",
-    languages: "",
-    createdAt: "",
-  });
-  const [editFormErrors, setEditFormErrors] = useState({});
-  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false);
-
   // toasts
-  const [successMsg, setSuccessMsg] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [modalNotice, setModalNotice] = useState(null); // { message, area }
+  /** Unified toast: same component/styling as the rest of the app (`Toast`). */
+  const [toastFeedback, setToastFeedback] = useState(null); // { message, variant }
 
   // confirm dialogs
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -365,20 +321,8 @@ export default function Projects() {
   const tasksProject = projectList.find((p) => p.id === tasksProjectId);
   const thesisEditProject = projectList.find((p) => p.id === thesisEditProjectId);
 
-  // ── auto-dismiss toasts ───────────────────────────────────────────
-  useEffect(() => {
-    if (!modalNotice) return;
-    const t = window.setTimeout(() => setModalNotice(null), 3500);
-    return () => window.clearTimeout(t);
-  }, [modalNotice]);
-
-  useEffect(() => {
-    if (!successMsg) return;
-    const t = window.setTimeout(() => setSuccessMsg(""), 3500);
-    return () => window.clearTimeout(t);
-  }, [successMsg]);
-
-  const showModalNotice = (message, area = "general") => setModalNotice({ message, area });
+  const showModalNotice = (message, area = "general") =>
+    setToastFeedback({ message, variant: area === "error" ? "error" : "success" });
   const openDocumentPreview = (event, document, title) => {
     event?.stopPropagation?.();
     setDocumentPreview(buildDocumentPreview(document, title));
@@ -387,20 +331,20 @@ export default function Projects() {
   // ── navigation helpers ────────────────────────────────────────────
   const viewProject = (id) => navigate(`/projects/${id}`);
   const openProjectTasks = (id) => navigate(`/tasks?projectId=${id}`);
+  const openProjectTaskCreate = (id) => navigate(`/tasks?projectId=${id}&focus=create`);
 
   // ── create/edit modal (card view) ─────────────────────────────────
   const openCreate = () => {
     setForm(blankForm());
     setErrors({});
-    setSuccessMsg("");
-    setModalNotice(null);
+    setToastFeedback(null);
     setModal({ mode: "create" });
   };
 
   const openEdit = (project, event) => {
     event?.stopPropagation?.();
     setOptionsProjectId(null);
-    setModalNotice(null);
+    setToastFeedback(null);
     if (project.courseCode === "BP") {
       setThesisEditAdd({ title: "", fileName: "", fileUrl: "" });
       setThesisEditError("");
@@ -413,97 +357,43 @@ export default function Projects() {
       courseId: courseObj ? String(courseObj.id) : "",
       github: project.github || "",
       description: project.description || "",
-      report: project.report || "",
-      reportFileUrl: project.reportUrl || "",
+      reportDescription: project.reportDescription || "",
       languages: project.languages.join(", "),
       demoVideo: project.demoVideo || "",
       visibility: project.visibility || "public",
     });
     setErrors({});
-    setSuccessMsg("");
+    setToastFeedback(null);
     setModal({ mode: "edit", project });
   };
 
   const closeModal = () => {
     setModal(null);
     setErrors({});
-    setModalNotice(null);
+    setToastFeedback(null);
   };
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+    if (toastFeedback?.variant === "error") setToastFeedback(null);
   };
 
-  // ── create/edit modal (table row inline edit) ─────────────────────
+  /** Table “Edit” uses the same full project form as the card options flow (all required fields). */
   const openTableEdit = (event, project) => {
     event.stopPropagation();
-    setEditingProject(project);
-    setEditForm({
-      title: project.title,
-      course: project.course,
-      courseCode: project.courseCode,
-      description: project.description,
-      languages: project.languages.join(", "),
-      createdAt: project.createdAt,
-    });
-    setEditFormErrors({});
-    setSuccessMessage("");
-  };
-
-  const closeTableEdit = () => {
-    setEditingProject(null);
-    setEditFormErrors({});
-    setSaveConfirmOpen(false);
-  };
-
-  const updateEditField = (field, value) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
-    if (editFormErrors[field] && value.trim()) {
-      setEditFormErrors((prev) => ({ ...prev, [field]: "" }));
-    }
-  };
-
-  const validateEditForm = () => {
-    const nextErrors = {};
-    Object.entries(editForm).forEach(([field, value]) => {
-      if (field === "description" && editingProject?.owner !== user?.name) return;
-      if (!value.trim()) nextErrors[field] = REQUIRED;
-    });
-    setEditFormErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  };
-
-  const handleTableEditSubmit = (event) => {
-    event.preventDefault();
-    if (!validateEditForm()) return;
-    setSaveConfirmOpen(true);
-  };
-
-  const applyTableEdit = () => {
-    if (!editingProject) return;
-    updateProject(editingProject.id, {
-      title: editForm.title.trim(),
-      course: editForm.course.trim(),
-      courseCode: editForm.courseCode.trim(),
-      description:
-        editingProject.owner === user?.name
-          ? editForm.description.trim()
-          : editingProject.description,
-      languages: editForm.languages
-        .split(",")
-        .map((l) => l.trim())
-        .filter(Boolean),
-      createdAt: editForm.createdAt.trim(),
-    });
-    closeTableEdit();
-    setSuccessMessage("Edits were made successfully");
+    openEdit(project, event);
   };
 
   // ── CRUD ──────────────────────────────────────────────────────────
   const requestCreateConfirmation = () => {
-    const errs = validateProjectForm(form);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    const errs = validateProjectForm(form, { readmeEditable: true });
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      setToastFeedback({ message: "Please fill in all required fields.", variant: "error" });
+      return;
+    }
+    setToastFeedback(null);
     setConfirmAction({
       action: "create this project",
       confirmLabel: "Yes",
@@ -524,8 +414,9 @@ export default function Projects() {
       status: "In Progress",
       github: form.github.trim(),
       demo: form.demoVideo.trim() || null,
-      report: form.report.trim() || null,
-      reportUrl: form.reportFileUrl || null,
+      report: null,
+      reportUrl: null,
+      reportDescription: form.reportDescription.trim(),
       demoVideo: form.demoVideo.trim() || null,
       languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean),
       team: [user?.name],
@@ -543,12 +434,17 @@ export default function Projects() {
     setForm(blankForm());
     setErrors({});
     setModal(null);
-    setSuccessMsg("Project created successfully.");
+    setToastFeedback({ message: "Project created successfully.", variant: "success" });
   };
 
   const requestUpdateConfirmation = () => {
-    const errs = validateProjectForm(form);
-    if (Object.keys(errs).length) { setErrors(errs); return; }
+    const errs = validateProjectForm(form, { readmeEditable: modal?.project?.owner === user?.name });
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      setToastFeedback({ message: "Please fill in all required fields.", variant: "error" });
+      return;
+    }
+    setToastFeedback(null);
     setEditConfirm(true);
   };
 
@@ -561,8 +457,9 @@ export default function Projects() {
       courseCode: course?.code || modal.project.courseCode,
       github: form.github.trim(),
       description: canEditReadme ? form.description.trim() : modal.project.description,
-      report: form.report.trim() || modal.project.report,
-      reportUrl: form.reportFileUrl || modal.project.reportUrl || null,
+      report: null,
+      reportUrl: null,
+      reportDescription: form.reportDescription.trim(),
       demoVideo: form.demoVideo.trim() || modal.project.demoVideo,
       demo: form.demoVideo.trim() || modal.project.demo,
       languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean),
@@ -571,20 +468,20 @@ export default function Projects() {
     setEditConfirm(false);
     setModal(null);
     setErrors({});
-    setSuccessMsg("Project updated successfully.");
+    setToastFeedback({ message: "Project updated successfully.", variant: "success" });
   };
 
   const handleDelete = () => {
     deleteProject(deleteConfirm.id);
     setDeleteConfirm(null);
-    setSuccessMsg("Project deleted.");
+    setToastFeedback({ message: "Project deleted.", variant: "success" });
   };
 
   // ── thesis ────────────────────────────────────────────────────────
   const openThesisUpload = (project) => {
     setThesisForm(blankThesisDraftForm());
     setThesisError("");
-    setModalNotice(null);
+    setToastFeedback(null);
     setThesisEditProjectId(project?.id || null);
     setThesisModal({ mode: "upload", projectId: project?.id || null });
   };
@@ -592,7 +489,7 @@ export default function Projects() {
   const closeThesisModal = () => {
     setThesisModal(null);
     setThesisError("");
-    setModalNotice(null);
+    setToastFeedback(null);
   };
 
   const closeThesisEditModal = () => {
@@ -642,6 +539,7 @@ export default function Projects() {
           demo: null,
           report: null,
           reportUrl: null,
+          reportDescription: "",
           demoVideo: null,
           languages: [],
           team: [user?.name],
@@ -1018,7 +916,7 @@ export default function Projects() {
                       className="rounded-lg border border-border bg-bg-elevated/40 px-4 py-3"
                     >
                       <h3 className="font-display text-sm text-text-primary mb-2 line-clamp-2">
-                        {project.title}
+                        <ProjectTitleLink project={project} className="font-display text-sm text-text-primary" navState={{ activeNav: "/projects" }} stopPropagation={false} />
                       </h3>
                       <div className="flex flex-wrap gap-1">
                         {project.team.filter((m) => m !== user?.name).map((collaborator) => (
@@ -1056,7 +954,9 @@ export default function Projects() {
                   {/* Left */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-display text-lg text-text-primary">{project.title}</h3>
+                      <h3 className="font-display text-lg text-text-primary">
+                        <ProjectTitleLink project={project} className="font-display text-lg text-text-primary" navState={{ activeNav: "/projects" }} />
+                      </h3>
                       <Badge variant="blue">{project.courseCode}</Badge>
                       {project.platformActive === false && (
                         <Badge variant="warning">Deactivated</Badge>
@@ -1153,20 +1053,13 @@ export default function Projects() {
                           Demo Video ▶
                         </a>
                       )}
-                      {project.report && (
-                        <button
-                          type="button"
-                          className="text-accent-blue text-sm font-mono hover:underline"
-                          onClick={(e) =>
-                            openDocumentPreview(
-                              e,
-                              { fileName: project.report, fileUrl: project.reportUrl || "" },
-                              project.report
-                            )
-                          }
+                      {project.reportDescription && (
+                        <span
+                          className="max-w-[14rem] truncate text-text-secondary text-xs font-sans"
+                          title={project.reportDescription}
                         >
-                          View PDF: {project.report}
-                        </button>
+                          Report: {project.reportDescription}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1180,7 +1073,7 @@ export default function Projects() {
                         <Button
                           variant="gold"
                           size="sm"
-                          className="rounded-md border border-accent-gold/50 bg-accent-gold/15 text-accent-gold hover:bg-accent-gold/25"
+                          className="rounded-md border-0 bg-gradient-to-b from-[#f5e04a] via-[#e8c43a] to-[#c9a030] text-[#141820] shadow-sm shadow-amber-500/25 hover:from-[#fce75a] hover:via-[#edcc48] hover:to-[#d1a838]"
                           onClick={(e) => {
                             if (project.platformActive === false || project.flagged === true) return;
                             e.stopPropagation();
@@ -1189,6 +1082,18 @@ export default function Projects() {
                           disabled={project.platformActive === false || project.flagged === true}
                         >
                           Tasks
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => {
+                            if (project.platformActive === false || project.flagged === true) return;
+                            e.stopPropagation();
+                            openProjectTaskCreate(project.id);
+                          }}
+                          disabled={project.platformActive === false || project.flagged === true}
+                        >
+                          New task
                         </Button>
                         {project.courseCode === "BP" && (
                           <Button
@@ -1224,7 +1129,7 @@ export default function Projects() {
                           onClick={(e) => {
                             if (project.platformActive === false || project.flagged === true) return;
                             e.stopPropagation();
-                            setModalNotice(null);
+                            setToastFeedback(null);
                             setOptionsProjectId(project.id);
                           }}
                           disabled={project.platformActive === false || project.flagged === true}
@@ -1254,8 +1159,8 @@ export default function Projects() {
         )}
       </div>
 
-      {/* Projects table */}
-      {myProjects.length > 0 && (
+      {/* Projects table: non-students except instructors (instructors use card list only). */}
+      {myProjects.length > 0 && user?.role !== "student" && user?.role !== "instructor" && (
         <Card className="p-0 overflow-hidden mb-8">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-left border-collapse">
@@ -1265,7 +1170,7 @@ export default function Projects() {
                     <th
                       key={h}
                       className={`px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal ${
-                        i === 0 ? "min-w-[10rem]" : i === 5 ? "text-right w-[11rem]" : "text-center"
+                        i === 0 ? "min-w-[10rem]" : i === 5 ? "text-center w-[11rem]" : "text-center"
                       }`}
                     >
                       {h === "Projects" ? `Projects (${myProjects.length})` : h}
@@ -1290,7 +1195,7 @@ export default function Projects() {
                   >
                     <td className="px-4 py-4">
                       <p className="font-display text-sm text-text-primary break-words">
-                        {project.title}
+                        <ProjectTitleLink project={project} className="font-display text-sm text-text-primary" navState={{ activeNav: "/projects" }} />
                       </p>
                       <p className="text-text-secondary text-xs font-sans mt-1 line-clamp-2 max-w-md">
                         {project.description}
@@ -1325,9 +1230,9 @@ export default function Projects() {
                         {project.createdAt}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 text-center">
                       <div
-                        className="flex flex-wrap justify-end gap-2"
+                        className="flex flex-wrap justify-center gap-2"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Button
@@ -1385,100 +1290,6 @@ export default function Projects() {
         />
       </Modal>
 
-      {/* Edit (table-row inline form) */}
-      <Modal isOpen={Boolean(editingProject)} onClose={closeTableEdit} title="Edit Project">
-        <form className="flex flex-col gap-4" onSubmit={handleTableEditSubmit} noValidate>
-          <div>
-            <Input
-              label="Project Title"
-              value={editForm.title}
-              onChange={(e) => updateEditField("title", e.target.value)}
-            />
-            {editFormErrors.title && (
-              <p className="text-danger text-xs font-sans mt-1">{editFormErrors.title}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Input
-                label="Course"
-                value={editForm.course}
-                onChange={(e) => updateEditField("course", e.target.value)}
-              />
-              {editFormErrors.course && (
-                <p className="text-danger text-xs font-sans mt-1">{editFormErrors.course}</p>
-              )}
-            </div>
-            <div>
-              <Input
-                label="Course Code"
-                value={editForm.courseCode}
-                onChange={(e) => updateEditField("courseCode", e.target.value)}
-              />
-              {editFormErrors.courseCode && (
-                <p className="text-danger text-xs font-sans mt-1">{editFormErrors.courseCode}</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            {editingProject?.owner === user?.name ? (
-              <>
-                <label className="text-sm text-text-secondary font-sans">README (project intro)</label>
-                <textarea
-                  value={editForm.description}
-                  onChange={(e) => updateEditField("description", e.target.value)}
-                  className="mt-1.5 min-h-24 w-full bg-bg-elevated border border-border rounded-lg px-4 py-2.5
-                             text-text-primary text-sm font-sans placeholder:text-text-secondary/50
-                             focus:outline-none focus:border-accent-blue transition-colors resize-none"
-                />
-                {editFormErrors.description && (
-                  <p className="text-danger text-xs font-sans mt-1">{editFormErrors.description}</p>
-                )}
-              </>
-            ) : (
-              <p className="text-text-secondary text-xs font-sans">
-                Only the project owner can edit the README from this form.
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Input
-              label="Languages"
-              value={editForm.languages}
-              onChange={(e) => updateEditField("languages", e.target.value)}
-              placeholder="React, Node.js, MongoDB"
-            />
-            {editFormErrors.languages && (
-              <p className="text-danger text-xs font-sans mt-1">{editFormErrors.languages}</p>
-            )}
-          </div>
-
-          <div>
-            <Input
-              label="Creation Date"
-              type="date"
-              value={editForm.createdAt}
-              onChange={(e) => updateEditField("createdAt", e.target.value)}
-            />
-            {editFormErrors.createdAt && (
-              <p className="text-danger text-xs font-sans mt-1">{editFormErrors.createdAt}</p>
-            )}
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={closeTableEdit}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="gold">
-              Done
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
       {/* Tasks modal */}
       <Modal
         isOpen={Boolean(tasksProject)}
@@ -1493,7 +1304,9 @@ export default function Projects() {
               <div className="rounded-lg border border-border bg-bg-elevated px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-text-primary text-sm font-sans">{tasksProject.title}</p>
+                    <p className="text-text-primary text-sm font-sans">
+                      <ProjectTitleLink project={tasksProject} className="text-text-primary font-sans text-sm" navState={{ activeNav: "/projects" }} stopPropagation={false} />
+                    </p>
                     <p className="text-text-secondary text-xs font-mono">
                       {tasks.length} task{tasks.length === 1 ? "" : "s"}
                     </p>
@@ -1668,7 +1481,9 @@ export default function Projects() {
               <div>
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
-                    <p className="text-text-primary font-sans text-sm">{optionsProject.title}</p>
+                    <p className="text-text-primary font-sans text-sm">
+                      <ProjectTitleLink project={optionsProject} className="text-text-primary font-sans text-sm" navState={{ activeNav: "/projects" }} stopPropagation={false} />
+                    </p>
                     <p className="text-text-secondary font-mono text-xs">{optionsProject.course}</p>
                   </div>
                   <Badge variant={optionsProject.visibility === "public" ? "success" : "default"}>
@@ -1757,7 +1572,9 @@ export default function Projects() {
                           className="flex items-center justify-between gap-3 rounded-md border border-border bg-bg-elevated px-3 py-2"
                         >
                           <p className="text-text-primary text-sm font-sans truncate">
-                            {collaborator}
+                            <UserProfileLink ownerName={collaborator} className="text-text-primary">
+                              {collaborator}
+                            </UserProfileLink>
                           </p>
                           <Button
                             size="sm"
@@ -1835,7 +1652,9 @@ export default function Projects() {
                         <div key={inv.id} className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-text-primary text-sm font-sans truncate">
-                              {inv.collaboratorName}
+                              <UserProfileLink ownerName={inv.collaboratorName} className="text-text-primary">
+                                {inv.collaboratorName}
+                              </UserProfileLink>
                             </p>
                             <p className="text-text-secondary text-xs font-mono truncate">
                               {inv.email} - invited {inv.sentAt}
@@ -1936,7 +1755,9 @@ export default function Projects() {
                       <div key={inv.id} className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-text-primary text-sm font-sans truncate">
-                            {inv.instructorName}
+                            <UserProfileLink ownerName={inv.instructorName} className="text-text-primary">
+                              {inv.instructorName}
+                            </UserProfileLink>
                           </p>
                           <p className="text-text-secondary text-xs font-mono truncate">
                             {inv.email} - invited {inv.sentAt}
@@ -1993,8 +1814,13 @@ export default function Projects() {
           <div className="flex flex-col gap-5">
             <p className="text-text-secondary text-sm font-sans">
               Manage thesis PDFs for{" "}
-              <span className="text-text-primary font-medium">{thesisEditProject.title}</span>.
-              This is separate from editing a standard course project.
+              <ProjectTitleLink
+                project={thesisEditProject}
+                className="text-text-primary font-medium font-sans text-sm"
+                navState={{ activeNav: "/projects" }}
+                stopPropagation={false}
+              />
+              . This is separate from editing a standard course project.
             </p>
 
             {(thesisEditProject.thesisDrafts || []).length > 0 ? (
@@ -2189,55 +2015,17 @@ export default function Projects() {
         </div>
       </Modal>
 
-      {/* Save confirm (table-row edit) */}
-      <ConfirmActionModal
-        isOpen={saveConfirmOpen}
-        action="save these changes to your project"
-        variant="gold"
-        onClose={() => setSaveConfirmOpen(false)}
-        onConfirm={() => {
-          applyTableEdit();
-          setSaveConfirmOpen(false);
-        }}
-      />
-
       <DocumentPreviewModal
         document={documentPreview}
         onClose={() => setDocumentPreview(null)}
       />
 
-      {/* Toasts */}
-      {modalNotice?.message && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-success text-sm font-sans">{modalNotice.message}</p>
-            <button
-              type="button"
-              className="text-success text-xs font-semibold"
-              onClick={() => setModalNotice(null)}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-      {successMsg && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm rounded-lg border border-success/40 bg-bg-base px-4 py-3 shadow-xl">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-success text-sm font-sans">{successMsg}</p>
-            <button
-              type="button"
-              className="text-success text-xs font-semibold"
-              onClick={() => setSuccessMsg("")}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-      {successMessage && (
-        <SuccessToast message={successMessage} onClose={() => setSuccessMessage("")} />
-      )}
+      <Toast
+        message={toastFeedback?.message || ""}
+        variant={toastFeedback?.variant || "success"}
+        onClose={() => setToastFeedback(null)}
+        durationMs={toastFeedback?.variant === "error" ? 5600 : 4200}
+      />
     </div>
   );
 }

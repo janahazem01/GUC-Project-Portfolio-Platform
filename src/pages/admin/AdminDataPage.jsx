@@ -1,17 +1,24 @@
-import { useEffect, useMemo, useState, useContext } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, useContext, useRef } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, PageHeader, ConfirmActionModal, Modal } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
 import {
+  adminApproveEmployer,
   adminClearProjectFlag,
   adminHideFlaggedProject,
+  adminRejectEmployer,
   dummyUsers,
   employerApplications,
   getProjectAppeals,
+  instructorDirectory,
+  portfolios,
   setProjectPlatformActive,
   subscribeDummyUpdates,
 } from "../../data/dummy";
+import { UserProfileLink } from "../../components/UserProfileLink";
+import { ProjectTitleLink } from "../../components/ProjectTitleLink";
+import { getPortfolioOrProfilePathForUser } from "../../utils/userPortfolioPath";
 
 const roleLabels = {
   student: "Student",
@@ -64,6 +71,129 @@ function isPlatformProjectActive(project) {
   return project.platformActive !== false;
 }
 
+/** Normalized row status: only `"active"` is active; missing or other → inactive label in UI */
+function effectiveUserStatus(user) {
+  return user?.status === "active" ? "active" : "inactive";
+}
+
+function statusLabel(status) {
+  return status === "active" ? "Active" : "Inactive";
+}
+
+function employerAdminDisplayName(row) {
+  return row.companyName || row.name || "Company";
+}
+
+/** Raw status from row → filter key (accepted maps from approved) */
+function employerRowStatusKey(row) {
+  const raw = (row.verificationStatus || "pending").toLowerCase();
+  if (raw === "approved") return "accepted";
+  if (raw === "rejected") return "rejected";
+  return "pending";
+}
+
+function employerStatusBadgeProps(row) {
+  const key = employerRowStatusKey(row);
+  if (key === "accepted") return { variant: "success", label: "accepted" };
+  if (key === "rejected") return { variant: "danger", label: "rejected" };
+  return { variant: "warning", label: "pending" };
+}
+
+/** Stable key for matching admin actions to rows (local + seed + overrides). */
+function employerVerificationRowKey(row) {
+  return String(row.companyEmail || row.email || row.contact || "").trim().toLowerCase();
+}
+
+function applyVerificationStatusFlash(row, flashByKey) {
+  const key = employerVerificationRowKey(row);
+  const flash = key ? flashByKey[key] : null;
+  if (!flash) return row;
+  return { ...row, verificationStatus: flash };
+}
+
+/**
+ * Reject · Accept · details arrow in one row. When verification is not pending, Reject/Accept stay
+ * in the layout but are invisible and inert so the column width does not jump after a decision.
+ */
+function EmployerVerificationActionsCell({ row, onReject, onAccept, onDetails }) {
+  const pending = (row.verificationStatus || "pending").toLowerCase() === "pending";
+  const ghostRejectAccept = pending ? "" : "invisible pointer-events-none select-none";
+  return (
+    <div className="inline-flex min-w-[13.75rem] flex-nowrap items-center justify-center gap-2">
+      <Button
+        type="button"
+        size="sm"
+        variant="danger"
+        tabIndex={pending ? 0 : -1}
+        aria-hidden={!pending}
+        className={`min-w-[5.25rem] shrink-0 px-3 ${ghostRejectAccept}`}
+        onClick={onReject}
+      >
+        Reject
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="gold"
+        tabIndex={pending ? 0 : -1}
+        aria-hidden={!pending}
+        className={`min-w-[5.25rem] shrink-0 px-3 ${ghostRejectAccept}`}
+        onClick={onAccept}
+      >
+        Accept
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center p-0"
+        aria-label="View company details"
+        title="View details"
+        onClick={onDetails}
+      >
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M4 12h16M14 5l7 7-7 7" />
+        </svg>
+      </Button>
+    </div>
+  );
+}
+
+/** Resolve portfolio URL for registered employers or pending employer applications */
+function resolveEmployerPortfolioPath(row) {
+  const email = row.companyEmail || row.email;
+  if (row.role === "employer" && row.id != null) {
+    return `/explore/portfolio/employer-${row.id}`;
+  }
+  const registered = dummyUsers.find(
+    (u) =>
+      u.role === "employer" &&
+      (u.companyEmail === email || u.email === email)
+  );
+  if (registered) return `/explore/portfolio/employer-${registered.id}`;
+  if (row.id != null && employerApplications.some((a) => String(a.id) === String(row.id))) {
+    return `/explore/portfolio/employer-application-${row.id}`;
+  }
+  const appMatch = employerApplications.find(
+    (a) =>
+      a.companyEmail === email ||
+      a.contact === email ||
+      a.email === email
+  );
+  if (appMatch) return `/explore/portfolio/employer-application-${appMatch.id}`;
+  return null;
+}
+
 export default function AdminDataPage() {
   const { section } = useParams();
   const navigate = useNavigate();
@@ -80,8 +210,23 @@ export default function AdminDataPage() {
   const [projectActivateTarget, setProjectActivateTarget] = useState(null);
   const [flaggedActionConfirm, setFlaggedActionConfirm] = useState(null);
   const [appealFilter, setAppealFilter] = useState("all");
-  const [viewingCompanyDocs, setViewingCompanyDocs] = useState(null);
   const [employerVerificationConfirm, setEmployerVerificationConfirm] = useState(null);
+  /** Shown immediately on Accept/Reject; cleared once persisted data matches (same frame as storage for typical paths). */
+  const [verificationStatusFlash, setVerificationStatusFlash] = useState({});
+  const [employerStatusFilter, setEmployerStatusFilter] = useState("all");
+  const [employerStatusFilterOpen, setEmployerStatusFilterOpen] = useState(false);
+  const employerFilterRef = useRef(null);
+
+  useEffect(() => {
+    if (!employerStatusFilterOpen) return;
+    const close = (e) => {
+      if (employerFilterRef.current && !employerFilterRef.current.contains(e.target)) {
+        setEmployerStatusFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [employerStatusFilterOpen]);
 
   const localEmployers = useMemo(() => {
     return getLocalUsers().filter(u => u.role === 'employer');
@@ -96,15 +241,19 @@ export default function AdminDataPage() {
     const map = new Map();
     const overrides = JSON.parse(localStorage.getItem('gucUserOverrides') || '{}');
 
-    hardcoded.forEach(u => {
-      const override = overrides[u.email];
-      map.set(u.email, override ? { ...u, ...override } : u);
+    hardcoded.forEach((u) => {
+      const oLogin = overrides[u.email] || {};
+      const oCompany = u.companyEmail ? overrides[u.companyEmail] || {} : {};
+      const combined = { ...oLogin, ...oCompany };
+      map.set(u.email, Object.keys(combined).length ? { ...u, ...combined } : u);
     });
 
-    local.forEach(u => {
+    local.forEach((u) => {
       const email = u.companyEmail || u.email;
-      const override = overrides[email];
-      map.set(email, override ? { ...u, ...override } : { ...u, verificationStatus: u.verificationStatus || 'pending' });
+      const oEmail = overrides[u.email] || {};
+      const oCompany = u.companyEmail ? overrides[u.companyEmail] || {} : {};
+      const combined = { ...oEmail, ...oCompany };
+      map.set(email, Object.keys(combined).length ? { ...u, ...combined } : { ...u, verificationStatus: u.verificationStatus || "pending" });
     });
     
     // Also include companies from "approvals" that might not have a full user record yet
@@ -119,6 +268,14 @@ export default function AdminDataPage() {
     return Array.from(map.values());
   }, [localEmployers, bumpDummyRevision]);
 
+  const filteredEmployerUsers = useMemo(() => {
+    if (employerStatusFilter === "all") return allEmployerUsers;
+    return allEmployerUsers.filter((row) => {
+      const displayRow = applyVerificationStatusFlash(row, verificationStatusFlash);
+      return employerRowStatusKey(displayRow) === employerStatusFilter;
+    });
+  }, [allEmployerUsers, employerStatusFilter, verificationStatusFlash]);
+
   const allEmployerApplications = useMemo(() => {
     // Merge hardcoded apps with overrides
     // Use the component's revision to force a fresh read from localStorage
@@ -126,47 +283,71 @@ export default function AdminDataPage() {
 
     // Map existing hardcoded ones to a common format if needed
     // And add newly registered ones from localUsers
-    const localApps = localEmployers.map(u => {
-      // Check overrides even for local users to ensure consistency
-      const email = u.companyEmail || u.email;
-      const override = overrides[email];
+    const localApps = localEmployers.map((u) => {
+      const oEmail = u.email ? overrides[u.email] || {} : {};
+      const oCompany = u.companyEmail ? overrides[u.companyEmail] || {} : {};
+      const override = { ...oEmail, ...oCompany };
       return {
         id: u.id,
         name: u.companyName || u.name,
         contact: u.email,
-        companyEmail: u.email,
+        companyEmail: u.companyEmail || u.email,
         location: u.location || u.address || "Unknown",
-        verificationStatus: (override && override.verificationStatus) || u.verificationStatus || "pending",
-        uploadedDocs: u.uploadedDocs || (u.taxCert ? [{ id: 'tax-cert', name: 'tax_certificate.pdf', data: u.taxCert }] : []),
+        verificationStatus: override.verificationStatus || u.verificationStatus || "pending",
+        uploadedDocs: u.uploadedDocs || (u.taxCert ? [{ id: "tax-cert", name: "tax_certificate.pdf", data: u.taxCert }] : []),
         isLocal: true,
-        email: u.email
+        email: u.email,
       };
     });
 
-    const mergedHardcoded = employerApplications.map(app => {
-      // Priority 1: Check overrides by companyEmail
-      let override = overrides[app.companyEmail];
-      
-      // Priority 2: Check absolute overrides (like if we used a generic key by mistake)
-      if (!override) override = overrides[app.email];
-
+    const mergedHardcoded = employerApplications.map((app) => {
+      const override =
+        overrides[app.companyEmail] || overrides[app.contact] || overrides[app.email] || null;
       return override ? { ...app, ...override } : app;
     });
 
     return [...mergedHardcoded, ...localApps];
   }, [localEmployers, bumpDummyRevision]);
 
+  const sortedEmployerApprovals = useMemo(() => {
+    return [...allEmployerApplications].sort((a, b) => {
+      const ap = (a.verificationStatus || "pending").toLowerCase() === "pending" ? 0 : 1;
+      const bp = (b.verificationStatus || "pending").toLowerCase() === "pending" ? 0 : 1;
+      if (ap !== bp) return ap - bp;
+      return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+    });
+  }, [allEmployerApplications]);
+
+  useEffect(() => {
+    setVerificationStatusFlash((prev) => {
+      const flashKeys = Object.keys(prev);
+      if (!flashKeys.length) return prev;
+      const rows = [...allEmployerUsers, ...allEmployerApplications];
+      let next = prev;
+      let changed = false;
+      for (const flashKey of flashKeys) {
+        const want = String(prev[flashKey] || "").toLowerCase();
+        const persisted = rows.find((r) => employerVerificationRowKey(r) === flashKey);
+        if (!persisted) continue;
+        const actual = String(persisted.verificationStatus || "pending").toLowerCase();
+        if (actual === want) {
+          if (!changed) {
+            next = { ...prev };
+            changed = true;
+          }
+          delete next[flashKey];
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [allEmployerUsers, allEmployerApplications, bumpDummyRevision]);
+
   const isFiltered = Boolean(selectedRole);
   const filteredUsers = useMemo(() => {
     const availableRoles = roleOptions.map((option) => option.value);
     const visibleRoles = selectedRole ? [selectedRole] : availableRoles;
     return dummyUsers.filter((user) => visibleRoles.includes(user.role));
-  }, [selectedRole]);
-  const groupedUsers = useMemo(() => (
-    selectedRole
-      ? [{ role: selectedRole, users: dummyUsers.filter((user) => user.role === selectedRole) }]
-      : []
-  ), [selectedRole]);
+  }, [selectedRole, bumpDummyRevision]);
 
   const flaggedProjects = useMemo(
     () => projectList.filter((project) => project.flagged === true),
@@ -175,20 +356,36 @@ export default function AdminDataPage() {
 
   const page = pageTitles[section] || ["Admin Console", "Platform data and systems management."];
 
+  const pageShellClass =
+    section === "employers" || section === "approvals"
+      ? "mx-auto w-full max-w-[min(100%,96rem)] px-4 sm:px-6 lg:px-8"
+      : "mx-auto max-w-6xl px-4";
+
+  const openEmployerCompanyProfile = (row) => {
+    const path = resolveEmployerPortfolioPath(row);
+    if (!path) {
+      setActionFeedbackMessage("No company profile is available for this entry.");
+      setActionFeedbackOpen(true);
+      return;
+    }
+    navigate(path, {
+      state: {
+        profileOpenedToast: `Opened ${employerAdminDisplayName(row)} profile`,
+      },
+    });
+  };
+
   if (section === "requests") {
     return <Navigate to="/requests" replace />;
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4">
+    <div className={pageShellClass}>
       <PageHeader
         title={page[0]}
         subtitle={page[1]}
         action={
-          <Button
-            variant="secondary"
-            onClick={() => navigate(-1)}
-          >
+          <Button variant="secondary" onClick={() => navigate("/")}>
             Back
           </Button>
         }
@@ -261,56 +458,92 @@ export default function AdminDataPage() {
 
 
           <Card className="p-0 overflow-hidden">
-            <div className="grid gap-4 border-b border-border px-4 py-4 bg-bg-elevated/50 items-center" style={{ gridTemplateColumns: "2.6fr 2.3fr 1.4fr 1.1fr" }}>
+            <div
+              className="grid gap-4 border-b border-border px-4 py-4 bg-bg-elevated/50 items-center"
+              style={{ gridTemplateColumns: "2.4fr 2.1fr 1.35fr 8rem auto" }}
+            >
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Full Name</p>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Email</p>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Role</p>
               <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-left">Status</p>
+              <p className="font-mono text-[11px] uppercase tracking-widest text-text-secondary text-center w-12 shrink-0" title="Public profile">
+                Profile
+              </p>
             </div>
-            {isFiltered ? (
-              groupedUsers.map(({ role, users }) => (
-                <div key={role}>
-                  <div className="bg-bg-elevated border-b border-border px-4 py-3">
-                    <p className="font-display text-sm text-text-primary">
-                      {roleLabels[role]} ({users.length})
-                    </p>
-                  </div>
-                  {users.map((user) => (
-                    <DataRow key={`${role}-${user.id}`} columns={4} style={{ gridTemplateColumns: "2.6fr 2.3fr 1.4fr 1.1fr" }}>
-                      <div className="truncate text-left">
-                        <p className="text-sm text-text-primary font-semibold truncate">{user.name}</p>
-                      </div>
-                      <div className="truncate text-left">
-                        <p className="text-sm text-text-secondary font-sans truncate">{user.email}</p>
-                      </div>
-                      <div className="truncate text-left">
-                        <Badge variant="blue">{roleLabels[user.role]}</Badge>
-                      </div>
-                      <div className="flex items-center justify-start">
-                        <Badge variant={user.status === "active" ? "success" : "danger"}>{user.status}</Badge>
-                      </div>
-                    </DataRow>
-                  ))}
-                </div>
-              ))
-            ) : (
-              filteredUsers.map((user) => (
-                <DataRow key={user.id} columns={4} style={{ gridTemplateColumns: "2.6fr 2.3fr 1.4fr 1.1fr" }}>
-                  <div className="truncate text-left">
-                    <p className="text-sm text-text-primary font-semibold truncate">{user.name}</p>
-                  </div>
-                  <div className="truncate text-left">
-                    <p className="text-sm text-text-secondary font-sans truncate">{user.email}</p>
-                  </div>
-                  <div className="truncate text-left">
-                    <Badge variant="blue">{roleLabels[user.role]}</Badge>
-                  </div>
-                  <div className="flex items-center justify-start">
-                    <Badge variant={user.status === "active" ? "success" : "danger"}>{user.status}</Badge>
-                  </div>
-                </DataRow>
-              ))
+            {isFiltered && (
+              <div className="bg-bg-elevated border-b border-border px-4 py-3">
+                <p className="font-display text-sm text-text-primary">
+                  {roleLabels[selectedRole]} ({filteredUsers.length})
+                </p>
+              </div>
             )}
+            <div key={selectedRole || "all-roles"}>
+              {filteredUsers.map((user) => {
+                const profilePath = getPortfolioOrProfilePathForUser(user);
+                const rowStatus = effectiveUserStatus(user);
+                return (
+                  <DataRow
+                    key={`${selectedRole || "all"}-${user.id}-${user.email}`}
+                    columns={5}
+                    style={{ gridTemplateColumns: "2.4fr 2.1fr 1.35fr 8rem auto" }}
+                  >
+                    <div className="truncate text-left">
+                      <p className="text-sm text-text-primary font-semibold truncate">
+                        <UserProfileLink user={user} className="font-semibold">
+                          {user.name}
+                        </UserProfileLink>
+                      </p>
+                    </div>
+                    <div className="truncate text-left">
+                      <p className="text-sm text-text-secondary font-sans truncate">{user.email}</p>
+                    </div>
+                    <div className="truncate text-left">
+                      <Badge variant="blue">{roleLabels[user.role]}</Badge>
+                    </div>
+                    <div className="flex items-center justify-start min-w-0">
+                      <Badge
+                        variant={rowStatus === "active" ? "success" : "danger"}
+                        className="inline-flex px-3 py-1 min-w-[5.75rem] justify-center whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide"
+                      >
+                        {statusLabel(rowStatus)}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-center w-12 shrink-0">
+                      {profilePath ? (
+                        <Link
+                          to={profilePath}
+                          title={`Open portfolio for ${user.name}`}
+                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-accent-blue/50 text-accent-blue hover:bg-accent-blue/10 hover:border-accent-blue transition-colors"
+                          aria-label={`Open profile or portfolio for ${user.name}`}
+                        >
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="shrink-0"
+                            aria-hidden
+                          >
+                            <path d="M5 12h14M13 6l6 6-6 6" />
+                          </svg>
+                        </Link>
+                      ) : (
+                        <span
+                          className="text-xs text-text-muted"
+                          title={isFiltered ? "No public portfolio slug for this user" : "No public portfolio path for this role"}
+                        >
+                          —
+                        </span>
+                      )}
+                    </div>
+                  </DataRow>
+                );
+              })}
+            </div>
           </Card>
 
           <Modal
@@ -358,7 +591,7 @@ export default function AdminDataPage() {
                   <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[8.5rem]">
                     Created
                   </th>
-                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-right w-[12rem]">
+                  <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center whitespace-nowrap w-[14rem]">
                     Actions
                   </th>
                 </tr>
@@ -372,10 +605,19 @@ export default function AdminDataPage() {
                       className="border-b border-border last:border-0 hover:bg-bg-elevated/20 transition-colors align-middle"
                     >
                       <td className="px-4 py-3">
-                        <p className="text-sm font-semibold text-text-primary font-sans leading-snug break-words">{project.title}</p>
+                        <p className="text-sm font-semibold text-text-primary font-sans leading-snug break-words">
+                          <ProjectTitleLink
+                            project={project}
+                            className="font-semibold text-text-primary font-sans"
+                            navState={{ activeNav: "/admin/projects" }}
+                            stopPropagation={false}
+                          />
+                        </p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="text-sm text-text-secondary font-sans">{project.owner}</p>
+                        <p className="text-sm text-text-secondary font-sans">
+                          <UserProfileLink ownerName={project.owner}>{project.owner}</UserProfileLink>
+                        </p>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant="blue">{project.courseCode}</Badge>
@@ -391,8 +633,8 @@ export default function AdminDataPage() {
                       <td className="px-4 py-3 text-center">
                         <span className="text-xs font-mono text-text-secondary whitespace-nowrap">{project.createdAt}</span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap justify-end gap-2">
+                      <td className="px-4 py-3 text-center whitespace-nowrap align-middle">
+                        <div className="inline-flex flex-nowrap items-center justify-center gap-2">
                           <Button
                             size="sm"
                             variant="secondary"
@@ -421,50 +663,273 @@ export default function AdminDataPage() {
       )}
 
       {section === "employers" && (
-        <Card className="p-0 overflow-hidden">
-          <DataHeader 
-            columns={["Company", "Email", "Location", "Status", "Actions"]} 
-            style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}
-          />
-          {allEmployerUsers.map((user) => (
-            <DataRow key={user.id} columns={5} style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}>
-              <p className="text-sm text-text-primary font-sans truncate">{user.companyName || user.name}</p>
-              <p className="text-sm text-text-secondary font-sans truncate">{user.companyEmail || user.email}</p>
-              <p className="text-sm text-text-secondary font-sans truncate">{user.location || user.address}</p>
-              <div>
-                <Badge variant={user.verificationStatus === "approved" ? "success" : "warning"}>{user.verificationStatus || "pending"}</Badge>
+        <>
+          <div
+            ref={employerFilterRef}
+            className="relative mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
+          >
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant="blue">
+                  {filteredEmployerUsers.length} compan{filteredEmployerUsers.length === 1 ? "y" : "ies"}
+                </Badge>
               </div>
-              <div className="flex justify-end pr-2">
-                <Button size="sm" variant="secondary" onClick={() => setViewingCompanyDocs(user)}>
-                  View Details
-                </Button>
-              </div>
-            </DataRow>
-          ))}
-        </Card>
+            </div>
+
+            <div className="relative">
+              <Button
+                variant="secondary"
+                className="inline-flex items-center gap-2"
+                aria-expanded={employerStatusFilterOpen}
+                aria-haspopup="listbox"
+                aria-label="Filter companies by verification status"
+                onClick={() => setEmployerStatusFilterOpen((open) => !open)}
+              >
+                <span className="inline-flex h-4 w-4 items-center justify-center">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                    aria-hidden
+                  >
+                    <path d="M3 4h18l-7 8v6l-4 2v-8L3 4z" />
+                  </svg>
+                </span>
+                {employerStatusFilter === "all"
+                  ? "Filter by status"
+                  : employerStatusFilter === "pending"
+                    ? "Filter: Pending"
+                    : employerStatusFilter === "accepted"
+                      ? "Filter: Accepted"
+                      : "Filter: Rejected"}
+              </Button>
+              {employerStatusFilterOpen && (
+                <div
+                  role="listbox"
+                  className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-border bg-bg-base p-3 shadow-xl"
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="font-display text-sm text-text-primary">Select status</p>
+                    <button
+                      type="button"
+                      onClick={() => setEmployerStatusFilterOpen(false)}
+                      className="text-sm text-text-secondary hover:text-text-primary"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmployerStatusFilter("all");
+                      setEmployerStatusFilterOpen(false);
+                    }}
+                    className="mb-2 w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left text-sm font-sans text-text-secondary hover:border-text-primary hover:text-text-primary"
+                  >
+                    Clear filter
+                  </button>
+                  <div className="grid gap-2">
+                    {[
+                      { id: "pending", label: "Pending" },
+                      { id: "accepted", label: "Accepted" },
+                      { id: "rejected", label: "Rejected" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        role="option"
+                        aria-selected={employerStatusFilter === opt.id}
+                        onClick={() => {
+                          setEmployerStatusFilter(opt.id);
+                          setEmployerStatusFilterOpen(false);
+                        }}
+                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-sans transition-colors ${
+                          employerStatusFilter === opt.id
+                            ? "border-accent-blue bg-accent-blue/10 text-text-primary"
+                            : "border-border bg-bg-elevated text-text-secondary hover:border-text-primary hover:text-text-primary"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Card className="p-0 overflow-hidden">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[56rem] table-auto border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border bg-bg-base">
+                  <th className="min-w-[11rem] px-3 py-3 text-left font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Company
+                  </th>
+                  <th className="min-w-[13rem] px-3 py-3 text-left font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Email
+                  </th>
+                  <th className="min-w-[16rem] px-3 py-3 text-left font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Location
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-3 text-left font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Status
+                  </th>
+                  <th className="min-w-[15rem] whitespace-nowrap px-3 py-3 pr-4 text-center font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEmployerUsers.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-text-secondary font-sans">
+                      No companies match this filter.
+                    </td>
+                  </tr>
+                )}
+                {filteredEmployerUsers.map((row) => {
+                  const displayRow = applyVerificationStatusFlash(row, verificationStatusFlash);
+                  const statusBadge = employerStatusBadgeProps(displayRow);
+                  const companyProfilePath = resolveEmployerPortfolioPath(row);
+                  return (
+                    <tr
+                      key={`${row.companyEmail || row.email || ""}-${row.id}`}
+                      className="border-b border-border last:border-0 hover:bg-bg-elevated/25 transition-colors"
+                    >
+                      <td className="min-w-0 px-3 py-3 align-top text-sm font-sans text-text-primary">
+                        {companyProfilePath ? (
+                          <Link
+                            to={companyProfilePath}
+                            className="block break-words leading-snug text-inherit hover:text-accent-gold hover:underline"
+                          >
+                            {row.companyName || row.name}
+                          </Link>
+                        ) : (
+                          <span className="block break-words leading-snug">{row.companyName || row.name}</span>
+                        )}
+                      </td>
+                      <td className="min-w-0 px-3 py-3 align-top text-sm font-sans text-text-secondary">
+                        <span className="block break-all leading-snug">{row.companyEmail || row.email}</span>
+                      </td>
+                      <td className="min-w-0 px-3 py-3 align-top text-sm font-sans text-text-secondary">
+                        <span className="block whitespace-normal break-words leading-snug">{row.location || row.address || "—"}</span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 align-middle text-left">
+                        <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+                      </td>
+                      <td className="min-w-0 whitespace-nowrap px-3 py-3 pr-4 align-middle text-center">
+                        <EmployerVerificationActionsCell
+                          row={displayRow}
+                          onReject={() =>
+                            setEmployerVerificationConfirm({
+                              type: "reject",
+                              email: row.companyEmail || row.email || row.contact,
+                              displayName: employerAdminDisplayName(row),
+                            })
+                          }
+                          onAccept={() =>
+                            setEmployerVerificationConfirm({
+                              type: "approve",
+                              email: row.companyEmail || row.email || row.contact,
+                              displayName: employerAdminDisplayName(row),
+                            })
+                          }
+                          onDetails={() => openEmployerCompanyProfile(row)}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
       )}
 
       {section === "approvals" && (
         <Card className="p-0 overflow-hidden">
-          <DataHeader 
-            columns={["Employer", "Contact", "Location", "Status", "Actions"]} 
-            style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}
-          />
-          {allEmployerApplications.filter(app => app.verificationStatus === 'pending').map((application) => (
-            <DataRow key={application.id} columns={5} style={{ gridTemplateColumns: "1.4fr 1.6fr 1fr 0.8fr 1.2fr" }}>
-              <p className="text-sm text-text-primary font-sans truncate">{application.name}</p>
-              <p className="text-sm text-text-secondary font-sans truncate">{application.companyEmail}</p>
-              <p className="text-sm text-text-secondary font-sans truncate">{application.location}</p>
-              <div>
-                <Badge variant={application.verificationStatus === "pending" ? "warning" : "success"}>{application.verificationStatus}</Badge>
-              </div>
-              <div className="flex justify-end pr-2">
-                <Button size="sm" variant="secondary" onClick={() => setViewingCompanyDocs(application)}>
-                  Details
-                </Button>
-              </div>
-            </DataRow>
-          ))}
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[56rem] table-auto border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border bg-bg-base">
+                  <th className="min-w-[11rem] px-3 py-3 text-left font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Employer
+                  </th>
+                  <th className="min-w-[13rem] px-3 py-3 text-left font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Contact
+                  </th>
+                  <th className="min-w-[16rem] px-3 py-3 text-left font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Location
+                  </th>
+                  <th className="whitespace-nowrap px-3 py-3 text-left font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Status
+                  </th>
+                  <th className="min-w-[15rem] whitespace-nowrap px-3 py-3 pr-4 text-center font-mono text-[11px] font-normal uppercase tracking-widest text-text-secondary">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedEmployerApprovals.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-text-secondary font-sans">
+                      No employer applications on file.
+                    </td>
+                  </tr>
+                ) : (
+                  sortedEmployerApprovals.map((application) => {
+                    const displayApp = applyVerificationStatusFlash(application, verificationStatusFlash);
+                    const appStatus = employerStatusBadgeProps(displayApp);
+                    return (
+                      <tr
+                        key={`${application.companyEmail}-${application.id}`}
+                        className="border-b border-border last:border-0 hover:bg-bg-elevated/25 transition-colors"
+                      >
+                        <td className="min-w-0 px-3 py-3 align-top text-sm font-sans text-text-primary">
+                          <span className="block break-words leading-snug">{application.name}</span>
+                        </td>
+                        <td className="min-w-0 px-3 py-3 align-top text-sm font-sans text-text-secondary">
+                          <span className="block break-all leading-snug">{application.companyEmail}</span>
+                        </td>
+                        <td className="min-w-0 px-3 py-3 align-top text-sm font-sans text-text-secondary">
+                          <span className="block whitespace-normal break-words leading-snug">{application.location || "—"}</span>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 align-middle text-left">
+                          <Badge variant={appStatus.variant}>{appStatus.label}</Badge>
+                        </td>
+                        <td className="min-w-0 whitespace-nowrap px-3 py-3 pr-4 align-middle text-center">
+                          <EmployerVerificationActionsCell
+                            row={displayApp}
+                            onReject={() =>
+                              setEmployerVerificationConfirm({
+                                type: "reject",
+                                email: application.companyEmail || application.email || application.contact,
+                                displayName: employerAdminDisplayName(application),
+                              })
+                            }
+                            onAccept={() =>
+                              setEmployerVerificationConfirm({
+                                type: "approve",
+                                email: application.companyEmail || application.email || application.contact,
+                                displayName: employerAdminDisplayName(application),
+                              })
+                            }
+                            onDetails={() => openEmployerCompanyProfile(application)}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
 
@@ -496,8 +961,17 @@ export default function AdminDataPage() {
                     columns={6}
                     style={{ gridTemplateColumns: "1.6fr 1.1fr 0.75fr minmax(0, 1.55fr) 0.95fr 1.4fr" }}
                   >
-                    <p className="text-sm text-text-primary font-semibold font-sans truncate">{project.title}</p>
-                    <p className="text-sm text-text-secondary font-sans truncate">{project.owner}</p>
+                    <p className="text-sm text-text-primary font-semibold font-sans truncate">
+                      <ProjectTitleLink
+                        project={project}
+                        className="font-semibold text-text-primary font-sans"
+                        navState={{ activeNav: "/admin/flagged" }}
+                        stopPropagation={false}
+                      />
+                    </p>
+                    <p className="text-sm text-text-secondary font-sans truncate">
+                      <UserProfileLink ownerName={project.owner}>{project.owner}</UserProfileLink>
+                    </p>
                     <div className="flex justify-center">
                       <Badge variant="blue">{project.courseCode}</Badge>
                     </div>
@@ -580,10 +1054,26 @@ export default function AdminDataPage() {
                   style={{ gridTemplateColumns: "1.1fr 1.3fr 0.85fr 0.75fr minmax(0, 2.2fr)" }}
                 >
                   <div className="min-w-0 text-left space-y-1">
-                    <p className="text-sm font-semibold text-text-primary whitespace-normal break-words">{appeal.studentName}</p>
+                    <p className="text-sm font-semibold text-text-primary whitespace-normal break-words">
+                      <UserProfileLink
+                        participant={{ name: appeal.studentName, email: appeal.studentEmail }}
+                        className="font-semibold"
+                      >
+                        {appeal.studentName}
+                      </UserProfileLink>
+                    </p>
                     <p className="text-[11px] font-mono text-text-secondary whitespace-normal break-all">{appeal.studentEmail}</p>
                   </div>
-                  <p className="text-sm text-text-secondary font-sans whitespace-normal break-words">{appeal.projectTitle}</p>
+                  <p className="text-sm text-text-secondary font-sans whitespace-normal break-words">
+                    <ProjectTitleLink
+                      projectId={appeal.projectId}
+                      className="text-sm text-text-secondary font-sans"
+                      navState={{ activeNav: "/admin/appeals" }}
+                      stopPropagation={false}
+                    >
+                      {appeal.projectTitle}
+                    </ProjectTitleLink>
+                  </p>
                   <p className="text-xs font-mono text-text-secondary text-center whitespace-normal">{appeal.submittedAt}</p>
                   <div className="flex justify-center">
                     <Badge variant={appeal.status === "pending" ? "warning" : "success"}>
@@ -654,24 +1144,36 @@ export default function AdminDataPage() {
         isOpen={employerVerificationConfirm !== null}
         action={
           employerVerificationConfirm?.type === "approve"
-            ? `approve verification for "${employerVerificationConfirm.displayName}"`
+            ? `accept verification for "${employerVerificationConfirm.displayName}"`
             : `reject verification for "${employerVerificationConfirm?.displayName ?? "this company"}"`
         }
         variant={employerVerificationConfirm?.type === "approve" ? "gold" : "danger"}
         onClose={() => setEmployerVerificationConfirm(null)}
         onConfirm={() => {
           if (!employerVerificationConfirm?.email) return;
-          updateVerificationStatus(
-            employerVerificationConfirm.email,
-            employerVerificationConfirm.type === "approve" ? "approved" : "rejected"
-          );
+          const email = employerVerificationConfirm.email;
+          const approve = employerVerificationConfirm.type === "approve";
+          const nextStatus = approve ? "approved" : "rejected";
+          const flashKey = employerVerificationRowKey({ companyEmail: email, email, contact: email });
+          if (flashKey) {
+            setVerificationStatusFlash((prev) => ({ ...prev, [flashKey]: nextStatus }));
+          }
+          const needle = String(email).trim().toLowerCase();
+          const seedApp = employerApplications.find((a) => {
+            const ids = [a.companyEmail, a.contact, a.email].filter(Boolean).map((x) => String(x).trim().toLowerCase());
+            return ids.some((id) => id === needle);
+          });
+          if (seedApp?.verificationStatus === "pending") {
+            if (approve) adminApproveEmployer(seedApp.id);
+            else adminRejectEmployer(seedApp.id);
+          }
+          updateVerificationStatus(email, nextStatus);
           bumpDummyRevision((prev) => prev + 1);
           setActionFeedbackMessage(
-            employerVerificationConfirm.type === "approve"
-              ? `Application APPROVED for ${employerVerificationConfirm.displayName}`
-              : `Application REJECTED for ${employerVerificationConfirm.displayName}`
+            approve
+              ? `Application accepted for ${employerVerificationConfirm.displayName}`
+              : `Application rejected for ${employerVerificationConfirm.displayName}`
           );
-          setViewingCompanyDocs(null);
           setActionFeedbackOpen(true);
         }}
       />
@@ -710,131 +1212,6 @@ export default function AdminDataPage() {
           setActionFeedbackOpen(true);
         }}
       />
-      {/* Company Verification Details Modal */}
-      <Modal
-        isOpen={Boolean(viewingCompanyDocs)}
-        onClose={() => setViewingCompanyDocs(null)}
-        title="Company Documentation"
-        contentClassName="max-w-2xl"
-      >
-        {viewingCompanyDocs && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 bg-bg-elevated/30 p-4 rounded-xl border border-border">
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">Company Name</p>
-                <p className="text-sm font-semibold text-text-primary">{viewingCompanyDocs.name || viewingCompanyDocs.companyName}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">Email</p>
-                <p className="text-sm text-text-secondary break-all">{viewingCompanyDocs.companyEmail || viewingCompanyDocs.email}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">Location</p>
-                <p className="text-sm text-text-secondary">{viewingCompanyDocs.location || viewingCompanyDocs.address}</p>
-              </div>
-              {viewingCompanyDocs.companyBio && (
-                <div className="col-span-2">
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary mb-1">About</p>
-                  <p className="text-sm text-text-secondary text-sm leading-relaxed">{viewingCompanyDocs.companyBio}</p>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h3 className="text-sm font-display text-text-primary mb-3">Verification Documents</h3>
-              <div className="space-y-2">
-                {(!viewingCompanyDocs.uploadedDocs || viewingCompanyDocs.uploadedDocs.length === 0) ? (
-                  <p className="text-sm text-text-secondary italic">No documents uploaded.</p>
-                ) : (
-                  viewingCompanyDocs.uploadedDocs.map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-bg-surface hover:border-accent-blue/50 transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded bg-accent-blue/10 flex items-center justify-center text-accent-blue">
-                          ??
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-text-primary">{doc.name}</p>
-                          <p className="text-[10px] text-text-secondary">Uploaded on {doc.uploadedAt}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost" 
-                          className="hover:text-accent-blue"
-                          onClick={() => {
-                            if (doc.data) {
-                              const win = window.open();
-                              win.document.write('<iframe src="' + doc.data  + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
-                            } else {
-                              setActionFeedbackMessage(`Viewing document: ${doc.name}`);
-                              setActionFeedbackOpen(true);
-                            }
-                          }}
-                        >
-                          View
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="hover:text-accent-gold"
-                          onClick={() => {
-                            if (doc.data) {
-                              const link = document.createElement('a');
-                              link.href = doc.data;
-                              link.download = doc.name;
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                            } else {
-                              handleDownload(doc);
-                            }
-                          }}
-                        >
-                          Download
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-border">
-              <Button variant="ghost" onClick={() => setViewingCompanyDocs(null)}>
-                Close
-              </Button>
-              {viewingCompanyDocs.verificationStatus === "pending" && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="danger"
-                    onClick={() =>
-                      setEmployerVerificationConfirm({
-                        type: "reject",
-                        email: viewingCompanyDocs.companyEmail || viewingCompanyDocs.email,
-                        displayName: viewingCompanyDocs.name || viewingCompanyDocs.companyName || "this company",
-                      })
-                    }
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      setEmployerVerificationConfirm({
-                        type: "approve",
-                        email: viewingCompanyDocs.companyEmail || viewingCompanyDocs.email,
-                        displayName: viewingCompanyDocs.name || viewingCompanyDocs.companyName || "this company",
-                      })
-                    }
-                  >
-                    Approve Verification
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

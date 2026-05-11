@@ -645,7 +645,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useProjects } from "../../context/ProjectsContext";
-import { ConfirmActionModal } from "../ui";
+import { ConfirmActionModal, Toast } from "../ui";
 import { Card } from "../ui";
 import {
   getNotificationActionPath,
@@ -661,6 +661,7 @@ import {
   instructorDirectory,
 } from "../../data/dummy";
 import { readDoNotDisturb, writeDoNotDisturb } from "../../utils/doNotDisturb";
+import { ProjectTitleLink } from "../ProjectTitleLink";
 
 function navigateStateForPath(path) {
   if (!path) return undefined;
@@ -708,7 +709,7 @@ const navCategories = [
     items: [
       { label: (role) => (role === "student" ? "My Projects" : "Projects"), icon: "◈", path: "/projects", roles: ["student", "instructor"] },
       { label: "Tasks", icon: "T", path: "/tasks", roles: ["student"] },
-      { label: "Courses", icon: "▤", path: "/courses", roles: ["admin", "instructor"] },
+      { label: "Courses", icon: "▤", path: "/courses", roles: ["instructor"] },
     ],
   },
   {
@@ -717,7 +718,7 @@ const navCategories = [
     items: [
       { label: "Explore", icon: "◎", path: "/explore", roles: ["student", "instructor", "employer", "admin"] },
       { label: "Instructors", icon: "👨‍🏫", path: "/instructors", roles: ["student", "instructor", "employer", "admin"] },
-      { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor", "employer"] },
+      { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "employer"] },
     ],
   },
   {
@@ -727,6 +728,39 @@ const navCategories = [
       { label: "Messages", icon: "💬", path: "/messages", roles: ["student", "instructor", "employer"] },
       { label: (role) => (role === "admin" ? "Requests" : "Invitations"), icon: "✉", path: "/requests", roles: ["student", "instructor", "admin"] },
       { label: "Favorites", icon: "★", path: "/favorites", roles: ["student", "employer"] },
+    ],
+  },
+  {
+    id: "admin-catalog",
+    label: "Catalog",
+    items: [
+      { navId: "admin-users", label: "Users", icon: "👥", path: "/admin/users", roles: ["admin"] },
+      { navId: "admin-courses", label: "Courses", icon: "▤", path: "/courses", roles: ["admin"] },
+      { navId: "admin-projects-data", label: "Projects", icon: "🖥", path: "/admin/projects", roles: ["admin"] },
+    ],
+  },
+  {
+    id: "admin-employers",
+    label: "Employers",
+    items: [
+      { navId: "admin-employer-accounts", label: "Employers", icon: "💼", path: "/admin/employers", roles: ["admin"] },
+      { navId: "admin-approvals", label: "Approvals", icon: "✓", path: "/admin/approvals", roles: ["admin"] },
+    ],
+  },
+  {
+    id: "admin-review",
+    label: "Review",
+    items: [
+      { navId: "admin-appeals", label: "Appeals", icon: "✉", path: "/admin/appeals", roles: ["admin"] },
+      { navId: "admin-flagged", label: "Flagged", icon: "!", path: "/admin/flagged", roles: ["admin"] },
+    ],
+  },
+  {
+    id: "admin-access",
+    label: "Administrators",
+    items: [
+      { navId: "admin-create", label: "Create Admin", icon: "➕", path: "/admin", search: "modal=create", roles: ["admin"] },
+      { navId: "admin-account-mgmt", label: "Account Management", icon: "🔒", path: "/admin/account-management", roles: ["admin"] },
     ],
   },
 ];
@@ -741,10 +775,58 @@ function getNavGroupsForRole(role) {
     .filter((cat) => cat.items.length > 0);
 }
 
-/** Sidebar caret → profile for admins, public portfolio view for other roles */
+function normalizePathname(pathname) {
+  if (!pathname) return "/";
+  return pathname.replace(/\/$/, "") || "/";
+}
+
+function searchParamsMatchAll(locationSearch, itemSearch) {
+  if (!itemSearch) return true;
+  const loc = new URLSearchParams(locationSearch.startsWith("?") ? locationSearch.slice(1) : locationSearch);
+  const want = new URLSearchParams(itemSearch.startsWith("?") ? itemSearch.slice(1) : itemSearch);
+  for (const [key, value] of want.entries()) {
+    if (loc.get(key) !== value) return false;
+  }
+  return true;
+}
+
+function isNavItemActive(item, location, activeNavPath) {
+  const pathname = normalizePathname(location.pathname);
+  const itemPath = normalizePathname(item.path);
+  const locQs = new URLSearchParams(location.search);
+
+  if (item.search) {
+    return pathname === itemPath && searchParamsMatchAll(location.search, item.search);
+  }
+
+  if (item.exact) {
+    if (pathname !== itemPath) return false;
+    if (item.skipActiveIfSearch) {
+      for (const [key, value] of Object.entries(item.skipActiveIfSearch)) {
+        if (locQs.get(key) === value) return false;
+      }
+    }
+    return true;
+  }
+
+  return (
+    activeNavPath === itemPath ||
+    (itemPath !== "/" && activeNavPath.startsWith(`${itemPath}/`))
+  );
+}
+
+function navItemToLocationDescriptor(item) {
+  if (item.search) {
+    const search = item.search.startsWith("?") ? item.search : `?${item.search}`;
+    return { pathname: item.path, search };
+  }
+  return item.path;
+}
+
+/** Sidebar caret → public portfolio (or /profile fallback). Admins have no caret in the sidebar. */
 function getPortfolioCaretPath(user) {
   if (!user?.role) return "/profile";
-  if (user.role === "admin") return "/profile";
+  if (user.role === "admin" && user.id != null) return `/explore/portfolio/admin-${user.id}`;
   if (user.role === "student") {
     const portfolio = portfolios.find(
       (p) =>
@@ -872,6 +954,7 @@ function UserMenu({ collapsed }) {
 
   const caretPath = getPortfolioCaretPath(user);
   const caretNavState = navigateStateForPath(caretPath);
+  const showPortfolioCaret = user?.role && user.role !== "admin";
 
   return (
     <div
@@ -900,15 +983,15 @@ function UserMenu({ collapsed }) {
               </div>
             </div>
           )}
-          <SidebarTooltip collapsed={collapsed} label="Portfolio" />
+          <SidebarTooltip collapsed={collapsed} label="Profile" />
         </button>
-        {!collapsed && (
+        {!collapsed && showPortfolioCaret && (
           <button
             type="button"
             onClick={() => navigate(caretPath, { state: caretNavState })}
             className="flex h-8 min-w-[2rem] shrink-0 items-center justify-center rounded-md pl-1 pr-0.5 text-text-secondary transition-colors hover:bg-bg-base hover:text-text-primary"
-            aria-label={user?.role === "admin" ? "Open profile" : "Open portfolio"}
-            title={user?.role === "admin" ? "Profile" : "Portfolio"}
+            aria-label="Open public portfolio"
+            title="Portfolio"
           >
             <svg
               width="18"
@@ -973,13 +1056,7 @@ export function AppLayout({ children }) {
   const navigate = useNavigate();
   const navGroups = getNavGroupsForRole(user?.role);
   const location = useLocation();
-  const activeNavPath =
-    location.state?.activeNav ||
-    (location.pathname === "/admin/statistics"
-      ? "/admin/statistics"
-      : location.pathname.startsWith("/admin")
-        ? "/"
-        : location.pathname);
+  const activeNavPath = location.state?.activeNav ?? normalizePathname(location.pathname);
 
   const bootstrapNotificationIdsRef = useRef(new Set());
   const [, setDoNotDisturbBump] = useState(0);
@@ -1136,19 +1213,18 @@ export function AppLayout({ children }) {
                 </p>
               )}
               {group.items.map((item) => {
-                const active =
-                  activeNavPath === item.path ||
-                  (item.path !== "/" && activeNavPath.startsWith(item.path));
+                const active = isNavItemActive(item, location, activeNavPath);
                 const showUnreadDmCount =
                   item.path === "/messages" &&
                   unreadMessagesBadgeLabel !== null &&
                   !dndHidesBadges;
                 const labelText =
                   typeof item.label === "function" ? item.label(user?.role) : item.label;
+                const linkKey = item.navId ?? `${item.path}${item.search ? `?${item.search}` : ""}`;
                 return (
                   <Link
-                    key={item.path}
-                    to={item.path}
+                    key={linkKey}
+                    to={navItemToLocationDescriptor(item)}
                     className={`group relative flex items-center rounded-lg text-sm font-sans transition-colors ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}
                   ${active
                     ? "bg-accent-gold/10 text-accent-gold border-l-2 border-accent-gold"
@@ -1222,7 +1298,10 @@ export function AppLayout({ children }) {
 
           <button
             type="button"
-            onClick={() => setNotificationsOpen((open) => !open)}
+            onClick={() => {
+              setFavoritesOpen(false);
+              setNotificationsOpen((open) => !open);
+            }}
             className={`group relative flex items-center rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors ${collapsed ? "justify-center px-0 py-2.5 w-full text-left font-sans" : "gap-3 px-3 py-2.5 w-full text-left font-sans"} ${
               doNotDisturb && canUseDoNotDisturb ? "opacity-60" : ""
             }`}
@@ -1265,11 +1344,14 @@ export function AppLayout({ children }) {
           )}
 
           <button
+            type="button"
             onClick={() => setCollapsed(!collapsed)}
-            className={`group relative flex items-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors text-sm w-full ${collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"}`}
+            className="group relative flex w-full items-center justify-start gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-text-secondary transition-colors hover:bg-bg-elevated hover:text-text-primary"
           >
-            <span className="flex h-5 w-7 shrink-0 items-center justify-center leading-none">{collapsed ? "→" : "←"}</span>
-            {!collapsed && <span>Collapse</span>}
+            <span className="flex h-5 w-7 shrink-0 items-center justify-center leading-none" aria-hidden>
+              {collapsed ? "→" : "←"}
+            </span>
+            {!collapsed && <span className="min-w-0 truncate">Collapse</span>}
             <SidebarTooltip collapsed={collapsed} label={collapsed ? "Expand" : "Collapse"} />
           </button>
         </div>
@@ -1386,7 +1468,17 @@ function NotificationsDock({ collapsed, user, navigate, onClose, onOpenFull, mar
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold font-sans text-text-primary leading-normal break-words">
-                        {notification.title || "Notification"}
+                        {notification.targetProjectId != null ? (
+                          <ProjectTitleLink
+                            projectId={notification.targetProjectId}
+                            className="text-sm font-semibold font-sans text-text-primary leading-normal break-words"
+                            navState={navigateStateForPath(`/projects/${notification.targetProjectId}`)}
+                          >
+                            {notification.title || "Notification"}
+                          </ProjectTitleLink>
+                        ) : (
+                          notification.title || "Notification"
+                        )}
                       </p>
                       <p className="text-sm font-sans text-text-secondary mt-1 leading-relaxed break-words">
                         {notification.text}
@@ -1432,6 +1524,170 @@ function NotificationsDock({ collapsed, user, navigate, onClose, onOpenFull, mar
               className="flex-1 min-w-[7rem] rounded-lg border border-accent-blue/60 px-3 py-2 text-xs font-sans text-accent-blue hover:bg-accent-blue/10 transition-colors"
             >
               Full inbox →
+            </button>
+          </div>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+const favoritesNavStateProject = { activeNav: "/favorites" };
+const favoritesNavStatePortfolio = { activeNav: "/favorites", fromExploreMode: "portfolios" };
+
+function FavoritesDock({
+  collapsed,
+  favoriteProjectIds,
+  favoritePortfolioIds,
+  projectList,
+  navigate,
+  onClose,
+  onOpenAll,
+}) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const resolvedProjects = useMemo(
+    () =>
+      favoriteProjectIds
+        .map((id) => projectList.find((p) => Number(p.id) === Number(id)))
+        .filter(Boolean),
+    [favoriteProjectIds, projectList]
+  );
+
+  const resolvedPortfolios = useMemo(
+    () =>
+      favoritePortfolioIds
+        .map((id) => portfolios.find((p) => Number(p.id) === Number(id)))
+        .filter(Boolean),
+    [favoritePortfolioIds]
+  );
+
+  const leftOffsetPx = collapsed ? 72 : 224;
+
+  const goProject = (projectId) => {
+    navigate(`/projects/${projectId}`, { state: favoritesNavStateProject });
+    onClose?.();
+  };
+
+  const goPortfolio = (portfolioId) => {
+    navigate(`/explore/portfolio/${portfolioId}`, { state: favoritesNavStatePortfolio });
+    onClose?.();
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Close favorites overlay"
+        className="fixed inset-0 z-[42] bg-black/35 lg:bg-black/25"
+        onClick={onClose}
+      />
+      <div
+        className="fixed z-[52]"
+        style={{
+          left: `max(14px, ${leftOffsetPx}px)`,
+          top: "clamp(160px, 22vh, 220px)",
+          width: "min(22rem,calc(100vw - 1.75rem))",
+          maxHeight: "min(28rem,calc(100vh - 6rem))",
+        }}
+      >
+        <Card className="shadow-2xl border-accent-gold/30 p-0 overflow-hidden flex flex-col max-h-[inherit]">
+          <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-border bg-bg-elevated/70 shrink-0">
+            <div>
+              <p className="font-display text-sm text-text-primary">Favorites</p>
+              <p className="text-text-secondary text-[11px] font-sans leading-snug">
+                Saved projects and portfolios — View opens the full page.
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="Close favorites window"
+              onClick={onClose}
+              className="shrink-0 rounded-md px-2 py-1 text-xl leading-none text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="max-h-[18rem] overflow-y-auto divide-y divide-border">
+            {resolvedProjects.length === 0 && resolvedPortfolios.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-text-secondary font-sans">
+                Nothing saved yet. Star items from Explore or the Favorites page.
+              </div>
+            ) : (
+              <>
+                {resolvedProjects.length > 0 && (
+                  <div className="px-3 py-2">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary px-1 mb-2">
+                      Projects
+                    </p>
+                    <ul className="flex flex-col gap-1">
+                      {resolvedProjects.map((project) => (
+                        <li
+                          key={`fav-proj-${project.id}`}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-border/80 bg-bg-elevated/50 px-2 py-2"
+                        >
+                          <span className="min-w-0 text-sm font-sans text-text-primary truncate" title={project.title}>
+                            {project.title}
+                          </span>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-md border border-accent-blue/50 px-2 py-1 text-xs font-sans text-accent-blue hover:bg-accent-blue/10"
+                            onClick={() => goProject(project.id)}
+                          >
+                            View
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {resolvedPortfolios.length > 0 && (
+                  <div className="px-3 py-2">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-text-secondary px-1 mb-2">
+                      Portfolios
+                    </p>
+                    <ul className="flex flex-col gap-1">
+                      {resolvedPortfolios.map((pf) => (
+                        <li
+                          key={`fav-port-${pf.id}`}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-border/80 bg-bg-elevated/50 px-2 py-2"
+                        >
+                          <span
+                            className="min-w-0 text-sm font-sans text-text-primary truncate"
+                            title={pf.title || pf.studentName}
+                          >
+                            {pf.studentName || pf.owner}
+                          </span>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-md border border-accent-blue/50 px-2 py-1 text-xs font-sans text-accent-blue hover:bg-accent-blue/10"
+                            onClick={() => goPortfolio(pf.id)}
+                          >
+                            View
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 border-t border-border bg-bg-base/95 px-3 py-3 shrink-0">
+            <button
+              type="button"
+              onClick={onOpenAll}
+              className="flex-1 min-w-[7rem] rounded-lg border border-accent-gold/60 px-3 py-2 text-xs font-sans text-accent-gold hover:bg-accent-gold/10 transition-colors"
+            >
+              Open favorites page →
             </button>
           </div>
         </Card>
@@ -1495,31 +1751,12 @@ function LiveNotificationToastBoundary() {
   if (!toast) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-6 right-6 z-[60] w-full max-w-md px-4">
-      <Card className="pointer-events-auto border-accent-blue/40 shadow-2xl p-4 max-h-[min(22rem,50vh)] overflow-y-auto">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 text-lg shrink-0" aria-hidden="true">🔔</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-display text-text-primary leading-normal break-words">{toast.title}</p>
-            <p className="text-sm font-sans text-text-secondary mt-1.5 leading-relaxed break-words">{toast.body}</p>
-            <button
-              type="button"
-              onClick={() => clearToast(true)}
-              className="pointer-events-auto mt-3 text-xs font-sans font-medium text-accent-blue hover:underline"
-            >
-              Dismiss
-            </button>
-          </div>
-          <button
-            type="button"
-            aria-label="Close notification"
-            onClick={() => clearToast(true)}
-            className="shrink-0 rounded-md px-2 py-1 text-text-secondary hover:bg-bg-elevated hover:text-text-primary text-lg leading-none"
-          >
-            ×
-          </button>
-        </div>
-      </Card>
-    </div>
+    <Toast
+      variant="info"
+      title={toast.title}
+      description={toast.body}
+      onClose={() => clearToast(true)}
+      durationMs={0}
+    />
   );
 }

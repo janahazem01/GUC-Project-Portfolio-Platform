@@ -180,32 +180,101 @@ export function ConfirmActionModal({ isOpen, action, onClose, onConfirm, variant
   );
 }
 
-export function SuccessToast({ message, onClose }) {
-  useEffect(() => {
-    if (!message) return undefined;
-    const t = window.setTimeout(() => onClose?.(), 2000);
-    return () => window.clearTimeout(t);
-  }, [message, onClose]);
+/** Shared layout: dark panel, left status glyph, primary text, dismiss control — all in-app toasts use this. */
+const TOAST_STYLES = {
+  success: {
+    border: "border-success/45",
+    iconRing: "border border-success/35 bg-success/10",
+    icon: "✓",
+    iconClass: "text-success",
+  },
+  error: {
+    border: "border-danger/45",
+    iconRing: "border border-danger/35 bg-danger/10",
+    icon: "✕",
+    iconClass: "text-danger",
+  },
+  warning: {
+    border: "border-warning/45",
+    iconRing: "border border-warning/35 bg-warning/10",
+    icon: "⚠",
+    iconClass: "text-warning",
+  },
+  info: {
+    border: "border-accent-blue/45",
+    iconRing: "border border-accent-blue/30 bg-accent-blue/10",
+    icon: "◉",
+    iconClass: "text-accent-blue",
+  },
+};
 
-  if (!message) return null;
+/**
+ * @param {object} props
+ * @param {string} [props.message] Single-line body (most pages use this).
+ * @param {string} [props.title] Optional headline; when set, `description` or `message` is shown as secondary.
+ * @param {string} [props.description] Second line when `title` is set.
+ * @param {"success"|"error"|"warning"|"info"} [props.variant]
+ * @param {number} [props.durationMs] Auto-dismiss after ms; 0 = only manual dismiss.
+ */
+export function Toast({ message = "", title, description, variant = "success", onClose, durationMs = 4200 }) {
+  const hasHeadline = Boolean(title?.trim());
+  const bodyLine = hasHeadline ? (description ?? message) : message;
+  const visible = Boolean(hasHeadline ? title?.trim() : message?.trim());
+
+  useEffect(() => {
+    if (!visible || !onClose || !durationMs || durationMs <= 0) return undefined;
+    const t = window.setTimeout(() => onClose(), durationMs);
+    return () => window.clearTimeout(t);
+  }, [visible, durationMs, onClose]);
+
+  if (!visible) return null;
+
+  const palette = TOAST_STYLES[variant] || TOAST_STYLES.success;
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100] animate-in fade-in slide-in-from-bottom-5">
-      <div className="bg-bg-elevated border border-success/30 px-4 py-3 rounded-lg shadow-2xl flex items-center gap-3 min-w-[300px]">
-        <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-          <span className="text-success text-sm">✓</span>
-        </div>
-        <p className="text-text-primary text-sm font-sans flex-1">{message}</p>
-        <button 
-          onClick={onClose}
-          className="text-text-secondary hover:text-text-primary transition-colors ml-2"
+    <div
+      className="fixed bottom-6 right-6 z-[100] max-w-md w-[calc(100%-2rem)] animate-in fade-in slide-in-from-bottom-3 duration-200"
+      role="status"
+      aria-live="polite"
+    >
+      <div
+        className={`pointer-events-auto flex items-start gap-3 rounded-xl border bg-bg-surface px-4 py-3 shadow-2xl ${palette.border}`}
+      >
+        <div
+          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold leading-none ${palette.iconRing} ${palette.iconClass}`}
+          aria-hidden
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          {palette.icon}
+        </div>
+        <div className="min-w-0 flex-1 pt-0.5">
+          {hasHeadline ? (
+            <>
+              <p className="font-display text-sm text-text-primary leading-snug break-words">{title}</p>
+              {bodyLine ? (
+                <p className="mt-1 font-sans text-sm text-text-secondary leading-relaxed break-words">{bodyLine}</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="font-sans text-sm text-text-primary leading-relaxed break-words">{message}</p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Dismiss notification"
+          className="shrink-0 rounded-md p-1 text-text-muted hover:bg-bg-elevated hover:text-text-primary transition-colors"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
     </div>
   );
+}
+
+/** @deprecated Prefer `<Toast variant="success" />` — kept for existing imports. */
+export function SuccessToast({ message, onClose, durationMs = 4200 }) {
+  return <Toast variant="success" message={message} onClose={onClose} durationMs={durationMs} />;
 }
 

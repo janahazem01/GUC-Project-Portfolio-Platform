@@ -5,12 +5,26 @@ export const ProjectsContext = createContext();
 
 const STORAGE_KEY = "guc_projects";
 
+/** Drop legacy PDF report fields; keep text-only `reportDescription` (may be empty until user edits). */
+function normalizeStoredProject(project) {
+  if (!project || typeof project !== "object") return project;
+  return {
+    ...project,
+    report: null,
+    reportUrl: null,
+    reportDescription:
+      project.reportDescription == null ? "" : String(project.reportDescription).trim(),
+  };
+}
+
 function loadProjects() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : seedProjects;
+    const list = raw ? JSON.parse(raw) : seedProjects;
+    if (!Array.isArray(list)) return seedProjects.map(normalizeStoredProject);
+    return list.map(normalizeStoredProject);
   } catch {
-    return seedProjects;
+    return seedProjects.map(normalizeStoredProject);
   }
 }
 

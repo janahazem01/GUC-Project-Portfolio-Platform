@@ -1,13 +1,15 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, PageHeader } from "../../components/ui";
-import { AuthContext } from "../../context/AuthContext";
 import { courses, dummyUsers, instructorDirectory, projects, subscribeDummyUpdates } from "../../data/dummy";
+import { UserProfileLink } from "../../components/UserProfileLink";
+import { AuthContext } from "../../context/AuthContext";
 
 export default function CourseDetail() {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
+  const goBack = () => (user?.role === "admin" ? navigate("/") : navigate(-1));
   const [revision, setRevision] = useState(0);
 
   useEffect(() => subscribeDummyUpdates(() => setRevision((r) => r + 1)), []);
@@ -33,7 +35,7 @@ export default function CourseDetail() {
     return (
       <div className="mx-auto max-w-3xl px-4">
         <PageHeader title="Course not found" subtitle="This catalog id is missing or was removed." />
-        <Button variant="secondary" onClick={() => navigate("/courses")}>
+        <Button variant="secondary" onClick={goBack}>
           Back
         </Button>
       </div>
@@ -51,7 +53,7 @@ export default function CourseDetail() {
         title={course.name}
         subtitle={`Course code ${course.code} · ${creditHours} credit hours`}
         action={
-          <Button variant="secondary" onClick={() => navigate("/courses")}>
+          <Button variant="secondary" onClick={goBack}>
             Back
           </Button>
         }
@@ -74,27 +76,25 @@ export default function CourseDetail() {
           ) : (
             <ul className="space-y-4">
               {instructors.map((inst) => (
-                <li 
-                  key={inst.id} 
-                  className="flex items-center justify-between p-3 rounded-lg border border-border bg-bg-elevated hover:border-accent-gold/40 transition-colors group cursor-pointer"
-                  onClick={() => {
-                    if (currentUser?.email === inst.email) {
-                      navigate("/profile");
-                      return;
-                    }
-                    const row = instructorDirectory.find((d) => d.email === inst.email);
-                    if (row) {
-                      navigate(`/explore/portfolio/instructor-${row.id}`);
-                    }
-                  }}
+                <li
+                  key={inst.id}
+                  className="flex items-center justify-between p-3 rounded-lg border border-border bg-bg-elevated hover:border-accent-gold/40 transition-colors group"
                 >
-                  <div className="flex flex-col">
-                    <span className="font-display text-sm text-text-primary group-hover:text-accent-gold transition-colors">{inst.name}</span>
+                  <div className="flex flex-col min-w-0">
+                    <UserProfileLink
+                      user={inst}
+                      className="font-display text-sm text-text-primary group-hover:text-accent-gold transition-colors"
+                    >
+                      {inst.name}
+                    </UserProfileLink>
                     <span className="text-text-secondary text-xs font-mono mt-0.5">{inst.email}</span>
                   </div>
-                  <div className="text-text-secondary text-xs font-mono uppercase tracking-tighter self-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  <UserProfileLink
+                    user={inst}
+                    className="text-text-secondary text-xs font-mono uppercase tracking-tighter self-end opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  >
                     View Profile →
-                  </div>
+                  </UserProfileLink>
                 </li>
               ))}
             </ul>

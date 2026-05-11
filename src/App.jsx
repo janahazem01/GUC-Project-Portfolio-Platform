@@ -342,9 +342,9 @@ function AppRoutes() {
       <Route path="/admin/statistics" element={<ProtectedRoute allowedRoles={["admin"]}><AppLayout><AdminStatistics /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/:section" element={<ProtectedRoute allowedRoles={["admin"]}><AppLayout><AdminDataPage /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/account-management" element={<ProtectedRoute allowedRoles={["admin"]}><AppLayout><AdminAccountManagement /></AppLayout></ProtectedRoute>} />
-      <Route path="/internships" element={<ProtectedRoute><AppLayout><Internships /></AppLayout></ProtectedRoute>} />
-      <Route path="/internships/:internshipId" element={<ProtectedRoute><AppLayout><Internships /></AppLayout></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>} />
+      <Route path="/internships" element={<ProtectedRoute allowedRoles={["student", "employer", "admin"]}><AppLayout><Internships /></AppLayout></ProtectedRoute>} />
+      <Route path="/internships/:internshipId" element={<ProtectedRoute allowedRoles={["student", "employer", "admin"]}><AppLayout><Internships /></AppLayout></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute allowedRoles={["student", "instructor", "employer", "admin"]}><AppLayout><Notifications /></AppLayout></ProtectedRoute>} />
       <Route path="/requests" element={<ProtectedRoute allowedRoles={["student","instructor","admin"]}><AppLayout><Requests /></AppLayout></ProtectedRoute>} />
       <Route path="/tasks" element={<ProtectedRoute allowedRoles={["student"]}><AppLayout><Tasks /></AppLayout></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute allowedRoles={["student","instructor","employer"]}><AppLayout><Messages /></AppLayout></ProtectedRoute>} />

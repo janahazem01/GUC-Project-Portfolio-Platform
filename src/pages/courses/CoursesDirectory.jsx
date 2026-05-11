@@ -41,7 +41,7 @@ function InstructorCoursesReadOnly({ sortedCourses, navigate }) {
                 <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal w-[9rem]">
                   Code
                 </th>
-                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-right w-[9rem]">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[9rem]">
                   Actions
                 </th>
               </tr>
@@ -63,8 +63,8 @@ function InstructorCoursesReadOnly({ sortedCourses, navigate }) {
                   <td className="px-4 py-4">
                     <Badge variant="blue">{course.code}</Badge>
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex justify-end">
+                  <td className="px-4 py-4 text-center">
+                    <div className="flex justify-center">
                       <Button size="sm" variant="secondary" onClick={() => navigate(`/courses/${course.id}`)}>
                         View
                       </Button>
@@ -255,7 +255,7 @@ export default function CoursesDirectory() {
                 <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[8.5rem]">
                   Deactivated
                 </th>
-                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-right w-[11rem]">
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[11rem]">
                   Actions
                 </th>
               </tr>
@@ -292,8 +292,8 @@ export default function CoursesDirectory() {
                       <span className="font-mono text-sm text-text-secondary">0</span>
                     )}
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex flex-wrap justify-end gap-2">
+                  <td className="px-4 py-4 text-center">
+                    <div className="flex flex-wrap justify-center gap-2">
                       <Button size="sm" variant="secondary" onClick={() => openEdit(course)}>
                         Edit
                       </Button>

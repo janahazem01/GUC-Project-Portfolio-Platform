@@ -14,6 +14,7 @@ import {
   sendThreadMessage,
   subscribeDummyUpdates,
 } from "../data/dummy";
+import { UserProfileNavSpan } from "../components/UserProfileLink";
 
 function avatarInitials(name) {
   if (!name) return "?";
@@ -121,7 +122,7 @@ export default function Messages() {
             : "Private conversations with students, employers, and instructors."
         }
         action={
-          <Button variant="secondary" onClick={() => navigate("/")}>
+          <Button variant="secondary" onClick={() => navigate(-1)}>
             Back
           </Button>
         }
@@ -194,7 +195,14 @@ export default function Messages() {
                           onClick={() => startConversation(recipient)}
                           className="w-full text-left px-3 py-2 border-b border-border last:border-0 hover:bg-bg-elevated/60 transition-colors"
                         >
-                          <p className="text-sm font-sans text-text-primary truncate">{recipient.name}</p>
+                          <p className="text-sm font-sans text-text-primary truncate">
+                            <UserProfileNavSpan
+                              participant={{ id: recipient.id, name: recipient.name, email: recipient.email }}
+                              className="font-sans text-text-primary"
+                            >
+                              {recipient.name}
+                            </UserProfileNavSpan>
+                          </p>
                           <p className="text-[11px] font-mono text-text-secondary truncate">{recipient.email}</p>
                         </button>
                       ))
@@ -251,7 +259,14 @@ export default function Messages() {
                     <div className="min-w-0 flex-1">
                       <div className="flex justify-between gap-2 items-baseline">
                         <span className={`font-sans text-sm truncate ${rowBold ? "font-bold text-text-primary" : "font-semibold text-text-primary"}`}>
-                          {peer?.name}
+                          {peer ? (
+                            <UserProfileNavSpan
+                              participant={{ userId: peer.userId, name: peer.name, email: peer.email }}
+                              className={rowBold ? "font-bold text-text-primary" : "font-semibold text-text-primary"}
+                            >
+                              {peer.name}
+                            </UserProfileNavSpan>
+                          ) : null}
                         </span>
                         <span className="text-[11px] font-mono text-text-secondary shrink-0">{last?.time}</span>
                       </div>
@@ -277,7 +292,14 @@ export default function Messages() {
                     {avatarInitials(other.name)}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-sans text-sm font-semibold text-text-primary truncate">{other.name}</p>
+                    <p className="font-sans text-sm font-semibold text-text-primary truncate">
+                      <UserProfileNavSpan
+                        participant={{ userId: other.userId, name: other.name, email: other.email }}
+                        className="font-semibold text-text-primary"
+                      >
+                        {other.name}
+                      </UserProfileNavSpan>
+                    </p>
                     <p className="text-xs text-text-secondary font-mono truncate">{other.email}</p>
                   </div>
                 </div>

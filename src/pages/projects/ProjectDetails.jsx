@@ -25,6 +25,7 @@ import {
 import { useFavorites } from "../../hooks/useFavorites";
 import { useProjects } from "../../context/ProjectsContext";
 import { resolveGithubHref } from "../../utils/githubRepo";
+import { UserProfileLink } from "../../components/UserProfileLink";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -226,6 +227,8 @@ export default function ProjectDetails() {
     [projectList, numericId]
   );
 
+  const backToPath = activeNav === "/favorites" ? "/favorites" : null;
+
   const appealsForProject = useMemo(() => {
     if (!project) return [];
     return getProjectAppeals().filter((appeal) => appeal.projectId === project.id);
@@ -286,15 +289,22 @@ export default function ProjectDetails() {
     setDocumentPreview(buildDocumentPreview(document, title));
   };
 
-  if (!project || !canOpenProjectDetails(project, user)) {
+  // Allow opening a project from Favorites even if it isn't public.
+  // This keeps the rest of the access logic unchanged.
+  const projectIsFavorited = project ? isFavoriteProject(project.id) : false;
+
+  if (!project || (!canOpenProjectDetails(project, user) && !projectIsFavorited)) {
     return (
       <div>
         <PageHeader
           title="Project Not Found"
           subtitle="The selected project could not be found."
           action={
-            <Button variant="secondary" onClick={() => navigate(-1)}>
-              Back
+            <Button
+              variant="secondary"
+              onClick={() => (backToPath ? navigate(backToPath) : navigate(-1))}
+            >
+              {backToPath ? "Back to Favorites" : "Back"}
             </Button>
           }
         />
@@ -446,11 +456,7 @@ export default function ProjectDetails() {
   // ── Confirm-remove dispatcher ──────────────────────────────────────────────
 
   const requestRemoveFeedback = (type, ids = {}) => {
-    setConfirmFeedback({
-      type,
-      ...ids,
-      message: "Are you sure you want to remove this feedback?",
-    });
+    setConfirmFeedback({ type, ...ids });
   };
 
   const requestEditFeedback = (type, ids = {}, currentText = "") => {
@@ -605,8 +611,11 @@ export default function ProjectDetails() {
           {portfolioSaved ? "Remove Portfolio" : "Save Portfolio"}
         </Button>
       )}
-      <Button variant="secondary" onClick={() => navigate(-1)}>
-        Back
+      <Button
+        variant="secondary"
+        onClick={() => (backToPath ? navigate(backToPath) : navigate(-1))}
+      >
+        {backToPath ? "Back to Favorites" : "Back"}
       </Button>
     </div>
   );
@@ -617,7 +626,14 @@ export default function ProjectDetails() {
     <div>
       <PageHeader
         title={project.title}
-        subtitle={`${project.course} - ${project.owner}`}
+        subtitle={
+          <>
+            {project.course} –{" "}
+            <UserProfileLink ownerName={project.owner} className="text-text-secondary">
+              {project.owner}
+            </UserProfileLink>
+          </>
+        }
         action={headerAction}
       />
 
@@ -803,7 +819,9 @@ export default function ProjectDetails() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="font-mono text-xs text-text-secondary mb-1">Owner</p>
-              <p className="font-sans text-sm text-text-primary">{project.owner}</p>
+              <p className="font-sans text-sm text-text-primary">
+                <UserProfileLink ownerName={project.owner}>{project.owner}</UserProfileLink>
+              </p>
             </div>
             <div>
               <p className="font-mono text-xs text-text-secondary mb-1">Course</p>
@@ -811,7 +829,9 @@ export default function ProjectDetails() {
             </div>
             <div>
               <p className="font-mono text-xs text-text-secondary mb-1">Supervisor</p>
-              <p className="font-sans text-sm text-text-primary">{project.supervisor}</p>
+              <p className="font-sans text-sm text-text-primary">
+                <UserProfileLink ownerName={project.supervisor}>{project.supervisor}</UserProfileLink>
+              </p>
             </div>
             <div>
               <p className="font-mono text-xs text-text-secondary mb-1">Created</p>
@@ -823,7 +843,16 @@ export default function ProjectDetails() {
             </div>
             <div>
               <p className="font-mono text-xs text-text-secondary mb-1">Team</p>
-              <p className="font-sans text-sm text-text-primary">{project.team.join(", ")}</p>
+              <p className="font-sans text-sm text-text-primary">
+                {project.team.map((member, idx) => (
+                  <span key={member}>
+                    {idx > 0 ? ", " : ""}
+                    <UserProfileLink ownerName={member} className="inline">
+                      {member}
+                    </UserProfileLink>
+                  </span>
+                ))}
+              </p>
             </div>
           </div>
         </Card>
@@ -1018,12 +1047,57 @@ export default function ProjectDetails() {
 
         {/* README */}
         <Card className="p-0 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <div className="flex items-center gap-3">
-              <span className="text-text-secondary text-xl">[]</span>
-              <h2 className="font-display text-lg text-text-primary">README</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
+              <span className="text-text-secondary text-xl shrink-0">[]</span>
+              <h2 className="font-display text-lg text-text-primary shrink-0">README</h2>
+              {isProjectOwner && !readmeEditing && (
+                <button
+                  type="button"
+                  onClick={() => setReadmeEditing(true)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-text-secondary transition-colors hover:border-accent-gold/50 hover:bg-bg-elevated hover:text-accent-gold"
+                  aria-label="Edit README"
+                  title="Edit README"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path
+                      d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path d="M15 5l4 4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+              {isProjectOwner && readmeEditing && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setReadmeEditing(false);
+                      setReadmeDraft(project.description || "");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="gold"
+                    onClick={() => {
+                      updateProject(project.id, { description: readmeDraft.trim() });
+                      setReadmeEditing(false);
+                      setFeedbackMessage("README updated successfully.");
+                    }}
+                  >
+                    Save README
+                  </Button>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
               {project.demo && (
                 <Button variant="gold" size="sm" onClick={openPreview}>
                   View Project
@@ -1037,41 +1111,8 @@ export default function ProjectDetails() {
 
           <div className="px-8 py-8 flex flex-col gap-8">
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="mb-4">
                 <h1 className="font-display text-4xl text-text-primary">{project.title}</h1>
-                {isProjectOwner && (
-                  <div className="flex flex-wrap gap-2 shrink-0">
-                    {!readmeEditing ? (
-                      <Button size="sm" variant="secondary" onClick={() => setReadmeEditing(true)}>
-                        Edit README
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            setReadmeEditing(false);
-                            setReadmeDraft(project.description || "");
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="gold"
-                          onClick={() => {
-                            updateProject(project.id, { description: readmeDraft.trim() });
-                            setReadmeEditing(false);
-                            setFeedbackMessage("README updated.");
-                          }}
-                        >
-                          Save README
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
               <div className="border-t border-border pt-4">
                 {readmeEditing && isProjectOwner ? (
@@ -1095,16 +1136,10 @@ export default function ProjectDetails() {
                   <li>Visual preview: available from the View Project button.</li>
                 )}
                 <li>Repository: available from the GitHub button.</li>
-                {project.report && (
+                {project.reportDescription && (
                   <li>
-                    Report:{" "}
-                    <button
-                      type="button"
-                      className="text-left text-accent-blue text-sm font-mono hover:underline"
-                      onClick={() => openDocumentPreview({ fileName: project.report, fileUrl: project.reportUrl || "" }, project.report)}
-                    >
-                      {project.report}
-                    </button>
+                    <span className="font-medium text-text-primary">Report summary: </span>
+                    {project.reportDescription}
                   </li>
                 )}
               </ul>
@@ -1141,24 +1176,13 @@ export default function ProjectDetails() {
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
 
-      {/* Remove-feedback confirmation */}
-      <Modal
+      <ConfirmActionModal
         isOpen={Boolean(confirmFeedback)}
+        action="remove this feedback"
+        variant="danger"
         onClose={() => setConfirmFeedback(null)}
-        title="Remove Feedback"
-      >
-        <div className="flex flex-col gap-4">
-          <p className="text-text-secondary text-sm font-sans">{confirmFeedback?.message}</p>
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setConfirmFeedback(null)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={confirmRemoveFeedback}>
-              Remove Feedback
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onConfirm={confirmRemoveFeedback}
+      />
 
       <Modal
         isOpen={Boolean(editingFeedback)}
@@ -1307,14 +1331,14 @@ export default function ProjectDetails() {
                 </p>
               </div>
             </div>
-            <p className="text-sm text-text-secondary font-sans mb-6">
-              After you confirm, the project is deactivated for public discovery and the student
-              receives a notification with this reason. This cannot be undone from this screen;
-              appeals are handled by administrators.
+            <p className="text-sm text-text-secondary font-sans mb-4">
+              Are you sure you want to flag this project and deactivate it from discovery? After you
+              confirm, the student receives a notification with this reason. This cannot be undone
+              from this screen; appeals are handled by administrators.
             </p>
             <div className="flex justify-end gap-3">
               <Button type="button" variant="secondary" onClick={() => setFlagStep("details")}>
-                Back
+                No
               </Button>
               <Button
                 type="button"
@@ -1343,7 +1367,7 @@ export default function ProjectDetails() {
                   );
                 }}
               >
-                Confirm and flag project
+                Yes
               </Button>
             </div>
           </>

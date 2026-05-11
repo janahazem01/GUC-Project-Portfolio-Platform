@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ProjectTitleLink } from "../../components/ProjectTitleLink";
 import { Badge, Button, Card, PageHeader, Stars } from "../../components/ui";
 import { portfolios, projects } from "../../data/dummy";
 
@@ -22,8 +23,8 @@ export default function PortfolioDetail() {
     return (
       <div className="mx-auto max-w-3xl px-4">
         <PageHeader title="Portfolio not found" subtitle="This portfolio id is not in the demo catalog." />
-        <Button variant="secondary" onClick={() => navigate("/explore", { state: { activeNav: "/explore" } })}>
-          Back to Explore
+        <Button variant="secondary" onClick={() => navigate(-1)}>
+          Back
         </Button>
       </div>
     );
@@ -35,7 +36,7 @@ export default function PortfolioDetail() {
         title={portfolio.title}
         subtitle={`${portfolio.studentName} · ${portfolio.studentEmail}`}
         action={
-          <Button variant="secondary" onClick={() => navigate("/explore", { state: { activeNav: "/explore" } })}>
+          <Button variant="secondary" onClick={() => navigate(-1)}>
             Back
           </Button>
         }
@@ -78,7 +79,9 @@ export default function PortfolioDetail() {
                   className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 border-b border-border pb-4 last:border-0 last:pb-0"
                 >
                   <div className="min-w-0">
-                    <p className="font-display text-sm text-text-primary break-words">{proj.title}</p>
+                    <p className="font-display text-sm text-text-primary break-words">
+                      <ProjectTitleLink project={proj} className="font-display text-sm text-text-primary break-words" navState={{ activeNav: "/explore" }} stopPropagation={false} />
+                    </p>
                     <p className="text-xs text-text-secondary font-sans mt-1 line-clamp-2">{proj.description}</p>
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       <Badge variant="blue">{proj.courseCode}</Badge>

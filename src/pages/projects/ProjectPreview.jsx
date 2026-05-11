@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { ProjectTitleLink } from "../../components/ProjectTitleLink";
 import { Badge, Button, Card, PageHeader } from "../../components/ui";
 import { useProjects } from "../../context/ProjectsContext";
 import { projects } from "../../data/dummy";
@@ -103,7 +104,9 @@ function PortfolioPreview({ project, projectList }) {
               <Badge variant="blue">{item.courseCode}</Badge>
               <Badge variant={item.status === "Completed" ? "success" : "default"}>{item.status}</Badge>
             </div>
-            <h3 className="font-display text-base text-text-primary mb-2">{item.title}</h3>
+            <h3 className="font-display text-base text-text-primary mb-2">
+              <ProjectTitleLink project={item} className="font-display text-base text-text-primary" navState={{ activeNav: "/projects" }} stopPropagation={false} />
+            </h3>
             <p className="text-text-secondary text-xs font-sans line-clamp-3 mb-4">{item.description}</p>
             <div className="flex gap-2 flex-wrap">
               {item.languages.slice(0, 2).map((language) => (

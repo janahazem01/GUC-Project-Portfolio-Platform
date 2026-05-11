@@ -12,6 +12,8 @@ import {
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
 import { useFavorites } from "../../hooks/useFavorites";
+import { UserProfileNavSpan } from "../../components/UserProfileLink";
+import { ProjectTitleLink } from "../../components/ProjectTitleLink";
 
 const portfolioByOwner = new Map(portfolios.map((portfolio) => [portfolio.owner, portfolio]));
 
@@ -215,7 +217,7 @@ export default function Explore() {
         title="Explore"
         subtitle="Search student projects and portfolios, then filter and sort results."
         action={
-          <Button variant="secondary" onClick={() => navigate("/")}>
+          <Button variant="secondary" onClick={() => (user?.role === "admin" ? navigate("/") : navigate(-1))}>
             Back
           </Button>
         }
@@ -400,7 +402,9 @@ export default function Explore() {
                   <Stars rating={p.rating} />
                 </div>
 
-                <h3 className="font-display text-base text-text-primary mb-2 break-words">{p.title}</h3>
+                <h3 className="font-display text-base text-text-primary mb-2 break-words">
+                  <ProjectTitleLink project={p} className="font-display text-base text-text-primary" navState={{ activeNav: "/explore" }} />
+                </h3>
 
                 <p className="text-text-secondary text-sm font-sans mb-3 line-clamp-2">{p.description}</p>
 
@@ -412,7 +416,9 @@ export default function Explore() {
 
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex flex-col gap-1 min-w-0">
-                    <span className="text-xs font-sans text-text-secondary truncate">{p.owner}</span>
+                    <span className="text-xs font-sans text-text-secondary truncate">
+                      <UserProfileNavSpan ownerName={p.owner} className="text-text-secondary" />
+                    </span>
                     <span className="font-mono text-xs text-text-secondary">Created {p.createdAt}</span>
                   </div>
 
@@ -499,7 +505,14 @@ export default function Explore() {
                   <Badge variant="blue">{pf.headline}</Badge>
                   <span className="font-mono text-xs text-text-secondary whitespace-nowrap">{nProjects} projects</span>
                 </div>
-                <h3 className="font-display text-base text-text-primary mb-1 break-words">{pf.studentName}</h3>
+                <h3 className="font-display text-base text-text-primary mb-1 break-words">
+                  <UserProfileNavSpan
+                    participant={{ name: pf.studentName, email: pf.studentEmail }}
+                    className="text-text-primary"
+                  >
+                    {pf.studentName || pf.owner}
+                  </UserProfileNavSpan>
+                </h3>
                 <p className="text-sm text-text-secondary font-sans mb-1 break-all">{pf.title}</p>
                 <p className="text-xs font-mono text-text-secondary mb-3 break-all">{pf.studentEmail}</p>
                 <div className="flex flex-wrap gap-1.5 mb-4">
