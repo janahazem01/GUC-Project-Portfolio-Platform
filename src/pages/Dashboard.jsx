@@ -306,10 +306,10 @@ export default function Dashboard() {
                     const wasLinked = nextSet.has(course.id);
                     if (wasLinked) {
                       nextSet.delete(course.id);
-                      setInstructorLinkToast(`${course.name} unlinked from your profile successfully.`);
+                      setInstructorLinkToast("An unlink request has been sent successfully to Admin");
                     } else {
                       nextSet.add(course.id);
-                      setInstructorLinkToast(`${course.name} linked to your profile successfully.`);
+                      setInstructorLinkToast("A link request has been sent successfully to Admin");
                     }
                     nextSet.add(BP_COURSE_ID);
                     updateUser({ coursesTaught: Array.from(nextSet) });

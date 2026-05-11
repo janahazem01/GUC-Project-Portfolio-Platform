@@ -1299,7 +1299,6 @@ export function AppLayout({ children }) {
           <button
             type="button"
             onClick={() => {
-              setFavoritesOpen(false);
               setNotificationsOpen((open) => !open);
             }}
             className={`group relative flex items-center rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors ${collapsed ? "justify-center px-0 py-2.5 w-full text-left font-sans" : "gap-3 px-3 py-2.5 w-full text-left font-sans"} ${
