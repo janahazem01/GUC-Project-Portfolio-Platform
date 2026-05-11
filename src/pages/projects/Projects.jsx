@@ -12,8 +12,7 @@ import {
   ConfirmActionModal,
   DocumentPreviewModal,
 } from "../../components/ui";
-import { MiniDonutChart } from "../../components/viz/Charts.jsx";
-import { CHART_COLORS } from "../../components/viz/chartColors.js";
+import { LanguageDistributionBar } from "../../components/viz/Charts.jsx";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
 import { courses, dummyUsers, instructorDirectory } from "../../data/dummy";
@@ -981,82 +980,64 @@ export default function Projects() {
         }
       />
 
-      {/* Language insights + collaborator charts */}
-      {user?.role === "student" && myProjects.length > 0 && (
+      {/* Student: project statistics + language / collaborator insights */}
+      {user?.role === "student" && (
         <div className="space-y-4 mb-8">
           <Card>
-            <h2 className="font-display text-base text-text-primary mb-1">
-              Programming languages across projects
-            </h2>
-            <p className="text-xs text-text-secondary font-sans mb-4 leading-snug">
-              Percentages reflect how often each language appears across your project stack lists
-              (sums to 100% of all language mentions).
+            <p className="text-text-secondary text-xs font-sans uppercase tracking-widest mb-2">Total projects</p>
+            <p className="font-mono text-3xl text-text-primary tabular-nums">{myProjects.length}</p>
+            <p className="text-xs text-text-secondary font-sans mt-2 max-w-xl leading-snug">
+              Projects you own or have access to as a collaborator (same list as below).
             </p>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-6">
-              <MiniDonutChart
-                segments={languageInsights.sorted.map((seg, i) => ({
-                  key: seg.key,
-                  label: seg.language,
-                  value: seg.value,
-                  color: CHART_COLORS[i % CHART_COLORS.length],
-                }))}
-                size={150}
-              />
-              <ul className="flex-1 space-y-2 min-w-0">
-                {languageInsights.sorted.map((seg) => (
-                  <li
-                    key={seg.language}
-                    className="flex items-center justify-between gap-3 text-sm font-sans"
-                  >
-                    <span className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="h-2 w-2 rounded-full shrink-0"
-                        style={{ backgroundColor: CHART_COLORS[seg.sliceIndex % CHART_COLORS.length] }}
-                        aria-hidden
-                      />
-                      <span className="text-text-primary truncate">{seg.language}</span>
-                    </span>
-                    <span className="text-text-secondary font-mono tabular-nums shrink-0">
-                      {seg.pct}%
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
           </Card>
 
-          <Card>
-            <h2 className="font-display text-base text-text-primary mb-1">
-              Top collaborators per project
-            </h2>
-            <p className="text-xs text-text-secondary font-sans mb-4">
-              Teammates listed on each of your projects (excluding you).
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {myProjects.map((project) => (
-                <div
-                  key={project.id}
-                  className="rounded-lg border border-border bg-bg-elevated/40 px-4 py-3"
-                >
-                  <h3 className="font-display text-sm text-text-primary mb-2 line-clamp-2">
-                    {project.title}
-                  </h3>
-                  <div className="flex flex-wrap gap-1">
-                    {project.team.filter((m) => m !== user?.name).map((collaborator) => (
-                      <Badge key={collaborator} variant="blue" className="text-xs">
-                        {collaborator}
-                      </Badge>
-                    ))}
-                    {project.team.filter((m) => m !== user?.name).length === 0 && (
-                      <span className="text-xs text-text-secondary font-sans">
-                        No other collaborators listed
-                      </span>
-                    )}
-                  </div>
+          {myProjects.length > 0 && (
+            <>
+              <Card>
+                <h2 className="font-display text-base text-text-primary mb-1">
+                  Programming languages across projects
+                </h2>
+                <p className="text-xs text-text-secondary font-sans mb-4 leading-snug">
+                  Percentages reflect how often each language appears across your project stack lists
+                  (sums to 100% of all language mentions).
+                </p>
+                <LanguageDistributionBar rows={languageInsights.sorted} total={languageInsights.total} />
+              </Card>
+
+              <Card>
+                <h2 className="font-display text-base text-text-primary mb-1">
+                  Top collaborators per project
+                </h2>
+                <p className="text-xs text-text-secondary font-sans mb-4">
+                  Teammates listed on each of your projects (excluding you).
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {myProjects.map((project) => (
+                    <div
+                      key={project.id}
+                      className="rounded-lg border border-border bg-bg-elevated/40 px-4 py-3"
+                    >
+                      <h3 className="font-display text-sm text-text-primary mb-2 line-clamp-2">
+                        {project.title}
+                      </h3>
+                      <div className="flex flex-wrap gap-1">
+                        {project.team.filter((m) => m !== user?.name).map((collaborator) => (
+                          <Badge key={collaborator} variant="blue" className="text-xs">
+                            {collaborator}
+                          </Badge>
+                        ))}
+                        {project.team.filter((m) => m !== user?.name).length === 0 && (
+                          <span className="text-xs text-text-secondary font-sans">
+                            No other collaborators listed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </Card>
+              </Card>
+            </>
+          )}
         </div>
       )}
 
@@ -1077,6 +1058,9 @@ export default function Projects() {
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-display text-lg text-text-primary">{project.title}</h3>
                       <Badge variant="blue">{project.courseCode}</Badge>
+                      {project.platformActive === false && (
+                        <Badge variant="warning">Deactivated</Badge>
+                      )}
                       <Badge variant={project.visibility === "public" ? "success" : "default"}>
                         {project.visibility === "public" ? "🌐 public" : "🔒 private"}
                       </Badge>
@@ -1198,9 +1182,11 @@ export default function Projects() {
                           size="sm"
                           className="rounded-md border border-accent-gold/50 bg-accent-gold/15 text-accent-gold hover:bg-accent-gold/25"
                           onClick={(e) => {
+                            if (project.platformActive === false || project.flagged === true) return;
                             e.stopPropagation();
                             openProjectTasks(project.id);
                           }}
+                          disabled={project.platformActive === false || project.flagged === true}
                         >
                           Tasks
                         </Button>
@@ -1209,9 +1195,11 @@ export default function Projects() {
                             variant="secondary"
                             size="sm"
                             onClick={(e) => {
+                              if (project.platformActive === false || project.flagged === true) return;
                               e.stopPropagation();
                               openThesisUpload(project);
                             }}
+                            disabled={project.platformActive === false || project.flagged === true}
                           >
                             Upload Thesis Draft
                           </Button>
@@ -1221,9 +1209,11 @@ export default function Projects() {
                           size="sm"
                           title="Delete project"
                           onClick={(e) => {
+                            if (project.platformActive === false || project.flagged === true) return;
                             e.stopPropagation();
                             setDeleteConfirm(project);
                           }}
+                          disabled={project.platformActive === false || project.flagged === true}
                         >
                           🗑
                         </Button>
@@ -1232,10 +1222,12 @@ export default function Projects() {
                           size="sm"
                           className="h-9 w-10 px-0 text-xl leading-none"
                           onClick={(e) => {
+                            if (project.platformActive === false || project.flagged === true) return;
                             e.stopPropagation();
                             setModalNotice(null);
                             setOptionsProjectId(project.id);
                           }}
+                          disabled={project.platformActive === false || project.flagged === true}
                           aria-label="Project options"
                         >
                           ⋮
@@ -1313,8 +1305,16 @@ export default function Projects() {
                       <Badge variant="blue">{project.courseCode}</Badge>
                     </td>
                     <td className="px-4 py-4 text-center">
-                      <Badge variant={project.flagged ? "danger" : "success"}>
-                        {project.flagged ? "Flagged" : "Not flagged"}
+                      <Badge
+                        variant={
+                          project.platformActive === false ? "warning" : project.flagged ? "danger" : "success"
+                        }
+                      >
+                        {project.platformActive === false
+                          ? "Deactivated"
+                          : project.flagged
+                            ? "Flagged"
+                            : "Active"}
                       </Badge>
                     </td>
                     <td className="px-4 py-4 text-center">
@@ -1334,6 +1334,7 @@ export default function Projects() {
                           variant="secondary"
                           size="sm"
                           onClick={(e) => openTableEdit(e, project)}
+                          disabled={project.platformActive === false || project.flagged === true}
                         >
                           Edit
                         </Button>

@@ -164,8 +164,7 @@ export function DocumentPreviewModal({ document, onClose }) {
 
 export function ConfirmActionModal({ isOpen, action, onClose, onConfirm, variant = "gold" }) {
   const handleConfirm = () => {
-    onConfirm?.();
-    onClose?.();
+    Promise.resolve(onConfirm?.()).finally(() => onClose?.());
   };
 
   return (

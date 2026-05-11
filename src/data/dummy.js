@@ -1049,6 +1049,20 @@ export function internshipStudentCannotSubmitAnotherApplication(internship, user
   );
 }
 
+/** Current student's application row for this internship, or null (matched by email). */
+export function getStudentInternshipApplicationStatus(internship, user) {
+  if (!internship?.applications?.length || !user?.email) return null;
+  const email = String(user.email).toLowerCase().trim();
+  const mine = internship.applications.filter(
+    (app) => String(app.studentEmail || "").toLowerCase().trim() === email
+  );
+  if (!mine.length) return null;
+  if (mine.some((app) => app.status === "accepted")) return "accepted";
+  if (mine.some((app) => app.status === "nominated")) return "nominated";
+  if (mine.some((app) => app.status === "rejected")) return "rejected";
+  return mine[mine.length - 1]?.status ?? null;
+}
+
 /** Employer login email for a company name (demo catalog match on companyName). */
 export function getEmployerEmailForInternshipCompany(companyName) {
   const norm = companyName?.trim();
@@ -1150,6 +1164,33 @@ export function getVisibleNotifications(user) {
     }
     return true;
   });
+}
+
+function notificationSortKey(notification) {
+  const explicitDate =
+    notification?.sentAt ||
+    notification?.createdAt ||
+    notification?.submittedAt ||
+    notification?.uploadedAt;
+  if (explicitDate) {
+    const parsed = Date.parse(explicitDate);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+
+  if (typeof notification?.id === "number") return notification.id;
+
+  if (typeof notification?.id === "string") {
+    const digits = notification.id.match(/\d+/g);
+    if (digits?.length) return Number(digits[digits.length - 1]);
+  }
+
+  const parsedTime = Date.parse(notification?.time || "");
+  if (!Number.isNaN(parsedTime)) return parsedTime;
+  return 0;
+}
+
+export function sortNotificationsNewestFirst(a, b) {
+  return notificationSortKey(b) - notificationSortKey(a);
 }
 
 /** UI helper: icon bubble for notification rows (dock + full page). */
@@ -1370,6 +1411,29 @@ export function adminHideFlaggedProject(projectId) {
   if (!project || !project.flagged) return { ok: false };
   project.hiddenFromPublic = true;
   project.platformActive = false;
+
+  const appealsForProject = projectAppeals.filter((appeal) => appeal.projectId === projectId);
+  if (appealsForProject.length > 0) {
+    appealsForProject.forEach((appeal) => {
+      appeal.status = "pending";
+    });
+  } else {
+    const nextAppealId = projectAppeals.length
+      ? Math.max(...projectAppeals.map((appeal) => appeal.id)) + 1
+      : 1;
+    projectAppeals.push({
+      id: nextAppealId,
+      projectId,
+      projectTitle: project.title,
+      studentName: project.owner,
+      studentEmail: findStudentEmailByName(project.owner) || "",
+      message:
+        "This project was hidden from public discovery by an administrator. Review is required before restoring visibility.",
+      submittedAt: new Date().toISOString().slice(0, 10),
+      status: "pending",
+    });
+  }
+
   emitDummyUpdate();
   return { ok: true };
 }
@@ -1433,6 +1497,30 @@ export const internships = [
   },
 ];
 
+/** Same storage key as `Internships.jsx` employer catalog persistence. */
+const EMPLOYER_INTERNSHIP_STORAGE_KEY = "gucEmployerInternships";
+
+function hydrateInternshipRowsFromStorage(savedList) {
+  if (!Array.isArray(savedList)) return internships.slice();
+  return savedList.map((row) => {
+    const template = internships.find((item) => item.id === row.id);
+    const postedAt =
+      row.postedAt || template?.postedAt || row.deadline || new Date().toISOString().split("T")[0];
+    return { ...row, postedAt };
+  });
+}
+
+/** Live internship rows for admin analytics (localStorage overrides + seed data). */
+export function getInternshipCatalogSnapshot() {
+  if (typeof window === "undefined") return internships.slice();
+  try {
+    const raw = window.localStorage.getItem(EMPLOYER_INTERNSHIP_STORAGE_KEY);
+    if (raw) return hydrateInternshipRowsFromStorage(JSON.parse(raw));
+  } catch {
+    /* ignore */
+  }
+  return internships.slice();
+}
 
 export const adminApproveEmployer = (id) => {
   const application = employerApplications.find((app) => app.id === id);

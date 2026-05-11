@@ -8,6 +8,7 @@ import {
   pushInternshipApplicationDecisionNotification,
   getEmployerEmailForInternshipCompany,
   internshipStudentCannotSubmitAnotherApplication,
+  getStudentInternshipApplicationStatus,
   pushInternshipApplicationReceivedNotification,
 } from "../../data/dummy";
 import { useFavorites } from "../../hooks/useFavorites";
@@ -252,6 +253,8 @@ function ApplicationFormModal({ isOpen, onClose, internship, onSubmit }) {
 }
 
 function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
+  const navigate = useNavigate();
+  const { internshipId } = useParams();
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState("");
   const [durationFilter, setDurationFilter] = useState("");
@@ -308,8 +311,26 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
     return sorted;
   }, [internshipList, search, companyFilter, durationFilter, sortBy]);
 
-  const handleViewInternship = (internship) => {
-    setViewedInternship(internship);
+  useEffect(() => {
+    if (!internshipId) {
+      setViewedInternship(null);
+      return;
+    }
+    const found = internshipList.find((i) => String(i.id) === String(internshipId));
+    if (found) {
+      setViewedInternship(found);
+    } else {
+      setViewedInternship(null);
+      navigate("/internships", { replace: true });
+    }
+  }, [internshipId, internshipList, navigate]);
+
+  const openInternshipView = (internship) => {
+    navigate(`/internships/${internship.id}`);
+  };
+
+  const closeInternshipView = () => {
+    navigate("/internships");
   };
 
   const handleFilterChange = (type, value) => {
@@ -342,9 +363,33 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
 
   const applyButtonLabel = (internship) => {
     if (!internship) return "Apply";
+    if (getStudentInternshipApplicationStatus(internship, user) === "accepted") return "Accepted";
     if (internship.status !== "hiring") return "Filled";
     if (internshipStudentCannotSubmitAnotherApplication(internship, user)) return "Applied";
     return "Apply";
+  };
+
+  const applyButtonClassName = (internship) => {
+    if (getStudentInternshipApplicationStatus(internship, user) === "accepted") {
+      return "!bg-success/15 !text-success border border-success/35 hover:!bg-success/25 !cursor-default";
+    }
+    if (studentCannotApply(internship)) {
+      return "opacity-50 cursor-not-allowed";
+    }
+    return "";
+  };
+
+  const applyButtonTitle = (internship) => {
+    if (getStudentInternshipApplicationStatus(internship, user) === "accepted") {
+      return "You were accepted for this internship";
+    }
+    if (internshipStudentCannotSubmitAnotherApplication(internship, user)) {
+      return "You already have an active application or were accepted for this internship";
+    }
+    if (internship?.status !== "hiring") {
+      return "This position is no longer accepting applications";
+    }
+    return undefined;
   };
 
   const handleApplyClick = (internship) => {
@@ -530,11 +575,22 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
         {visibleInternships.length > 0 ? (
           visibleInternships.map((internship) => {
             const applyLocked = studentCannotApply(internship);
+            const accepted = getStudentInternshipApplicationStatus(internship, user) === "accepted";
             return (
               <Card
                 key={String(internship.id)}
                 hover
                 className="cursor-pointer transition-all"
+                onClick={() => openInternshipView(internship)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openInternshipView(internship);
+                  }
+                }}
+                aria-label={`View internship: ${internship.title} at ${internship.company}`}
               >
                 <div className="flex items-start justify-between mb-3 gap-4">
                   <div className="flex-1">
@@ -566,23 +622,23 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => handleViewInternship(internship)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openInternshipView(internship);
+                    }}
                   >
                     View
                   </Button>
                   <Button
-                    variant="gold"
+                    variant={accepted ? "secondary" : "gold"}
                     size="sm"
-                    onClick={() => handleApplyClick(internship)}
-                    disabled={applyLocked}
-                    className={applyLocked ? "opacity-50 cursor-not-allowed" : ""}
-                    title={
-                      internshipStudentCannotSubmitAnotherApplication(internship, user)
-                        ? "You already have an active application or were accepted for this internship"
-                        : internship.status !== "hiring"
-                          ? "This position is no longer accepting applications"
-                          : undefined
-                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleApplyClick(internship);
+                    }}
+                    disabled={applyLocked && !accepted}
+                    className={applyButtonClassName(internship)}
+                    title={applyButtonTitle(internship)}
                   >
                     {applyButtonLabel(internship)}
                   </Button>
@@ -602,7 +658,7 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
       {/* View Internship Modal */}
       <Modal
         isOpen={Boolean(viewedInternship)}
-        onClose={() => setViewedInternship(null)}
+        onClose={closeInternshipView}
         title={viewedInternship?.title || "Internship details"}
       >
         {viewedInternship && (
@@ -647,24 +703,25 @@ function StudentInternshipBrowser({ internshipList, setInternshipList, user }) {
             </div>
 
             <div className="flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setViewedInternship(null)}>
+              <Button variant="secondary" onClick={closeInternshipView}>
                 Close
               </Button>
               <Button
-                variant="gold"
-                disabled={studentCannotApply(viewedInternship)}
-                className={studentCannotApply(viewedInternship) ? "opacity-50 cursor-not-allowed" : ""}
-                title={
-                  viewedInternship && internshipStudentCannotSubmitAnotherApplication(viewedInternship, user)
-                    ? "You already have an active application or were accepted for this internship"
-                    : viewedInternship?.status !== "hiring"
-                      ? "This position is no longer accepting applications"
-                      : undefined
+                variant={
+                  getStudentInternshipApplicationStatus(viewedInternship, user) === "accepted"
+                    ? "secondary"
+                    : "gold"
                 }
+                disabled={
+                  studentCannotApply(viewedInternship) &&
+                  getStudentInternshipApplicationStatus(viewedInternship, user) !== "accepted"
+                }
+                className={viewedInternship ? applyButtonClassName(viewedInternship) : ""}
+                title={viewedInternship ? applyButtonTitle(viewedInternship) : undefined}
                 onClick={() => {
                   if (studentCannotApply(viewedInternship)) return;
                   handleApplyClick(viewedInternship);
-                  setViewedInternship(null);
+                  closeInternshipView();
                 }}
               >
                 {applyButtonLabel(viewedInternship)}
@@ -782,8 +839,7 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
     setErrors({});
   };
 
-  const openEditForm = (event, internship) => {
-    event.stopPropagation();
+  const applyEditInternshipData = (internship) => {
     setFormMode("edit");
     setEditingInternship(internship);
     setFormData({
@@ -796,6 +852,11 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
       status: internship.status,
     });
     setErrors({});
+  };
+
+  const openEditForm = (event, internship) => {
+    event.stopPropagation();
+    requestConfirmation("open the editor to modify this internship", () => applyEditInternshipData(internship));
   };
 
   const closeForm = () => {
@@ -849,7 +910,7 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
         applications: [],
       };
 
-      requestConfirmation("add this internship", () => {
+      requestConfirmation("publish this new internship listing", () => {
         setInternshipList((current) => [...current, newInternship]);
         setSelectedListInternshipId(newInternship.id);
         closeForm();
@@ -858,7 +919,7 @@ function EmployerInternships({ user, internshipList, setInternshipList }) {
       return;
     }
 
-    requestConfirmation("edit this internship", () => {
+    requestConfirmation("save your changes to this internship", () => {
       setInternshipList((current) =>
         current.map((internship) =>
           internship.id === editingInternship.id
@@ -1313,6 +1374,11 @@ export default function Internships() {
 
   useEffect(() => {
     localStorage.setItem(internshipsStorageKey, JSON.stringify(internshipList));
+    try {
+      window.dispatchEvent(new Event("guc-internships-catalog-changed"));
+    } catch {
+      /* ignore */
+    }
   }, [internshipList]);
 
   if (user?.role === "employer") {

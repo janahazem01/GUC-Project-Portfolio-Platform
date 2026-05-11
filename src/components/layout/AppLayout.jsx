@@ -652,6 +652,7 @@ import {
   getNotificationPresentation,
   getUnreadNotificationCount,
   getUnreadInboundThreadTotal,
+  sortNotificationsNewestFirst,
   getVisibleNotifications,
   markAllNotificationsReadForUser,
   markNotificationReadForUser,
@@ -692,12 +693,13 @@ function playNotificationChime() {
 
 const allNavItems = [
   { label: "Dashboard",   icon: "⊞", path: "/", roles: ["student", "instructor", "employer", "admin"] },
+  { label: "Statistics", icon: "📊", path: "/admin/statistics", roles: ["admin"] },
   { label: (role) => (role === "student" ? "My Projects" : "Projects"), icon: "◈", path: "/projects", roles: ["student", "instructor"] },
-  { label: "Tasks",       icon: "T", path: "/tasks", roles: ["student", "instructor"] },
+  { label: "Tasks",       icon: "T", path: "/tasks", roles: ["student"] },
   { label: "Explore",     icon: "◎", path: "/explore", roles: ["student", "instructor", "employer","admin"] },
   { label: "Instructors", icon: "👨‍🏫", path: "/instructors", roles: ["student", "instructor", "employer", "admin"] },
   { label: "Internships", icon: "◐", path: "/internships", roles: ["student", "instructor","employer"] },
-  { label: "Requests", icon: "✉", path: "/requests", roles: ["student", "instructor", "admin"] },
+  { label: (role) => (role === "admin" ? "Requests" : "Invitations"), icon: "✉", path: "/requests", roles: ["student", "instructor", "admin"] },
   { label: "Courses",    icon: "▤", path: "/courses", roles: ["admin", "instructor"] },
   { label: "Messages",    icon: "💬", path: "/messages", roles: ["student", "instructor", "employer"] },
   { label: "Favorites",   icon: "★", path: "/favorites", roles: ["student", "employer"] },
@@ -712,6 +714,34 @@ function SidebarTooltip({ collapsed, label }) {
   return (
     <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-bg-surface px-3 py-1.5 text-xs font-sans text-text-primary opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
       {label}
+    </span>
+  );
+}
+
+/** Snoozed bell: standard bell silhouette + offset “Zz” (clear at small size). */
+function DndNavCornerBadge() {
+  return (
+    <span
+      className="pointer-events-none absolute -right-1 -top-1 z-[1] flex h-[17px] w-[17px] items-center justify-center rounded-[4px] bg-[#2a2633] shadow-md ring-1 ring-white/20"
+      aria-hidden
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" className="shrink-0" aria-hidden>
+        {/* Bell (material-style — very recognizable) */}
+        <g transform="translate(0, 0.5) scale(0.78) translate(2.7, 1.2)">
+          <path
+            fill="white"
+            d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
+          />
+        </g>
+        {/* Z (sleep) + smaller z — offset like “Zz” */}
+        <g fill="white" transform="translate(12.6, 1.6) scale(0.48)">
+          <path d="M1 1h6.2v1.45H2.4L5.8 5.4H8.2v1.55H0.9V5.5h3.4L1.1 2.45H1V1z" />
+          <path
+            d="M3.8 7.2h5.4v1.15H4.6l2.1 2.9h4.1v1.2H2.5v-1.15h3.1l-2.1-2.9H3.8V7.2z"
+            opacity="0.92"
+          />
+        </g>
+      </svg>
     </span>
   );
 }
@@ -799,7 +829,13 @@ export function AppLayout({ children }) {
   const navigate = useNavigate();
   const navItems = getNavItemsForRole(user?.role);
   const location = useLocation();
-  const activeNavPath = location.state?.activeNav || (location.pathname.startsWith("/admin") ? "/" : location.pathname);
+  const activeNavPath =
+    location.state?.activeNav ||
+    (location.pathname === "/admin/statistics"
+      ? "/admin/statistics"
+      : location.pathname.startsWith("/admin")
+        ? "/"
+        : location.pathname);
 
   const bootstrapNotificationIdsRef = useRef(new Set());
   const [, setDoNotDisturbBump] = useState(0);
@@ -898,14 +934,27 @@ export function AppLayout({ children }) {
     setDoNotDisturbBump((value) => value + 1);
   };
 
+  useEffect(() => {
+    const sync = () => setDoNotDisturbBump((value) => value + 1);
+    window.addEventListener("guc-dnd-changed", sync);
+    return () => window.removeEventListener("guc-dnd-changed", sync);
+  }, []);
+
+  const dndHidesBadges = canUseDoNotDisturb && doNotDisturb;
+
   const totalUnreadNotificationCount = unreadNotificationCount + unreadProjectInvitationCount;
 
   const unreadBadgeLabel = useMemo(() => {
-    if (doNotDisturb) return null;
     if (totalUnreadNotificationCount <= 0) return null;
     if (totalUnreadNotificationCount > 99) return "99+";
     return String(totalUnreadNotificationCount);
-  }, [totalUnreadNotificationCount, doNotDisturb]);
+  }, [totalUnreadNotificationCount]);
+
+  const unreadMessagesBadgeLabel = useMemo(() => {
+    if (unreadDmTotal <= 0) return null;
+    if (unreadDmTotal > 99) return "99+";
+    return String(unreadDmTotal);
+  }, [unreadDmTotal]);
 
   const isDark = theme === "dark";
 
@@ -928,8 +977,10 @@ export function AppLayout({ children }) {
           {navItems.map((item) => {
             const active = activeNavPath === item.path ||
               (item.path !== "/" && activeNavPath.startsWith(item.path));
-            const showUnreadDmCue =
-              item.path === "/messages" && unreadDmTotal > 0 && !(canUseDoNotDisturb && doNotDisturb);
+            const showUnreadDmCount =
+              item.path === "/messages" &&
+              unreadMessagesBadgeLabel !== null &&
+              !dndHidesBadges;
             const labelText = typeof item.label === "function" ? item.label(user?.role) : item.label;
             return (
               <Link
@@ -943,15 +994,16 @@ export function AppLayout({ children }) {
               >
                 <span className="relative flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">
                   <span aria-hidden="true">{item.icon}</span>
-                  {showUnreadDmCue && (
-                    <abbr
+                  {showUnreadDmCount && (
+                    <span
                       title="Unread messages"
-                      className="absolute -top-1.5 -right-0 text-[13px] font-bold text-danger no-underline leading-none"
+                      className="absolute -top-1 -right-1 min-h-3.5 min-w-[0.875rem] px-[3px] bg-danger rounded-full text-[9px] text-white flex items-center justify-center font-mono leading-none"
                       aria-label="Unread messages"
                     >
-                      !
-                    </abbr>
+                      {unreadMessagesBadgeLabel}
+                    </span>
                   )}
+                  {dndHidesBadges && item.path === "/messages" && <DndNavCornerBadge />}
                 </span>
                 {!collapsed && <span className="truncate">{labelText}</span>}
                 <SidebarTooltip collapsed={collapsed} label={labelText} />
@@ -1013,7 +1065,7 @@ export function AppLayout({ children }) {
           >
             <span className="relative flex h-5 w-7 shrink-0 items-center justify-center text-base leading-none">
               <span aria-hidden="true">🔔</span>
-              {unreadBadgeLabel !== null && (
+              {unreadBadgeLabel !== null && !dndHidesBadges && (
                 <span
                   className="absolute -top-1 -right-1 min-h-3.5 min-w-[0.875rem] px-[3px] bg-danger rounded-full text-[9px] text-white flex items-center justify-center font-mono leading-none"
                   aria-live="polite"
@@ -1021,6 +1073,7 @@ export function AppLayout({ children }) {
                   {unreadBadgeLabel}
                 </span>
               )}
+              {dndHidesBadges && <DndNavCornerBadge />}
             </span>
             {!collapsed && <span>Notifications</span>}
             <SidebarTooltip collapsed={collapsed} label="Notifications" />
@@ -1079,7 +1132,7 @@ function NotificationsDock({ collapsed, user, navigate, onClose, onOpenFull, mar
   }, [onClose]);
 
   const leftOffsetPx = collapsed ? 72 : 224;
-  const items = user ? getVisibleNotifications(user) : [];
+  const items = user ? [...getVisibleNotifications(user)].sort(sortNotificationsNewestFirst) : [];
 
   return (
     <>

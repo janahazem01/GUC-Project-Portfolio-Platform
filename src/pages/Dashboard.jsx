@@ -1,9 +1,25 @@
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { Card, Badge, Stars, Button, PageHeader } from "../components/ui";
 import { ColumnBarChart } from "../components/viz/Charts.jsx";
 import { CHART_COLORS } from "../components/viz/chartColors.js";
 import { AuthContext } from "../context/AuthContext";
-import { internships, dummyUsers, projects, getVisibleNotifications } from "../data/dummy";
+import { useNavigate } from "react-router-dom";
+import { useProjects } from "../context/ProjectsContext";
+import { internships, dummyUsers, courses, getVisibleNotifications, isProjectListedPublicly } from "../data/dummy";
+
+/** Must match `internshipsStorageKey` in Internships.jsx — keeps dashboard stats aligned with employer edits. */
+const EMPLOYER_INTERNSHIPS_STORAGE_KEY = "gucEmployerInternships";
+
+function readEmployerInternshipCatalog() {
+  try {
+    const raw = localStorage.getItem(EMPLOYER_INTERNSHIPS_STORAGE_KEY);
+    if (!raw) return internships;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : internships;
+  } catch {
+    return internships;
+  }
+}
 
 function StatCard({ label, value }) {
   return (
@@ -27,7 +43,9 @@ function getDisplayName(name) {
 
 export default function Dashboard() {
   const { user } = useContext(AuthContext);
-  const myProjects = projects.filter((p) => p.owner === user?.name);
+  const navigate = useNavigate();
+  const { projectList } = useProjects();
+  const myProjects = projectList.filter((p) => p.owner === user?.name);
   const visibleNotifications = getVisibleNotifications(user);
   const roleLabel = {
     student: user?.major,
@@ -36,10 +54,24 @@ export default function Dashboard() {
     admin: "Administrator",
   };
 
-  const employerCompany = user?.companyName?.trim();
+  const [employerInternshipCatalog, setEmployerInternshipCatalog] = useState(() => readEmployerInternshipCatalog());
 
+  useEffect(() => {
+    if (user?.role !== "employer") return undefined;
+    const sync = () => setEmployerInternshipCatalog(readEmployerInternshipCatalog());
+    sync();
+    window.addEventListener("guc-internships-catalog-changed", sync);
+    return () => window.removeEventListener("guc-internships-catalog-changed", sync);
+  }, [user?.role]);
+
+  /** Employer-only: placement counts + listings over time (same catalog as Internships page). */
   const employerTalentInsights = useMemo(() => {
+    if (user?.role !== "employer") return null;
+    const employerCompany = user?.companyName?.trim();
     if (!employerCompany) return null;
+
+    const catalog = employerInternshipCatalog;
+
     const internsWithCompany = new Set();
     dummyUsers.forEach((account) => {
       if (!account.completedInternships) return;
@@ -49,7 +81,7 @@ export default function Dashboard() {
     const uniqueCompleted = internsWithCompany.size;
 
     const monthCounts = {};
-    internships
+    catalog
       .filter((opening) => opening.company === employerCompany)
       .forEach((opening) => {
         const monthKey = opening.postedAt?.slice(0, 7) || "unknown";
@@ -70,13 +102,50 @@ export default function Dashboard() {
       };
     });
 
-    const companyOpenings = internships.filter((opening) => opening.company === employerCompany && !opening.archived);
+    const companyOpenings = catalog.filter((opening) => opening.company === employerCompany && !opening.archived);
     const offeredTotal = companyOpenings.length;
-    const totalListingsPublished = internships.filter((opening) => opening.company === employerCompany).length;
+    const totalListingsPublished = catalog.filter((opening) => opening.company === employerCompany).length;
     const applicationVolume = companyOpenings.reduce((sum, opening) => sum + (opening.applications?.length || 0), 0);
 
-    return { uniqueCompleted, barBuckets, offeredTotal, totalListingsPublished, applicationVolume };
-  }, [employerCompany]);
+    return {
+      employerCompany,
+      uniqueCompleted,
+      barBuckets,
+      offeredTotal,
+      totalListingsPublished,
+      applicationVolume,
+    };
+  }, [user?.role, user?.companyName, employerInternshipCatalog]);
+
+  const recommendedProjects = useMemo(() => {
+    const visiblePublicProjects = projectList.filter((project) => isProjectListedPublicly(project));
+    const base = visiblePublicProjects.filter((project) => project.owner !== user?.name);
+
+    if (user?.role === "student") {
+      return [...base]
+        .sort((a, b) => b.rating - a.rating || new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 6);
+    }
+
+    if (user?.role === "employer") {
+      return [...base]
+        .sort((a, b) => b.rating - a.rating || new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 6);
+    }
+
+    if (user?.role === "instructor") {
+      const taughtCourseCodes = (user?.coursesTaught || [])
+        .map((courseId) => courses.find((course) => course.id === courseId)?.code)
+        .filter(Boolean);
+      const inInstructorScope = base.filter((project) => taughtCourseCodes.includes(project.courseCode));
+      const source = inInstructorScope.length ? inInstructorScope : base;
+      return [...source]
+        .sort((a, b) => b.rating - a.rating || new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 6);
+    }
+
+    return [];
+  }, [projectList, user]);
 
   return (
     <div>
@@ -85,7 +154,7 @@ export default function Dashboard() {
         subtitle={roleLabel[user?.role] || "Administrator"}
       />
 
-      {user?.role === "employer" && employerTalentInsights && (
+      {employerTalentInsights && (
         <div className="mb-8 space-y-4">
           <div>
             <h2 className="font-display text-lg text-text-primary flex items-center gap-2 mb-1">
@@ -95,7 +164,7 @@ export default function Dashboard() {
               Internship &amp; talent insights
             </h2>
             <p className="text-text-secondary text-sm font-sans max-w-3xl">
-              Benchmarks for <span className="text-text-primary font-medium">{employerCompany}</span> using completed student placements and your published openings in the demo catalog.
+              Benchmarks for <span className="text-text-primary font-medium">{employerTalentInsights.employerCompany}</span> using completed student placements and your published openings in the demo catalog.
             </p>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
@@ -111,7 +180,7 @@ export default function Dashboard() {
                     {employerTalentInsights.uniqueCompleted}
                   </p>
                   <p className="text-[11px] text-text-secondary font-sans mt-2 leading-relaxed">
-                    Distinct student accounts that list a finished internship at {employerCompany}.
+                    Distinct student accounts that list a finished internship at {employerTalentInsights.employerCompany}.
                   </p>
                 </div>
               </div>
@@ -203,6 +272,72 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {["student", "employer", "instructor"].includes(user?.role) && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg text-text-primary">Recommended Projects</h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/explore", { state: { activeNav: "/explore" } })}>
+              Explore all →
+            </Button>
+          </div>
+          {recommendedProjects.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4">
+              {recommendedProjects.map((project) => (
+                <Card
+                  key={project.id}
+                  hover
+                  className="cursor-pointer"
+                  onClick={() =>
+                    navigate(`/projects/${project.id}`, { state: { activeNav: "/explore" } })
+                  }
+                  role="link"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      navigate(`/projects/${project.id}`, { state: { activeNav: "/explore" } });
+                    }
+                  }}
+                >
+                  <div className="flex items-start justify-between mb-3 gap-3">
+                    <h3 className="font-display text-base text-text-primary line-clamp-2">{project.title}</h3>
+                    <Badge variant="blue">{project.courseCode}</Badge>
+                  </div>
+                  <p className="text-text-secondary text-sm font-sans mb-3 line-clamp-2">{project.description}</p>
+                  <div className="flex items-center gap-2 flex-wrap mb-3">
+                    {project.languages.map((lang) => (
+                      <Badge key={lang}>{lang}</Badge>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Stars rating={project.rating} />
+                      <span className="text-xs font-mono text-text-secondary">{project.createdAt}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate(`/projects/${project.id}`, { state: { activeNav: "/explore" } });
+                      }}
+                    >
+                      View →
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <p className="text-text-secondary text-sm font-sans">
+                No recommended projects available right now.
+              </p>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Notifications */}
       <div>

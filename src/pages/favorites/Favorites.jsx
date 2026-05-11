@@ -58,8 +58,9 @@ export default function Favorites() {
   };
 
   const requestRemovePortfolio = (portfolio) => {
+    const ownerLabel = portfolio.studentName || portfolio.owner || "this student";
     setConfirmation({
-      action: `remove ${portfolio.name}'s portfolio from your favorites`,
+      action: `remove ${ownerLabel}'s portfolio from your favorites`,
       variant: "danger",
       onConfirm: () => {
         removePortfolio(portfolio.id);
@@ -168,8 +169,10 @@ export default function Favorites() {
               <Card key={portfolio.id}>
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="min-w-0">
-                    <h3 className="font-display text-base text-text-primary mb-1">{portfolio.title}</h3>
-                    <p className="text-text-secondary text-sm font-sans">{portfolio.studentName}</p>
+                    <h3 className="font-display text-base text-text-primary mb-1">
+                      {portfolio.studentName || portfolio.owner}
+                    </h3>
+                    <p className="text-text-secondary text-sm font-sans">{portfolio.title}</p>
                     <p className="text-text-secondary text-xs font-mono truncate">{portfolio.studentEmail}</p>
                   </div>
                   <Badge variant="blue">{portfolio.contributionScore}</Badge>

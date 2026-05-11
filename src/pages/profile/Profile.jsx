@@ -1,11 +1,11 @@
 import { useState, useContext, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, Badge, Stars, Button, PageHeader, Input, Modal, ConfirmActionModal, SuccessToast } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
 import { useProjects } from "../../context/ProjectsContext";
 import { courses, dummyUsers, instructorDirectory, portfolios } from "../../data/dummy";
 
-function StudentProfile({ user, updateUser, myProjects, isReadOnly }) {
+function StudentProfile({ user, updateUser, myProjects, isReadOnly, onBackToPortfolios }) {
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [confirmation, setConfirmation] = useState(null);
@@ -114,7 +114,18 @@ function StudentProfile({ user, updateUser, myProjects, isReadOnly }) {
             )}
           </div>
         </div>
-        {!isReadOnly && <Button variant="secondary" size="sm" onClick={handleOpenEdit}>Edit Profile</Button>}
+        <div className="flex flex-wrap gap-2">
+          {!isReadOnly && (
+            <Button variant="secondary" size="sm" onClick={handleOpenEdit}>
+              Edit Profile
+            </Button>
+          )}
+          {isReadOnly && onBackToPortfolios && (
+            <Button variant="secondary" size="sm" onClick={onBackToPortfolios}>
+              Back to Portfolios
+            </Button>
+          )}
+        </div>
       </div>
 
       {user?.linkedIn && (
@@ -133,11 +144,14 @@ function StudentProfile({ user, updateUser, myProjects, isReadOnly }) {
         title="Portfolio"
         subtitle={`${myProjects.length} public project${myProjects.length !== 1 ? "s" : ""}`}
         action={
-          !isReadOnly && (
-            <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>
-              Manage visibility
-            </Button>
-          )
+          <div className="flex flex-wrap gap-2">
+            {!isReadOnly && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/projects")}>
+                Manage visibility
+              </Button>
+            )}
+            {isReadOnly && onBackToPortfolios && <span />}
+          </div>
         }
       />
 
@@ -639,6 +653,14 @@ function EmployerProfile({ user, updateUser, readOnly = false }) {
     setIsEditModalOpen(true);
   };
 
+  const requestOpenProfileEditor = () => {
+    setConfirmation({
+      action: "open your company profile for editing",
+      variant: "gold",
+      onConfirm: () => handleOpenEdit(),
+    });
+  };
+
   const handleDocUpload = (event) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
@@ -756,7 +778,7 @@ function EmployerProfile({ user, updateUser, readOnly = false }) {
           <p className="text-accent-gold font-mono text-xs mb-4">{user?.address}</p>
           <p className="text-text-secondary text-sm max-w-2xl">{user?.companyBio}</p>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleOpenEdit} disabled={readOnly}>
+        <Button variant="secondary" size="sm" onClick={requestOpenProfileEditor} disabled={readOnly}>
           Edit Profile
         </Button>
       </div>
@@ -1014,7 +1036,9 @@ function EmployerProfile({ user, updateUser, readOnly = false }) {
 export default function Profile() {
   const { user: authUser, updateUser } = useContext(AuthContext);
   const { portfolioId } = useParams();
+  const navigate = useNavigate();
   const { projectList } = useProjects();
+  const location = useLocation();
 
   const isPublicView = Boolean(portfolioId);
 
@@ -1066,7 +1090,18 @@ export default function Profile() {
   const role = user?.role;
   const isReadOnly = isPublicView && user?.email !== authUser?.email;
 
-  const myProjects = useMemo(() => projectList.filter((project) => project.owner === user?.name && project.visibility === "public"), [projectList, user]);
+  const myProjects = useMemo(
+    () =>
+      projectList.filter(
+        (project) =>
+          project.owner === user?.name &&
+          project.visibility === "public" &&
+          project.platformActive !== false &&
+          project.flagged !== true &&
+          project.hiddenFromPublic !== true
+      ),
+    [projectList, user]
+  );
   const myCourses = useMemo(() => courses.filter((course) => user?.coursesTaught?.includes(course.id)), [user]);
 
   if (role === "employer") {
@@ -1101,6 +1136,11 @@ export default function Profile() {
       updateUser={updateUser}
       myProjects={myProjects}
       isReadOnly={isReadOnly}
+      onBackToPortfolios={
+        isPublicView && location.state?.fromExploreMode === "portfolios"
+          ? () => navigate("/explore", { state: { exploreMode: "portfolios", activeNav: "/explore" } })
+          : null
+      }
     />
   );
 }

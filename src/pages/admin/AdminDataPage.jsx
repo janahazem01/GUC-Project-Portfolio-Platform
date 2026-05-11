@@ -2,14 +2,13 @@ import { useEffect, useMemo, useState, useContext } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Badge, Button, Card, PageHeader, ConfirmActionModal, Modal } from "../../components/ui";
 import { AuthContext } from "../../context/AuthContext";
+import { useProjects } from "../../context/ProjectsContext";
 import {
   adminClearProjectFlag,
   adminHideFlaggedProject,
   dummyUsers,
   employerApplications,
-  getFlaggedProjects,
   getProjectAppeals,
-  projects,
   setProjectPlatformActive,
   subscribeDummyUpdates,
 } from "../../data/dummy";
@@ -69,10 +68,12 @@ export default function AdminDataPage() {
   const { section } = useParams();
   const navigate = useNavigate();
   const { updateVerificationStatus, getLocalUsers } = useContext(AuthContext);
+  const { projectList, updateProject } = useProjects();
   const [selectedRole, setSelectedRole] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [filtersAddedOpen, setFiltersAddedOpen] = useState(false);
   const [, bumpDummyRevision] = useState(0);
+  useEffect(() => subscribeDummyUpdates(() => bumpDummyRevision((n) => n + 1)), []);
   const [actionFeedbackOpen, setActionFeedbackOpen] = useState(false);
   const [actionFeedbackMessage, setActionFeedbackMessage] = useState("");
   const [projectDeactivateTarget, setProjectDeactivateTarget] = useState(null);
@@ -80,6 +81,7 @@ export default function AdminDataPage() {
   const [flaggedActionConfirm, setFlaggedActionConfirm] = useState(null);
   const [appealFilter, setAppealFilter] = useState("all");
   const [viewingCompanyDocs, setViewingCompanyDocs] = useState(null);
+  const [employerVerificationConfirm, setEmployerVerificationConfirm] = useState(null);
 
   const localEmployers = useMemo(() => {
     return getLocalUsers().filter(u => u.role === 'employer');
@@ -165,6 +167,11 @@ export default function AdminDataPage() {
       ? [{ role: selectedRole, users: dummyUsers.filter((user) => user.role === selectedRole) }]
       : []
   ), [selectedRole]);
+
+  const flaggedProjects = useMemo(
+    () => projectList.filter((project) => project.flagged === true),
+    [projectList]
+  );
 
   const page = pageTitles[section] || ["Admin Console", "Platform data and systems management."];
 
@@ -357,7 +364,7 @@ export default function AdminDataPage() {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((project) => {
+                {projectList.map((project) => {
                   const active = isPlatformProjectActive(project);
                   return (
                     <tr
@@ -464,7 +471,7 @@ export default function AdminDataPage() {
       {section === "flagged" && (
         <>
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <Badge variant="danger">{getFlaggedProjects().length} flagged</Badge>
+            <Badge variant="danger">{flaggedProjects.length} flagged</Badge>
             <span className="text-text-secondary text-sm font-sans">
               Deactivate automatically when instructors or administrators record a flag — use the controls to hide listings or restore visibility.
             </span>
@@ -475,12 +482,12 @@ export default function AdminDataPage() {
               style={{ gridTemplateColumns: "1.6fr 1.1fr 0.75fr minmax(0, 1.55fr) 0.95fr 1.4fr" }}
               alignments={["text-left", "text-left", "text-center", "text-left", "text-center", "text-center"]}
             />
-            {getFlaggedProjects().length === 0 ? (
+            {flaggedProjects.length === 0 ? (
               <div className="px-4 py-6 text-sm font-sans text-text-secondary border-b border-border">
                 No flagged projects at this time.
               </div>
             ) : (
-              getFlaggedProjects().map((project) => {
+              flaggedProjects.map((project) => {
                 const hidden = project.hiddenFromPublic === true;
                 const active = isPlatformProjectActive(project);
                 return (
@@ -579,7 +586,9 @@ export default function AdminDataPage() {
                   <p className="text-sm text-text-secondary font-sans whitespace-normal break-words">{appeal.projectTitle}</p>
                   <p className="text-xs font-mono text-text-secondary text-center whitespace-normal">{appeal.submittedAt}</p>
                   <div className="flex justify-center">
-                    <Badge variant={appeal.status === "pending" ? "warning" : "success"}>{appeal.status}</Badge>
+                    <Badge variant={appeal.status === "pending" ? "warning" : "success"}>
+                      {appeal.status === "pending" ? "Unresolved" : "Resolved"}
+                    </Badge>
                   </div>
                   <p className="text-sm text-text-secondary font-sans whitespace-normal break-words leading-relaxed">
                     {appeal.message}
@@ -610,6 +619,7 @@ export default function AdminDataPage() {
         onConfirm={() => {
           if (!projectDeactivateTarget?.id) return;
           setProjectPlatformActive(projectDeactivateTarget.id, false);
+          updateProject(projectDeactivateTarget.id, { platformActive: false });
           const title = projectDeactivateTarget.title;
           setProjectDeactivateTarget(null);
           setActionFeedbackMessage(`${title} was deactivated successfully.`);
@@ -624,10 +634,44 @@ export default function AdminDataPage() {
         onClose={() => setProjectActivateTarget(null)}
         onConfirm={() => {
           if (!projectActivateTarget?.id) return;
+          if (projectActivateTarget.flagged) adminClearProjectFlag(projectActivateTarget.id);
           setProjectPlatformActive(projectActivateTarget.id, true);
+          updateProject(projectActivateTarget.id, {
+            platformActive: true,
+            flagged: false,
+            flagReason: null,
+            hiddenFromPublic: false,
+            appealSubmitted: false,
+          });
           const title = projectActivateTarget.title;
           setProjectActivateTarget(null);
           setActionFeedbackMessage(`${title} was activated successfully.`);
+          setActionFeedbackOpen(true);
+        }}
+      />
+
+      <ConfirmActionModal
+        isOpen={employerVerificationConfirm !== null}
+        action={
+          employerVerificationConfirm?.type === "approve"
+            ? `approve verification for "${employerVerificationConfirm.displayName}"`
+            : `reject verification for "${employerVerificationConfirm?.displayName ?? "this company"}"`
+        }
+        variant={employerVerificationConfirm?.type === "approve" ? "gold" : "danger"}
+        onClose={() => setEmployerVerificationConfirm(null)}
+        onConfirm={() => {
+          if (!employerVerificationConfirm?.email) return;
+          updateVerificationStatus(
+            employerVerificationConfirm.email,
+            employerVerificationConfirm.type === "approve" ? "approved" : "rejected"
+          );
+          bumpDummyRevision((prev) => prev + 1);
+          setActionFeedbackMessage(
+            employerVerificationConfirm.type === "approve"
+              ? `Application APPROVED for ${employerVerificationConfirm.displayName}`
+              : `Application REJECTED for ${employerVerificationConfirm.displayName}`
+          );
+          setViewingCompanyDocs(null);
           setActionFeedbackOpen(true);
         }}
       />
@@ -644,15 +688,23 @@ export default function AdminDataPage() {
         onConfirm={() => {
           if (!flaggedActionConfirm?.project) return;
           if (flaggedActionConfirm.action === "hide") {
-            const result = adminHideFlaggedProject(flaggedActionConfirm.project.id);
-            if (result.ok) {
-              setActionFeedbackMessage(`${flaggedActionConfirm.project.title} is now hidden from public discovery.`);
-            }
+            adminHideFlaggedProject(flaggedActionConfirm.project.id);
+            updateProject(flaggedActionConfirm.project.id, {
+              hiddenFromPublic: true,
+              platformActive: false,
+            });
+            setActionFeedbackMessage(`${flaggedActionConfirm.project.title} is now hidden from public discovery.`);
           } else {
-            const result = adminClearProjectFlag(flaggedActionConfirm.project.id);
-            if (result.ok) {
-              setActionFeedbackMessage(`${flaggedActionConfirm.project.title} flag was cleared and visibility restored.`);
-            }
+            adminClearProjectFlag(flaggedActionConfirm.project.id);
+            setProjectPlatformActive(flaggedActionConfirm.project.id, true);
+            updateProject(flaggedActionConfirm.project.id, {
+              flagged: false,
+              flagReason: null,
+              hiddenFromPublic: false,
+              platformActive: true,
+              appealSubmitted: false,
+            });
+            setActionFeedbackMessage(`${flaggedActionConfirm.project.title} flag was cleared and visibility restored.`);
           }
           setFlaggedActionConfirm(null);
           setActionFeedbackOpen(true);
@@ -754,27 +806,27 @@ export default function AdminDataPage() {
               </Button>
               {viewingCompanyDocs.verificationStatus === "pending" && (
                 <div className="flex gap-2">
-                  <Button 
+                  <Button
                     variant="danger"
-                    onClick={async () => {
-                      const email = viewingCompanyDocs.companyEmail || viewingCompanyDocs.email;
-                      await updateVerificationStatus(email, "rejected");
-                      bumpDummyRevision(prev => prev + 1);
-                      setActionFeedbackMessage(`Application REJECTED for ${viewingCompanyDocs.name}`);
-                      setActionFeedbackOpen(true);
-                      setViewingCompanyDocs(null);
-                    }}
+                    onClick={() =>
+                      setEmployerVerificationConfirm({
+                        type: "reject",
+                        email: viewingCompanyDocs.companyEmail || viewingCompanyDocs.email,
+                        displayName: viewingCompanyDocs.name || viewingCompanyDocs.companyName || "this company",
+                      })
+                    }
                   >
                     Reject
                   </Button>
-                  <Button onClick={async () => {
-                    const email = viewingCompanyDocs.companyEmail || viewingCompanyDocs.email;
-                    await updateVerificationStatus(email, "approved");
-                    bumpDummyRevision(prev => prev + 1);
-                    setActionFeedbackMessage(`Application APPROVED for ${viewingCompanyDocs.name}`);
-                    setActionFeedbackOpen(true);
-                    setViewingCompanyDocs(null);
-                  }}>
+                  <Button
+                    onClick={() =>
+                      setEmployerVerificationConfirm({
+                        type: "approve",
+                        email: viewingCompanyDocs.companyEmail || viewingCompanyDocs.email,
+                        displayName: viewingCompanyDocs.name || viewingCompanyDocs.companyName || "this company",
+                      })
+                    }
+                  >
                     Approve Verification
                   </Button>
                 </div>

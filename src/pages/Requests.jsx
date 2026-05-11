@@ -124,8 +124,8 @@ function StudentAndInstructorRequests() {
   return (
     <div>
       <PageHeader
-        title="Requests"
-        subtitle="Review incoming invitations and track the requests you sent."
+        title="Invitations"
+        subtitle="Review invitations you received and track the invitations you sent."
       />
 
       <Card className="mb-6">

@@ -32,7 +32,7 @@ function InstructorCoursesReadOnly({ sortedCourses, navigate }) {
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[480px] text-left border-collapse">
+          <table className="w-full min-w-[640px] text-left border-collapse">
             <thead>
               <tr className="border-b border-border bg-bg-base">
                 <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal">
@@ -40,6 +40,9 @@ function InstructorCoursesReadOnly({ sortedCourses, navigate }) {
                 </th>
                 <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal w-[9rem]">
                   Code
+                </th>
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-right w-[9rem]">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -59,6 +62,13 @@ function InstructorCoursesReadOnly({ sortedCourses, navigate }) {
                   </td>
                   <td className="px-4 py-4">
                     <Badge variant="blue">{course.code}</Badge>
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex justify-end">
+                      <Button size="sm" variant="secondary" onClick={() => navigate(`/courses/${course.id}`)}>
+                        View
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -171,6 +181,12 @@ export default function CoursesDirectory() {
   const linkedCount = (code) =>
     projects.filter((project) => project.courseCode === code).length;
 
+  const deactivatedCount = (code) =>
+    projects.filter(
+      (project) =>
+        project.courseCode === code && (project.platformActive === false || project.flagged === true)
+    ).length;
+
   if (user?.role === "instructor") {
     return <InstructorCoursesReadOnly sortedCourses={sortedCourses} navigate={navigate} />;
   }
@@ -236,6 +252,9 @@ export default function CoursesDirectory() {
                 <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[7rem]">
                   Projects
                 </th>
+                <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-center w-[8.5rem]">
+                  Deactivated
+                </th>
                 <th className="px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-text-secondary font-normal text-right w-[11rem]">
                   Actions
                 </th>
@@ -265,6 +284,13 @@ export default function CoursesDirectory() {
                   </td>
                   <td className="px-4 py-4 text-center">
                     <span className="font-mono text-sm text-text-secondary">{linkedCount(course.code)}</span>
+                  </td>
+                  <td className="px-4 py-4 text-center">
+                    {deactivatedCount(course.code) > 0 ? (
+                      <Badge variant="warning">{deactivatedCount(course.code)}</Badge>
+                    ) : (
+                      <span className="font-mono text-sm text-text-secondary">0</span>
+                    )}
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex flex-wrap justify-end gap-2">

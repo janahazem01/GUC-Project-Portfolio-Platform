@@ -7,6 +7,7 @@ import { useProjects } from "../context/ProjectsContext";
 import {
   getNotificationActionPath,
   getNotificationPresentation,
+  sortNotificationsNewestFirst,
   getVisibleNotifications,
   markAllNotificationsReadForUser,
   markNotificationReadForUser,
@@ -131,7 +132,7 @@ export default function Notifications() {
     () =>
       [...invitationNotifications, ...baseNotifications]
         .map((n) => ({ ...n, read: readState[n.id] ?? n.read }))
-        .sort((a, b) => Number(b.id) - Number(a.id)),
+        .sort(sortNotificationsNewestFirst),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [baseNotifications, invitationNotifications, readState]
   );

@@ -1,5 +1,5 @@
-import { useState, useContext, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useContext, useMemo, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, Badge, Stars, Button, Input, PageHeader, ConfirmActionModal } from "../../components/ui";
 import {
   dummyUsers,
@@ -19,16 +19,21 @@ const PORTFOLIO_SKILLS = [...new Set(portfolios.flatMap((p) => p.skills || []))]
 
 export default function Explore() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [exploreMode, setExploreMode] = useState("projects");
+  const location = useLocation();
+  const [exploreMode, setExploreMode] = useState(
+    location.state?.exploreMode === "portfolios" ? "portfolios" : "projects"
+  );
 
   const [filterCourse, setFilterCourse] = useState("");
   const [filterInstructor, setFilterInstructor] = useState("");
   const [filterDate, setFilterDate] = useState("");
-  const [sortBy, setSortBy] = useState("");
+  const [ratingSort, setRatingSort] = useState("");
+  const [dateSort, setDateSort] = useState("");
 
   const [portfolioMajor, setPortfolioMajor] = useState("");
   const [portfolioSkill, setPortfolioSkill] = useState("");
-  const [portfolioSort, setPortfolioSort] = useState("");
+  const [portfolioRatingSort, setPortfolioRatingSort] = useState("");
+  const [portfolioDateSort, setPortfolioDateSort] = useState("");
 
   const [confirmation, setConfirmation] = useState(null);
   const [adminDeactivateTarget, setAdminDeactivateTarget] = useState(null);
@@ -49,7 +54,15 @@ export default function Explore() {
 
   const viewProject = (projectId) => navigate(`/projects/${projectId}`, { state: { activeNav: "/explore" } });
   const viewPortfolio = (portfolioId) =>
-    navigate(`/explore/portfolio/${portfolioId}`, { state: { activeNav: "/explore" } });
+    navigate(`/explore/portfolio/${portfolioId}`, {
+      state: { activeNav: "/explore", fromExploreMode: "portfolios" },
+    });
+
+  useEffect(() => {
+    if (location.state?.exploreMode === "portfolios") {
+      setExploreMode("portfolios");
+    }
+  }, [location.state]);
 
   const requestProjectFavorite = (event, project) => {
     event.stopPropagation();
@@ -72,6 +85,7 @@ export default function Explore() {
   const requestPortfolioFavorite = (event, portfolio) => {
     event.stopPropagation();
     if (!portfolio) return;
+    if (portfolio.owner === user?.name) return;
     const isSaved = isFavoritePortfolio(portfolio.id);
     setConfirmation({
       action: `${isSaved ? "remove this portfolio from" : "save this portfolio to"} your favorites`,
@@ -108,24 +122,31 @@ export default function Explore() {
         !q || p.title.toLowerCase().includes(q) || p.owner.toLowerCase().includes(q);
       const matchCourse = filterCourse ? p.courseCode === filterCourse : true;
       const matchInstructor = filterInstructor
-        ? p.owner.toLowerCase().includes(filterInstructor.toLowerCase())
+        ? (p.supervisor || "").toLowerCase().includes(filterInstructor.toLowerCase())
         : true;
-      const matchDate = filterDate
-        ? p.createdAt && new Date(p.createdAt) >= new Date(filterDate)
-        : true;
+      const matchDate = filterDate ? p.createdAt === filterDate : true;
       return matchSearch && matchCourse && matchInstructor && matchDate;
     });
   }, [visiblePool, q, filterCourse, filterInstructor, filterDate]);
 
   const sortedProjects = useMemo(() => {
     const arr = [...filteredProjects];
-    if (sortBy === "date") {
-      arr.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    } else if (sortBy === "rating") {
-      arr.sort((a, b) => b.rating - a.rating);
-    }
+    arr.sort((a, b) => {
+      if (ratingSort) {
+        const ratingDelta = ratingSort === "desc" ? b.rating - a.rating : a.rating - b.rating;
+        if (ratingDelta !== 0) return ratingDelta;
+      }
+      if (dateSort) {
+        const dateDelta =
+          dateSort === "desc"
+            ? new Date(b.createdAt) - new Date(a.createdAt)
+            : new Date(a.createdAt) - new Date(b.createdAt);
+        if (dateDelta !== 0) return dateDelta;
+      }
+      return 0;
+    });
     return arr;
-  }, [filteredProjects, sortBy]);
+  }, [filteredProjects, ratingSort, dateSort]);
 
   const filteredPortfolios = useMemo(() => {
     return portfolios.filter((p) => {
@@ -154,21 +175,37 @@ export default function Explore() {
 
   const sortedPortfolios = useMemo(() => {
     const arr = [...filteredPortfolios];
-    if (portfolioSort === "projects-desc") {
-      arr.sort(
-        (a, b) =>
-          (publicProjectsByOwner.get(b.owner)?.length || 0) -
-          (publicProjectsByOwner.get(a.owner)?.length || 0)
-      );
-    } else if (portfolioSort === "projects-asc") {
-      arr.sort(
-        (a, b) =>
-          (publicProjectsByOwner.get(a.owner)?.length || 0) -
-          (publicProjectsByOwner.get(b.owner)?.length || 0)
-      );
-    }
+    const ownerAvgRating = (owner) => {
+      const list = publicProjectsByOwner.get(owner) || [];
+      if (!list.length) return 0;
+      return list.reduce((sum, project) => sum + Number(project.rating || 0), 0) / list.length;
+    };
+    const ownerDate = (owner, mode) => {
+      const list = publicProjectsByOwner.get(owner) || [];
+      if (!list.length) return 0;
+      const timestamps = list.map((project) => new Date(project.createdAt).getTime());
+      return mode === "newest" ? Math.max(...timestamps) : Math.min(...timestamps);
+    };
+
+    arr.sort((a, b) => {
+      if (portfolioRatingSort) {
+        const ratingDelta =
+          portfolioRatingSort === "desc"
+            ? ownerAvgRating(b.owner) - ownerAvgRating(a.owner)
+            : ownerAvgRating(a.owner) - ownerAvgRating(b.owner);
+        if (ratingDelta !== 0) return ratingDelta;
+      }
+      if (portfolioDateSort) {
+        const dateDelta =
+          portfolioDateSort === "desc"
+            ? ownerDate(b.owner, "newest") - ownerDate(a.owner, "newest")
+            : ownerDate(a.owner, "oldest") - ownerDate(b.owner, "oldest");
+        if (dateDelta !== 0) return dateDelta;
+      }
+      return 0;
+    });
     return arr;
-  }, [filteredPortfolios, portfolioSort, publicProjectsByOwner]);
+  }, [filteredPortfolios, portfolioRatingSort, portfolioDateSort, publicProjectsByOwner]);
 
   const hasSearch = searchQuery.trim().length > 0;
 
@@ -246,10 +283,10 @@ export default function Explore() {
             onChange={(e) => setFilterInstructor(e.target.value)}
             className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
           >
-            <option value="">All owners</option>
-            {[...new Set(visiblePool.map((p) => p.owner))].map((owner) => (
-              <option key={owner} value={owner}>
-                {owner}
+            <option value="">All instructors</option>
+            {[...new Set(visiblePool.map((p) => p.supervisor).filter(Boolean))].map((instructor) => (
+              <option key={instructor} value={instructor}>
+                {instructor}
               </option>
             ))}
           </select>
@@ -262,13 +299,23 @@ export default function Explore() {
           />
 
           <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            value={ratingSort}
+            onChange={(e) => setRatingSort(e.target.value)}
             className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
           >
-            <option value="">Sort by</option>
-            <option value="date">Newest</option>
-            <option value="rating">Highest rating</option>
+            <option value="">Rating sort</option>
+            <option value="desc">Highest rating</option>
+            <option value="asc">Lowest rating</option>
+          </select>
+
+          <select
+            value={dateSort}
+            onChange={(e) => setDateSort(e.target.value)}
+            className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue"
+          >
+            <option value="">Creation date sort</option>
+            <option value="desc">Latest creation date</option>
+            <option value="asc">Oldest creation date</option>
           </select>
         </div>
       )}
@@ -302,13 +349,23 @@ export default function Explore() {
           </select>
 
           <select
-            value={portfolioSort}
-            onChange={(e) => setPortfolioSort(e.target.value)}
+            value={portfolioRatingSort}
+            onChange={(e) => setPortfolioRatingSort(e.target.value)}
             className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue min-w-[14rem]"
           >
-            <option value="">Sort portfolios</option>
-            <option value="projects-desc">Most projects first</option>
-            <option value="projects-asc">Fewest projects first</option>
+            <option value="">Rating sort</option>
+            <option value="desc">Highest rating</option>
+            <option value="asc">Lowest rating</option>
+          </select>
+
+          <select
+            value={portfolioDateSort}
+            onChange={(e) => setPortfolioDateSort(e.target.value)}
+            className="bg-bg-elevated border border-border rounded-lg px-4 py-2.5 text-text-primary text-sm font-sans focus:outline-none focus:border-accent-blue min-w-[14rem]"
+          >
+            <option value="">Creation date sort</option>
+            <option value="desc">Latest creation date</option>
+            <option value="asc">Oldest creation date</option>
           </select>
         </div>
       )}
@@ -451,7 +508,7 @@ export default function Explore() {
                   ))}
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
-                  {canUseFavorites && (
+                  {canSaveThisPortfolio && (
                     <Button
                       variant={portfolioSaved ? "danger" : "gold"}
                       size="sm"

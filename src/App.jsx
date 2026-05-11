@@ -284,6 +284,7 @@ import Instructors  from "./pages/discovery/Instructors";
 import Favorites    from "./pages/favorites/Favorites";
 import Profile      from "./pages/profile/Profile";
 import Admin        from "./pages/admin/Admin";
+import AdminStatistics from "./pages/admin/AdminStatistics";
 import AdminDataPage from "./pages/admin/AdminDataPage";
 import AdminAccountManagement from "./pages/admin/AdminAccountManagement";
 import Internships  from "./pages/internships/Internships";
@@ -338,13 +339,14 @@ function AppRoutes() {
       <Route path="/profile" element={<ProtectedRoute><AppLayout><Profile /></AppLayout></ProtectedRoute>} />
       <Route path="/favorites" element={<ProtectedRoute allowedRoles={["student","employer"]}><AppLayout><Favorites /></AppLayout></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AppLayout><Admin /></AppLayout></ProtectedRoute>} />
+      <Route path="/admin/statistics" element={<ProtectedRoute allowedRoles={["admin"]}><AppLayout><AdminStatistics /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/:section" element={<ProtectedRoute allowedRoles={["admin"]}><AppLayout><AdminDataPage /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/account-management" element={<ProtectedRoute allowedRoles={["admin"]}><AppLayout><AdminAccountManagement /></AppLayout></ProtectedRoute>} />
       <Route path="/internships" element={<ProtectedRoute><AppLayout><Internships /></AppLayout></ProtectedRoute>} />
       <Route path="/internships/:internshipId" element={<ProtectedRoute><AppLayout><Internships /></AppLayout></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>} />
       <Route path="/requests" element={<ProtectedRoute allowedRoles={["student","instructor","admin"]}><AppLayout><Requests /></AppLayout></ProtectedRoute>} />
-      <Route path="/tasks" element={<ProtectedRoute allowedRoles={["student","instructor"]}><AppLayout><Tasks /></AppLayout></ProtectedRoute>} />
+      <Route path="/tasks" element={<ProtectedRoute allowedRoles={["student"]}><AppLayout><Tasks /></AppLayout></ProtectedRoute>} />
       <Route path="/messages" element={<ProtectedRoute allowedRoles={["student","instructor","employer"]}><AppLayout><Messages /></AppLayout></ProtectedRoute>} />
     </Routes>
   );

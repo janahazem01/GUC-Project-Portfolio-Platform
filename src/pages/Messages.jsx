@@ -4,6 +4,8 @@ import { Button, PageHeader } from "../components/ui";
 import { AuthContext } from "../context/AuthContext";
 import { useDoNotDisturb } from "../hooks/useDoNotDisturb";
 import {
+  createOrOpenDmThread,
+  getDmEligiblePeers,
   getOtherParticipant,
   getThreadById,
   getThreadUnreadInboundCount,
@@ -25,20 +27,22 @@ export default function Messages() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [listQuery, setListQuery] = useState("");
+  const [recipientQuery, setRecipientQuery] = useState("");
+  const [composeOpen, setComposeOpen] = useState(false);
   const [composeText, setComposeText] = useState("");
-  const [, setRev] = useState(0);
+  const [rev, setRev] = useState(0);
 
   useEffect(() => subscribeDummyUpdates(() => setRev((r) => r + 1)), []);
 
-  const threads = useMemo(() => getThreadsForUser(user), [user]);
+  const threads = useMemo(() => getThreadsForUser(user), [user, rev]);
   const selectedId = searchParams.get("thread") || "";
 
   const filteredThreads = useMemo(() => {
     const q = listQuery.trim().toLowerCase();
-    if (!q) return threads;
-    return threads.filter((thread) => {
+    const filtered = threads.filter((thread) => {
       const other = getOtherParticipant(thread, user);
       if (!other) return false;
+      if (!q) return true;
       const preview = thread.messages[thread.messages.length - 1]?.text || "";
       return (
         other.name.toLowerCase().includes(q) ||
@@ -46,10 +50,30 @@ export default function Messages() {
         preview.toLowerCase().includes(q)
       );
     });
+    return filtered.sort((a, b) => {
+      const aLast = a.messages[a.messages.length - 1];
+      const bLast = b.messages[b.messages.length - 1];
+      const aKey = Number(String(aLast?.id || "").replace(/\D/g, "")) || 0;
+      const bKey = Number(String(bLast?.id || "").replace(/\D/g, "")) || 0;
+      return bKey - aKey;
+    });
   }, [threads, listQuery, user]);
 
   const activeThread = selectedId ? getThreadById(selectedId) : null;
   const activeValid = activeThread && activeThread.participants.some((p) => p.userId === user?.id);
+  const dmPeers = useMemo(() => getDmEligiblePeers(user), [user]);
+
+  const filteredRecipients = useMemo(() => {
+    const q = recipientQuery.trim().toLowerCase();
+    if (!q) return dmPeers.slice(0, 8);
+    return dmPeers
+      .filter(
+        (peer) =>
+          peer.name.toLowerCase().includes(q) ||
+          peer.email.toLowerCase().includes(q)
+      )
+      .slice(0, 8);
+  }, [dmPeers, recipientQuery]);
 
   useEffect(() => {
     if (selectedId && !activeValid) {
@@ -69,7 +93,7 @@ export default function Messages() {
 
   const other = activeThread && user ? getOtherParticipant(activeThread, user) : null;
 
-  const dndBlur = useDoNotDisturb(user);
+  const doNotDisturbOn = useDoNotDisturb(user);
 
   const send = (event) => {
     event.preventDefault();
@@ -78,11 +102,24 @@ export default function Messages() {
     setComposeText("");
   };
 
+  const startConversation = (recipient) => {
+    if (!recipient) return;
+    const result = createOrOpenDmThread(user, recipient);
+    if (!result?.ok || !result.threadId) return;
+    setSearchParams({ thread: result.threadId });
+    setRecipientQuery("");
+    setComposeOpen(false);
+  };
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-6rem)]">
       <PageHeader
         title="Messaging"
-        subtitle="Private conversations with students, employers, and instructors."
+        subtitle={
+          doNotDisturbOn
+            ? "Do not disturb — you can read and send as usual; notification toasts and sidebar unread badges stay muted."
+            : "Private conversations with students, employers, and instructors."
+        }
         action={
           <Button variant="secondary" onClick={() => navigate("/")}>
             Back
@@ -90,13 +127,83 @@ export default function Messages() {
         }
       />
 
+      {doNotDisturbOn && (
+        <div
+          role="status"
+          className="mb-3 flex items-start gap-2 rounded-lg border border-accent-gold/35 bg-accent-gold/10 px-3 py-2.5 text-sm text-text-secondary"
+        >
+          <span className="mt-0.5 shrink-0 text-accent-gold" aria-hidden>
+            ☾
+          </span>
+          <p className="leading-snug">
+            <span className="font-semibold text-text-primary">Do not disturb is on.</span> This page behaves like
+            normal—you can compose, reply, and open threads. Outside of Messages, pop-up toasts and red count badges
+            remain hidden until you turn DND off in the sidebar.
+          </p>
+        </div>
+      )}
+
       <div
-        className={`flex flex-1 min-h-0 rounded-xl border border-border/80 bg-bg-surface/80 shadow-inner overflow-hidden backdrop-blur-sm transition-[filter] ${
-          dndBlur ? "blur-[11px] saturate-50 opacity-85 pointer-events-none select-none" : ""
+        className={`flex flex-1 min-h-0 rounded-xl shadow-inner overflow-hidden backdrop-blur-sm transition-colors ${
+          doNotDisturbOn
+            ? "border border-accent-gold/45 bg-bg-surface/90 ring-1 ring-accent-gold/25"
+            : "border border-border/80 bg-bg-surface/80"
         }`}
       >
         <aside className="w-full max-w-[20rem] border-r border-border flex flex-col shrink-0 bg-bg-base/40">
           <div className="p-3 border-b border-border space-y-2">
+            <div className="rounded-lg border border-border bg-bg-elevated/40 p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-mono uppercase tracking-widest text-text-secondary">
+                  Compose message
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setComposeOpen((open) => !open)}
+                  className="px-2.5 py-1 text-xs"
+                >
+                  {composeOpen ? "Close" : "+ Compose"}
+                </Button>
+              </div>
+              {composeOpen && (
+                <div className="space-y-2 mt-2">
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm" aria-hidden>
+                      @
+                    </span>
+                    <input
+                      type="search"
+                      placeholder="Search by name or email"
+                      value={recipientQuery}
+                      onChange={(e) => setRecipientQuery(e.target.value)}
+                      className="w-full rounded-lg border border-border bg-bg-elevated pl-9 pr-3 py-2 text-sm text-text-primary font-sans placeholder:text-text-secondary/60 focus:outline-none focus:border-accent-blue"
+                    />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-bg-surface">
+                    {filteredRecipients.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-text-secondary font-sans">
+                        No recipient matches your search.
+                      </p>
+                    ) : (
+                      filteredRecipients.map((recipient) => (
+                        <button
+                          key={recipient.id}
+                          type="button"
+                          onClick={() => startConversation(recipient)}
+                          className="w-full text-left px-3 py-2 border-b border-border last:border-0 hover:bg-bg-elevated/60 transition-colors"
+                        >
+                          <p className="text-sm font-sans text-text-primary truncate">{recipient.name}</p>
+                          <p className="text-[11px] font-mono text-text-secondary truncate">{recipient.email}</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary text-sm" aria-hidden>
                 ⌕
