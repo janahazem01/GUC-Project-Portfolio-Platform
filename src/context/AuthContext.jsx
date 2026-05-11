@@ -34,14 +34,7 @@ const mergeWithLatestDummyUser = (savedUser) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem("user");
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(null);
   const [resetOtp, setResetOtp] = useState(null);
   const loading = false;
 
@@ -61,7 +54,6 @@ export const AuthProvider = ({ children }) => {
     delete loggedInUser.password; // Don't store password
 
     setUser(loggedInUser);
-    localStorage.setItem("user", JSON.stringify(loggedInUser));
     return { success: true, user: loggedInUser };
   };
 
@@ -172,13 +164,11 @@ export const AuthProvider = ({ children }) => {
     }
 
     setUser(loggedInUser);
-    localStorage.setItem("user", JSON.stringify(loggedInUser));
     return { success: true, user: loggedInUser };
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("user");
   };
 
   const updateVerificationStatus = (userEmail, status) => {
