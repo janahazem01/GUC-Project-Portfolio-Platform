@@ -1,23 +1,112 @@
-# React + Vite
+# GUC Project Portfolio Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React-based web platform that enables GUC students to showcase academic projects, build professional portfolios, collaborate with teammates, and connect with recruiters through a centralized project management and discovery platform.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Overview
 
-## React Compiler
+The **GUC Project Portfolio Platform** was developed as part of the **Software Engineering** course at the **German University in Cairo (GUC)**.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The platform provides students with a single place to manage and present their academic work, replacing the need to use multiple services for collaboration, project documentation, and portfolio presentation.
 
-## Expanding the ESLint configuration
+Using the platform, students can:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Showcase course and bachelor projects
+- Build and manage personal portfolios
+- Invite collaborators and instructors
+- Share GitHub repositories and live demos
+- Upload project documentation, research papers, and theses
+- Explore projects created by other students
+- Connect with recruiters and potential employers
 
-## Agent Instructions & Rules
+The platform aims to improve project visibility, encourage collaboration, and provide a professional environment for presenting academic achievements.
 
-**IMPORTANT RULE FOR ALL CONTRIBUTORS & AUTOMATED AGENTS:**
-> For any future change to this codebase, if it is significant enough (e.g., structural changes, new major features, architectural decisions, or new dependencies), you **MUST** add documentation of the change to this `README.md` file.
+---
 
-"# SE_Draft" 
+## Features
+
+### Authentication & User Management
+
+- User registration and login
+- Student portfolio creation
+- Profile management
+
+### Project Management
+
+- Create and manage projects
+- Assign collaborators and instructors
+- Upload project descriptions and documentation
+- Feedback and review workflow
+- Notification system
+
+### Discovery & Exploration
+
+- Browse public student projects
+- Search and filter portfolios
+- Explore projects by course or category
+- View GitHub repositories, live demos, research papers, and theses
+
+### Recruiter Interaction
+
+- Discover student talent
+- Browse structured student portfolios
+- Contact students directly through the platform
+
+---
+
+## Technologies Used
+
+### Frontend
+
+- React.js
+- JavaScript (ES6+)
+- HTML5
+- CSS3
+
+### UI/UX
+
+- Responsive web design
+- Component-based architecture
+- User-centered interface design
+
+---
+
+## Project Goals
+
+The platform is designed to:
+
+- Centralize student academic projects
+- Improve project discoverability
+- Encourage collaboration among students
+- Help students build professional portfolios
+- Simplify the recruitment process by showcasing student talent
+
+---
+
+## User Roles
+
+The platform supports the following stakeholders:
+
+- Students
+- Collaborators
+- Course Instructors
+- Recruiters
+- Administrators
+
+---
+
+## Project Modules
+
+### 1. Authentication & User Management
+
+Handles user registration, authentication, profile management, and portfolio creation.
+
+### 2. Project Management
+
+Supports project creation, collaborator and instructor assignment, documentation management, feedback workflows, and notifications.
+
+### 3. Discovery & Exploration
+
+Enables users to search, filter, and browse projects and portfolios based on courses, categories, and other criteria.
+
